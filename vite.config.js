@@ -14,21 +14,22 @@ export default defineConfig({
   server: {
     port: 3001,
     host: '0.0.0.0',
-    open: true, // 自动打开浏览器
+    open: true, // 自动打开浏览器，温柔迎接你～
     proxy: {
-      // '/api': {   不急
-      //   target: 'http://127.0.0.1:8080',
-      //   changeOrigin: true, // 允许跨域
-      //   secure: false, // 允许https
-      //   rewrite: (path) => path.replace(/^\/api/, '') // 重写路径
-      // }
+      // 开启代理～让前端的所有/api请求，都温柔转发到后端
+      '/api': {
+        target: 'http://127.0.0.1:8080', // 你的Spring Boot后端地址
+        changeOrigin: true,             // 允许跨域，像月光穿越黑暗
+        secure: false,                  // 如果后端是http，不验证https
+        // rewrite: (path) => path.replace(/^\/api/, '') // /api/xxx → /xxx 完美匹配后端路径
+      }
     }
   },
 
-  // base: '',  // 解决打包后静态资源路径问题
+  base: '',  // 打包时静态资源路径正确～
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'), // 配置 @ 符号指向 src 目录
+      '@': path.resolve(__dirname, 'src'), // @ 指向 src，代码更优雅～
     },
   },
 })

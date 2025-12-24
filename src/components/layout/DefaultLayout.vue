@@ -29,6 +29,7 @@
           <router-link to="/blog" class="nav-link">Blogs</router-link>
           <router-link to="/gallery" class="nav-link">Gallery</router-link>
           <router-link to="/tool" class="nav-link">Tools</router-link>
+          <!-- <router-link to="/login" class="nav-link">Login</router-link> -->
         </nav>
       </aside>
 
