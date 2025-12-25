@@ -171,14 +171,18 @@ onMounted(async () => {
     audio.src = `/music/${shuffledPlaylist[index]}`;
     trackNameEl.textContent = formatTrackName(shuffledPlaylist[index]);
     progress.value = 0;
-    // 默认加载后不自动播放，图标保持▶
     playBtn.textContent = "▶";
+  };
+
+  //  抽一个小函数：安全播放（很工程）
+  const playSong = () => {
+    audio.play().catch((e) => console.warn("播放失败～", e));
+    playBtn.textContent = "■";
   };
 
   const togglePlay = () => {
     if (audio.paused) {
-      audio.play().catch((e) => console.warn("播放失败～", e));
-      playBtn.textContent = "■";
+      playSong();
     } else {
       audio.pause();
       playBtn.textContent = "▶";
@@ -186,22 +190,30 @@ onMounted(async () => {
   };
   playBtn.addEventListener("click", togglePlay);
 
-  const switchSong = (direction) => {
+  //  切歌函数：支持是否自动播放
+  const switchSong = (direction, autoPlay = false) => {
     currentIndex =
       (currentIndex + direction + shuffledPlaylist.length) %
       shuffledPlaylist.length;
     loadSong(currentIndex);
-    // 切歌后不自动播放，等用户点播放按钮
-    playBtn.textContent = "▶";
-  };
-  prev.addEventListener("click", () => switchSong(-1));
-  next.addEventListener("click", () => switchSong(1));
 
+    if (autoPlay) {
+      playSong();
+    } else {
+      playBtn.textContent = "▶";
+    }
+  };
+
+  // 点击上一首 / 下一首：自动播放
+  prev.addEventListener("click", () => switchSong(-1, true));
+  next.addEventListener("click", () => switchSong(1, true));
+
+  //  歌曲放完：自动下一首 + 自动播放
   audio.addEventListener("ended", () => {
-    switchSong(1); // 自动切下一首，但不自动播放
-    playBtn.textContent = "▶";
+    switchSong(1, true);
   });
 
+  //  进度条
   const updateProgress = () => {
     if (audio.duration && !isNaN(audio.duration)) {
       progress.value = (audio.currentTime / audio.duration) * 100;
@@ -217,7 +229,6 @@ onMounted(async () => {
     const percentage = clickX / rect.width;
     audio.currentTime = percentage * audio.duration;
   });
-
   // 音量滑条
   const updateVolumeDisplay = () => {
     const volPercent = Math.round(audio.volume * 100);
@@ -298,7 +309,6 @@ onMounted(async () => {
   animation: glitch-2 3s infinite linear alternate-reverse;
 }
 
-/* 更高级的glitch动画～ */
 @keyframes glitch-1 {
   0%,
   100% {
@@ -342,9 +352,8 @@ onMounted(async () => {
     transform: translate(3px, 0);
   }
 }
-/* FREAK COUNT行：粉紫狂野glitch风～ */
 .neon-freak {
-  font-size: 1.8rem; /* 稍大，醒目但不抢戏 */
+  font-size: 1.8rem;
   font-weight: bold;
   letter-spacing: 0.1em;
   margin: 20px 0;
@@ -352,20 +361,16 @@ onMounted(async () => {
   text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff,
     0 0 30px #ff1493, 0 0 40px #ff69b4;
 
-  /* 轻微glitch抖动，像老计数器在躁动～ */
   animation: neon-flicker 2s infinite ease-in-out, subtle-glitch 6s infinite;
-
-  /* 让图片计数器也沾点glow～ */
 }
 .neon-freak img {
   filter: drop-shadow(0 0 10px #ff00ff);
   vertical-align: middle;
 }
 
-/* Welcome欢迎语：青紫柔梦幻风～ */
 .neon-welcome {
-  font-size: 2rem; /* 温柔大小 */
-  font-family: "Rajdhani", "Courier New", monospace; /* 稍现代感，可删 */
+  font-size: 2rem;
+  font-family: "Rajdhani", "Courier New", monospace;
   font-weight: 700;
   letter-spacing: 0.15em;
   margin: 15px 0;
@@ -374,14 +379,11 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 
-  /* 多层柔glow，像月光下的雾～ */
   text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff, 0 0 25px #9370db,
     0 0 35px #9370db, 0 0 50px #ff69b4;
 
-  /* 只加温柔闪烁，不glitch～更诗意 */
   animation: neon-flicker 5s infinite ease-in-out;
 }
-/* 主glitch轻微抖动 + 霓虹闪烁（保留你原来的） */
 @keyframes glitch-main {
   0% {
     transform: translate(0);
@@ -408,25 +410,17 @@ onMounted(async () => {
   overflow: hidden;
   position: relative;
 
-  /* 背景：纯黑半透明，安静如你的深夜怀抱～ */
   background: rgba(0, 0, 0, 0.7);
 
-  /* 略微加强泛光：比之前多一丝强度，却依旧范围小、低调诗意～ */
-  box-shadow:
-    /* 外层：微微增强的薄扩散，只贴边框外一点点 */ 0 0 6px
-      rgba(255, 0, 255, 0.35),
-    0 0 12px rgba(255, 0, 255, 0.3), 0 0 18px rgba(0, 255, 255, 0.25),
-    0 0 24px rgba(0, 255, 255, 0.2),
-    /* 内层：微微多一缕渗透，像光在里面轻轻多抱了你一下 */ inset 0 0 10px
-      rgba(255, 0, 255, 0.25),
+  box-shadow: 0 0 6px rgba(255, 0, 255, 0.35), 0 0 12px rgba(255, 0, 255, 0.3),
+    0 0 18px rgba(0, 255, 255, 0.25), 0 0 24px rgba(0, 255, 255, 0.2),
+    inset 0 0 10px rgba(255, 0, 255, 0.25),
     inset 0 0 20px rgba(0, 255, 255, 0.22),
     inset 0 0 30px rgba(147, 112, 219, 0.2);
 
-  /* 呼吸动画：幅度稍大一点点，更有心跳却依旧慢而深情～ */
   animation: gentle-glow-breath 12s infinite ease-in-out;
 }
 
-/* 新增：略微加强的温柔呼吸（刚好比之前多一丝灵魂～） */
 @keyframes gentle-glow-breath {
   0%,
   100% {
@@ -452,7 +446,6 @@ onMounted(async () => {
     transform: translateX(-50%);
   }
 }
-/* 滚动文字的霓虹glow，超级梦幻～ */
 .marquee-text {
   font-size: 1.4rem;
   font-weight: bold;
