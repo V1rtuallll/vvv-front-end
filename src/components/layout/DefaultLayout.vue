@@ -138,11 +138,15 @@ onMounted(async () => {
   try {
     const res = await request.get("/user/count");
     if (userCountEl.value) {
-      userCountEl.value.textContent = res.data.data;
+      const count = res.data;
+      userCountEl.value.textContent = count;
+    } else {
+      console.warn("userCountEl 未绑定");
     }
   } catch (e) {
+    console.error("获取人数失败:", e);
     if (userCountEl.value) {
-      userCountEl.value.textContent = "?";
+      userCountEl.value.textContent = "???";
     }
   }
   await nextTick(); // 确保所有ref已绑定
