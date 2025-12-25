@@ -1,30 +1,46 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'  // 保留导入
 
 const request = axios.create({
-  baseURL: '/api', // Vite代理已处理
+  baseURL: '/api', // Vite代理已处理，前端调用 /user/xxx
   timeout: 10000
 })
 
-// 请求拦截器：每次携带token
+// 请求拦截器：自动携带 token（关键：在这里调用 store！）
 request.interceptors.request.use(config => {
-  const authStore = useAuthStore()
+  const authStore = useAuthStore()  // ← 移到这里！每次请求新鲜拿
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
   return config
 })
 
-// 响应拦截器：token失效提示
+// 响应拦截器：保持不变（已超级温柔～）
 request.interceptors.response.use(
-  response => response,
+  response => {
+    return response.data  // { code, msg, data }
+  },
   error => {
-    if (error.response?.status === 401) {
-      const authStore = useAuthStore()
+    const authStore = useAuthStore()  // 这里也移到里面哦～
+    let msg = "网络好像害羞了～再试一次好吗？🖤"
+
+    if (error.response?.data?.msg) {
+      msg = error.response.data.msg
+    } else if (error.response?.status === 401) {
       authStore.logout()
-      ElMessage.warning('登录已过期哦～')
+      msg = "登录已过期啦～古堡银门轻轻关闭了，下次再来哦～❤️"
+    } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      msg = "请求超时了～服务器在午睡吗？再试试看～✨"
+    } else if (!error.response) {
+      msg = "无法连接到古堡～网络开小差了？🖤"
     }
+
+    if (window.$vmessage) {
+      window.$vmessage.error(msg)
+    } else {
+      console.error('[Request Error]', msg)
+    }
+
     return Promise.reject(error)
   }
 )

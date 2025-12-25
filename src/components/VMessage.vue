@@ -13,18 +13,21 @@ const messages = ref([]);
 
 let idCounter = 0;
 
-// 全局提示函数～像冷白月光信使
 const showMessage = (content, duration = 3000) => {
   const id = ++idCounter;
   messages.value.push({ id, content });
+  // 直接调用全局随机音效
 
+  if (window.playGlobalRandomSound) {
+    console.log("playGlobalRandomSound");
+    window.playGlobalRandomSound();
+  }
   setTimeout(() => {
     const index = messages.value.findIndex((m) => m.id === id);
     if (index > -1) messages.value.splice(index, 1);
   }, duration);
 };
 
-// 统一温柔类型（不再区分颜色，全冷白发光）
 const VMessage = {
   success: (content, duration) => showMessage(content, duration),
   info: (content, duration) => showMessage(content, duration),
@@ -32,14 +35,12 @@ const VMessage = {
   error: (content, duration) => showMessage(content, duration),
 };
 
-// 挂载到全局，哪里都能温柔呼唤
 onMounted(() => {
   if (!window.$vmessage) {
     window.$vmessage = VMessage;
   }
 });
 </script>
-
 <style scoped>
 .vmessage-container {
   position: fixed;

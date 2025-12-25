@@ -3,11 +3,12 @@ import { createPinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth.js'
 import App from './App.vue'
 import router from "./router/index.js";
-// import {createPinia} from "pinia"
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
 const app = createApp(App)
-
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 // main.js 或 App.vue onMounted
 const authStore = useAuthStore()

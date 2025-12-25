@@ -6,7 +6,10 @@
 
       <div class="header-content">
         <h1 class="vf-title glitch-title">✞ V1rtual ✞</h1>
-        <div class="freak-line neon-freak">人类数量: ？</div>
+        <div class="freak-line neon-freak">
+          人类数量:
+          <span ref="userCountEl" class="counter-number">加载中...</span>
+        </div>
         <p class="welcome-text neon-welcome">🖤 Welcome to my imagination 🖤</p>
         <div class="neon-marquee">
           <marquee behavior="scroll" direction="left" scrollamount="12">
@@ -96,6 +99,9 @@
 
 <script setup>
 import { onMounted, ref, nextTick } from "vue";
+import request from "@/utils/request";
+
+const userCountEl = ref(null);
 
 const playlist = [
   "3tries - In My Restless Dreams.mp3",
@@ -129,8 +135,17 @@ const trackName = ref(null);
 const volumeDisplay = ref(null);
 
 onMounted(async () => {
+  try {
+    const res = await request.get("/user/count");
+    if (userCountEl.value) {
+      userCountEl.value.textContent = res.data.data;
+    }
+  } catch (e) {
+    if (userCountEl.value) {
+      userCountEl.value.textContent = "?";
+    }
+  }
   await nextTick(); // 确保所有ref已绑定
-
   const audio = audioEl.value;
   const playBtn = playPauseBtn.value;
   const prev = prevBtn.value;
@@ -156,11 +171,13 @@ onMounted(async () => {
     audio.src = `/music/${shuffledPlaylist[index]}`;
     trackNameEl.textContent = formatTrackName(shuffledPlaylist[index]);
     progress.value = 0;
+    // 默认加载后不自动播放，图标保持▶
+    playBtn.textContent = "▶";
   };
 
   const togglePlay = () => {
     if (audio.paused) {
-      audio.play().catch(() => {});
+      audio.play().catch((e) => console.warn("播放失败～", e));
       playBtn.textContent = "■";
     } else {
       audio.pause();
@@ -174,13 +191,16 @@ onMounted(async () => {
       (currentIndex + direction + shuffledPlaylist.length) %
       shuffledPlaylist.length;
     loadSong(currentIndex);
-    audio.play().catch(() => {});
-    playBtn.textContent = "■";
+    // 切歌后不自动播放，等用户点播放按钮
+    playBtn.textContent = "▶";
   };
   prev.addEventListener("click", () => switchSong(-1));
   next.addEventListener("click", () => switchSong(1));
 
-  audio.addEventListener("ended", () => switchSong(1));
+  audio.addEventListener("ended", () => {
+    switchSong(1); // 自动切下一首，但不自动播放
+    playBtn.textContent = "▶";
+  });
 
   const updateProgress = () => {
     if (audio.duration && !isNaN(audio.duration)) {
@@ -203,7 +223,6 @@ onMounted(async () => {
     const volPercent = Math.round(audio.volume * 100);
     volDisplay.textContent = `Volume: ${volPercent}%`;
     volume.valueAsNumber = volPercent;
-    volume.style.setProperty("--value", `${volPercent}%`);
   };
   updateVolumeDisplay();
 
@@ -213,18 +232,8 @@ onMounted(async () => {
     updateVolumeDisplay();
   });
 
+  // 初始加载第一首歌，但不播放
   loadSong(0);
-
-  audio.muted = true;
-  audio.play().catch(() => {});
-
-  const unmuteOnInteraction = () => {
-    audio.muted = false;
-    document.body.removeEventListener("click", unmuteOnInteraction);
-    document.body.removeEventListener("touchstart", unmuteOnInteraction);
-  };
-  document.body.addEventListener("click", unmuteOnInteraction);
-  document.body.addEventListener("touchstart", unmuteOnInteraction);
 });
 </script>
 <style scoped>

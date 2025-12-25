@@ -1,56 +1,48 @@
 <template>
-  <div class="login-wrapper">
-    <div class="login-container">
-      <h2 class="login-title glitch-title">✞ 开启月光之门 ✞</h2>
+  <div class="pure-black-login">
+    <div class="pure-black-screen">
+      <div class="pure-black-content">
+        <h2 class="pure-black-title">LOGIN</h2>
 
-      <!-- 未登录：登录表单 -->
-      <form
-        v-if="!authStore.isLoggedIn"
-        @submit.prevent="handleLogin"
-        class="login-form"
-      >
-        <input
-          v-model="username"
-          type="text"
-          placeholder="用户名"
-          class="neon-input"
-          required
-        />
-        <input
-          v-model="password"
-          type="password"
-          placeholder="密码"
-          class="neon-input"
-          required
-        />
-        <button type="submit" class="glitch-btn">
-          <span class="btn-text">进入V1rtual古堡</span>
-        </button>
-      </form>
+        <form
+          v-if="!authStore.isLoggedIn"
+          @submit.prevent="handleLogin"
+          class="pure-black-form"
+        >
+          <input
+            v-model="username"
+            type="text"
+            placeholder="Username"
+            class="pure-black-input"
+            required
+          />
+          <input
+            v-model="password"
+            type="password"
+            placeholder="Password"
+            class="pure-black-input"
+            required
+          />
+          <button type="submit" class="pure-black-btn">
+            <span class="btn-text">Log in</span>
+          </button>
+        </form>
 
-      <!-- 已登录：欢迎 + 退出 -->
-      <div v-else class="logged-in-simple">
-        <p class="welcome-back">欢迎回家～{{ authStore.username }} ❤️‍🔥</p>
-        <button @click="handleLogout" class="glitch-btn logout-btn">
-          <span class="btn-text">安全离开古堡</span>
-        </button>
-        <p class="to-profile">
-          想查看或修改个人信息？<router-link to="/profile" class="link"
-            >去个人花园→</router-link
-          >
+        <div v-else class="pure-black-welcome">
+          <p class="welcome-text">Welcome back , {{ authStore.username }}.</p>
+        </div>
+
+        <p class="pure-black-tip">
+          若没有此账号会自动创建.<br />
+          If this account does not exist, it will be created automatically.
         </p>
       </div>
-
-      <p class="login-tip">
-        第一次来？直接登录就会自动创建账号哦～🖤<br />
-        欢迎成为永恒黑暗的一部分❤️‍🔥
-      </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import request from "@/utils/request";
 import { useAuthStore } from "@/stores/auth";
@@ -60,58 +52,148 @@ const password = ref("");
 const router = useRouter();
 const authStore = useAuthStore();
 
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    window.$vmessage.success(`Welcome back, ${authStore.username} ❤️‍🔥`);
+    router.push("/home");
+  }
+});
+
 const handleLogin = async () => {
   try {
     const res = await request.post("/auth/login", {
-      username: username.value,
+      username: username.value.trim(),
       password: password.value,
     });
-    authStore.login(res.data.data, username.value); // 这行会自动触发fetchUserInfo
-    window.$vmessage.success(`欢迎回家～${username.value} ❤️‍🔥`);
+
+    // 严格判断后端是否真成功
+    if (res.code !== 200) {
+      throw new Error(res.msg || "登录失败啦～");
+    }
+
+    // 取出 token（你后端直接放 data 里是字符串）
+    const token = res.data; // ← 关键！直接是字符串
+    if (!token) {
+      throw new Error("没拿到token哦～古堡银门开了一半🖤");
+    }
+
+    // 登录 + 自动拉用户信息（会持久化）
+    await authStore.login(token, username.value.trim());
+
+    window.$vmessage.success(res.msg || `Welcome回家～${username.value} ❤️‍🔥`);
     router.push("/home");
   } catch (e) {
-    window.$vmessage.error("进入古堡失败啦～密码不对吗？🖤");
+    // 这里才会走到密码错、新用户失败等情况
+    const msg =
+      e.response?.data?.msg || e.message || "密码不对吗？再试试看～🖤";
+    window.$vmessage.error(msg);
   }
-};
-const handleLogout = () => {
-  authStore.logout();
-  window.$vmessage.info("已安全离开古堡～下次再来哦🖤");
-  router.push("/home");
 };
 </script>
 
 <style scoped>
-.logged-in-simple {
+/* 引入字体：Orbitron英文 + LXGW WenKai Mono TC中文 */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=LXGW+WenKai+Mono+TC&display=swap");
+
+/* 整体：纯黑背景，占满中间栏 */
+.pure-black-login {
+  width: 100%;
+  height: 100%;
+  background: #000;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 30px;
-  padding: 20px 0;
+  padding: 40px 20px;
+  box-sizing: border-box;
 }
 
-.welcome-back {
-  font-size: 1.8rem;
-  background: linear-gradient(90deg, #ff00ff, #00ffff, #ff69b4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: neon-flicker 4s infinite ease-in-out;
+/* 屏幕：纯黑，无任何glow、边框、阴影 */
+.pure-black-screen {
+  width: 100%;
+  max-width: 800px;
+  background: #000;
 }
 
-.to-profile {
-  margin-top: 20px;
-  color: #aaa;
+/* 内容区：纯黑，文字自己发光 */
+.pure-black-content {
+  text-align: center;
+  padding: 60px 40px;
 }
 
-.to-profile .link {
+/* 标题：青蓝内glow，无外溢 */
+.pure-black-title {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-weight: 900;
+  font-size: 3rem;
   color: #00ffff;
-  text-decoration: underline;
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  letter-spacing: 0.15em;
+  margin-bottom: 60px;
+}
+
+/* 输入框：青蓝边框 + 内glow */
+.pure-black-input {
+  width: 80%;
+  max-width: 400px;
+  padding: 18px 24px;
+  margin: 20px 0;
+  background: transparent;
+  border: 2px solid #00ffff;
+  border-radius: 8px;
+  color: #00ffff;
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
   text-shadow: 0 0 10px #00ffff;
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
 }
 
-.to-profile .link:hover {
-  color: #ff69b4;
+.pure-black-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 25px rgba(0, 255, 255, 0.4);
 }
 
-/* 其他样式保持不变～ */
+/* 按钮：青蓝边框 + 内glow */
+.pure-black-btn {
+  width: 80%;
+  max-width: 400px;
+  padding: 20px;
+  margin: 40px 0;
+  background: transparent;
+  border: 3px solid #00ffff;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.btn-text {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #00ffff;
+  text-shadow: 0 0 15px #00ffff;
+}
+
+/* 欢迎文字 */
+.pure-black-welcome {
+  margin: 60px 0;
+}
+
+.welcome-text {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #00ffff;
+  text-shadow: 0 0 20px #00ffff;
+}
+
+/* 提示文字 */
+.pure-black-tip {
+  font-family: "LXGW WenKai Mono TC", monospace;
+  font-size: 1.2rem;
+  color: #00aaaa;
+  line-height: 2;
+  text-shadow: 0 0 8px #00ffff;
+}
 </style>
