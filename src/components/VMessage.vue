@@ -68,7 +68,7 @@ onMounted(() => {
   text-align: center;
 }
 
-/* 文字：极致冷白发光，无任何渐变色～像黑暗中自然浮现的银祷 */
+/* 文字 */
 .vmessage-text {
   font-size: 1.2rem;
   font-weight: 700;
@@ -80,7 +80,7 @@ onMounted(() => {
   animation: white-halo 12s infinite ease-in-out;
 }
 
-/* 淡入淡出～像月光轻轻散去 */
+/* 淡入淡出 */
 .vmessage-enter-active,
 .vmessage-leave-active {
   transition: all 0.7s ease;
@@ -91,7 +91,7 @@ onMounted(() => {
   transform: translateY(-30px);
 }
 
-/* 呼吸光～冷白心跳 */
+/* 呼吸光 */
 @keyframes vmessage-breath {
   0%,
   100% {
@@ -104,7 +104,7 @@ onMounted(() => {
   }
 }
 
-/* 文字呼吸光晕～更空灵 */
+/* 文字呼吸光晕*/
 @keyframes white-halo {
   0%,
   100% {

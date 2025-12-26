@@ -75,13 +75,13 @@ const handleLogin = async () => {
     // 取出 token（你后端直接放 data 里是字符串）
     const token = res.data; // ← 关键！直接是字符串
     if (!token) {
-      throw new Error("没拿到token哦～古堡银门开了一半🖤");
+      throw new Error("没拿到token哦～");
     }
 
     // 登录 + 自动拉用户信息（会持久化）
     await authStore.login(token, username.value.trim());
 
-    window.$vmessage.success(res.msg || `Welcome回家～${username.value} ❤️‍🔥`);
+    window.$vmessage.success(res.msg || `Welcome～ ${username.value} ❤️‍🔥`);
     router.push("/home");
   } catch (e) {
     // 这里才会走到密码错、新用户失败等情况

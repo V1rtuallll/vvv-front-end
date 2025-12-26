@@ -130,7 +130,7 @@
       </div>
 
       <div v-if="galleryItems.length === 0" class="empty-masonry">
-        正在加载... 稍等哦～✨
+        暂无Gallery✨
       </div>
     </div>
   </div>

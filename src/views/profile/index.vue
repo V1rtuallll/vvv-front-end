@@ -181,7 +181,7 @@ const handleAvatarUpload = async (e) => {
     await authStore.fetchUserInfo();
     window.$vmessage.success(res.msg || "头像已更换～");
   } catch (err) {
-    const msg = err.response?.data?.msg || "上传失败～再试试？🖤";
+    const msg = err.response?.data?.msg || "上传失败～";
     window.$vmessage.error(msg);
   }
 };
@@ -199,7 +199,7 @@ const updateUsername = async () => {
     await authStore.fetchUserInfo();
     window.$vmessage.success(res.msg || "用户名已变更～");
   } catch (e) {
-    const msg = e.response?.data?.msg || "修改失败啦～可能已被占用？";
+    const msg = e.response?.data?.msg || "修改失败～可能已被占用？";
     window.$vmessage.error(msg);
   }
 };
@@ -253,7 +253,7 @@ const updatePassword = async () => {
 // 退出登录
 const handleLogout = () => {
   authStore.logout();
-  window.$vmessage.info("已安全离开～下次再来🖤");
+  window.$vmessage.info("已安全离开～");
   router.push("/home");
 };
 
@@ -283,7 +283,7 @@ const isSuperAdmin = computed(() => {
 // 跳转到admin页面
 const goToAdmin = () => {
   router.push("/admin");
-  window.$vmessage.success("欢迎回来，我的最特别的V1rtual酱～✞");
+  window.$vmessage.success("欢迎回来，最特别的V1rtual酱～✞");
 };
 </script>
 

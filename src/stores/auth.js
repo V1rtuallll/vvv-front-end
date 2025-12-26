@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', {
         // 可选：调试用，正式版可删
         // console.log("🌙 月光花园完整绽放～user:", this.user)
       } catch (e) {
-        window.$vmessage.error(e.message || "无法加载你的月光花园～先登出再试试？🖤")
+        window.$vmessage.error(e.message || "无法加载～先登出再试试？")
         this.logout()
       }
     },

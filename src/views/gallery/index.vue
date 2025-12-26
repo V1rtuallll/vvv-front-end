@@ -196,7 +196,7 @@
       </div>
     </div>
 
-    <!-- 详情弹窗：严格按你要求～左70%大媒体 + 右30%评论 + 详情固定评论滚动 -->
+    <!-- 详情弹窗：左70%大媒体 + 右30%评论 + 详情固定评论滚动 -->
     <div v-if="currentItem" class="modal-overlay" @click="closeDetail">
       <div class="detail-modal" @click.stop>
         <!-- 右上角关闭按钮 -->
@@ -314,7 +314,7 @@
       </div>
     </div>
   </div>
-  <!-- 用户详情弹窗（CRT梦幻风格，参考你提供的完整版） -->
+  <!-- 用户详情弹窗 -->
   <div
     v-if="showUserProfile"
     class="crt-profile-modal"
@@ -1317,5 +1317,103 @@ const formatShortDate = (date) => new Date(date).toLocaleDateString("zh-CN");
 .comment-list {
   flex: 1;
   overflow-y: auto;
+}
+/* 预览列表整体：网格布局 + 滚动 */
+.preview-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+  margin-bottom: 30px;
+  padding: 10px;
+}
+
+/* 每个预览项：卡片风格 */
+.preview-item {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
+  transition: transform 0.3s;
+}
+
+.preview-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 25px rgba(255, 105, 180, 0.5);
+}
+
+/* 预览容器：固定大小 + 居中 + 溢出隐藏 */
+.thumb-wrapper {
+  width: 100%;
+  height: 220px; /* 统一高度，可调 180px ~ 280px */
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 图片/视频统一限制大小 + 保持比例 */
+.thumb {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* 保持比例，不裁剪 */
+  border-radius: 8px;
+}
+
+/* 音频特殊处理（更小点） */
+.thumb-audio {
+  width: 90%;
+  max-height: 100px;
+}
+
+/* 占位符（非媒体文件） */
+.thumb-placeholder {
+  color: #00ffff;
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 20px;
+}
+
+/* 输入框美化 */
+.title-input,
+.desc-input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #00ffff88;
+  color: #00ffff;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.desc-input {
+  height: 80px;
+  resize: vertical;
+}
+
+/* 滚动条美化（可选，但更好看） */
+.preview-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+}
+
+.preview-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 105, 180, 0.6);
+  border-radius: 10px;
+}
+
+.preview-list::-webkit-scrollbar-thumb:hover {
+  background: #ff69b4;
 }
 </style>

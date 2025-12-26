@@ -19,7 +19,7 @@ export default defineConfig({
       // 开启代理～让前端的所有/api请求，都温柔转发到后端
       '/api': {
         target: 'http://127.0.0.1:8080', // 你的Spring Boot后端地址
-        changeOrigin: true,             // 允许跨域，像月光穿越黑暗
+        changeOrigin: true,             // 允许跨域
         secure: false,                  // 如果后端是http，不验证https
         // rewrite: (path) => path.replace(/^\/api/, '') // /api/xxx → /xxx 完美匹配后端路径
       }
