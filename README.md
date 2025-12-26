@@ -1,38 +1,109 @@
-# vvv
+# V1rtual 个人网站 v1.0 - 原初之地版本 前端
 
-This template should help get you started developing with Vue 3 in Vite.
+✨ **V1rtual** 的个人网站前端项目，代号"原初之地版本" ✨
 
-## Recommended IDE Setup
+## 项目简介
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+这是一个基于 Vue 3 构建的个人网站前端项目，具有暗色主题和霓虹风格的界面设计。项目目前为 v1.0 版本，专注于展示功能，后续将逐步添加 Blog 和 Tools 模块。
 
-## Recommended Browser Setup
+## 技术栈
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- **框架**: Vue 3
+- **构建工具**: Vite 7
+- **状态管理**: Pinia 3
+- **路由**: Vue Router 4
+- **UI 组件**: Element Plus 2
+- **HTTP 客户端**: Axios 1
+- **图片裁剪**: Vue Cropper 0.6
 
-## Customize configuration
+## 功能特性
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### 🎵 音乐播放器
+- 随机播放音乐列表
+- 音量控制
+- 上一首/下一首切换
+- 进度条显示
 
-## Project Setup
+### 🖼️ 多媒体展示
+- 主展示区支持视频/图片轮播
+- 瀑布流画廊展示（支持视频/GIF/图片混排）
+- 鼠标悬停显示详细信息
 
-```sh
-pnpm install
+### 👥 用户系统
+- 用户登录/认证
+- 个人中心页面
+- 管理员后台（仅限特定用户）
+
+### 📁 文件管理
+- 支持多种文件类型（video/gif/music/photo）
+- 云端资源同步功能
+
+## 项目结构
+
+```
+src/
+├── components/
+│   ├── layout/
+│   │   └── DefaultLayout.vue  # 默认布局组件
+│   └── VMessage.vue           # 消息组件
+├── views/
+│   ├── admin/                 # 管理员页面
+│   ├── gallery/               # 画廊页面
+│   ├── home/                  # 首页
+│   ├── login/                 # 登录页面
+│   └── profile/               # 个人中心页面
+├── stores/                    # Pinia 状态管理
+├── utils/                     # 工具函数
+│   ├── request.js             # HTTP 请求封装
+│   └── DateUtil.js            # 日期工具
+└── router/                    # 路由配置
 ```
 
-### Compile and Hot-Reload for Development
+## 管理功能
 
-```sh
-pnpm dev
-```
+- **资源同步**: 一键同步 OSS 资源到数据库
+- **首页配置**: 管理首页展示内容
+- **批量上传**: 支持批量上传文件
 
-### Compile and Minify for Production
+## 待实现功能
 
-```sh
-pnpm build
-```
+### 📝 Blog 模块
+- 博客发布系统
+- 博客编辑器
+- 博客分类与标签
+- 博客评论系统
+
+### 🔧 Tools 模块
+- 实用工具集合
+- 在线计算器
+- 代码片段分享
+
+## 安装与运行
+
+1. 克隆项目到本地
+2. 安装依赖：
+   ```bash
+   pnpm install
+   ```
+3. 启动开发服务器：
+   ```bash
+   pnpm dev
+   ```
+
+## 项目特色
+
+- 🌙 暗色主题，护眼设计
+- ✨ 霓虹效果，现代感十足
+- 🎶 内置音乐播放器
+- 📱 响应式设计
+- 🎨 个性化定制
+
+## 版本说明
+
+当前为 **v1.0 原初之地版本**，专注于基础展示功能，为后续功能扩展奠定基础。
+
+> ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨
+
+---
+
+*此项目仍在持续开发中，敬请期待后续版本的 Blog 和 Tools 模块！*
