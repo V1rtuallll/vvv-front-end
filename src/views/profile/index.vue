@@ -160,12 +160,9 @@ const newPassword = ref("");
 const showPreview = ref(false);
 
 onMounted(async () => {
-  console.log("adada", formatDate(authStore.user?.createTime));
-
   if (authStore.token && !authStore.user) {
     await authStore.fetchUserInfo();
   }
-  console.log("aggggg", formatDate(authStore.user?.createTime));
   editUsername.value = authStore.user?.username || "";
   editGender.value = authStore.user?.sex || "MALE";
   editDescription.value = authStore.user?.description || "";

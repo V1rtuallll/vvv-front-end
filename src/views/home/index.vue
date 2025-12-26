@@ -1,5 +1,6 @@
 <template>
   <div class="home-wrapper">
+    <span class="ht1">Random Memory</span>
     <!-- 大展示容器（加动态 padding-bottom） -->
     <div
       class="main-showcase"
@@ -46,97 +47,90 @@
                 <span class="upload-time">{{
                   mainItem.uploadTime || "刚刚上传"
                 }}</span>
+                <!-- 换一个按钮：判断更宽松，只要random为真值就显示 -->
+                <button
+                  v-if="mainItem.random"
+                  @click="changeRandom"
+                  class="change-btn"
+                >
+                  换一个 ✧
+                </button>
               </div>
             </div>
 
             <!-- 右半边：标题 + 描述 -->
+            <!-- 右半边：标题 + 描述（多行完整显示） -->
             <div class="content-right">
-              <h2 class="showcase-title ellipsis">
-                {{ mainItem.title || "V1rtual 的月光时刻" }}
+              <h2 class="showcase-title">
+                {{ mainItem.title || "V1rtual时刻" }}
               </h2>
-              <p class="showcase-desc ellipsis">
-                {{ mainItem.description || mainItem.alt }}
+              <p class="showcase-desc">
+                {{ mainItem.description || mainItem.alt || "欢迎" }}
               </p>
-
-              <!-- 换一个按钮（只在随机模式显示） -->
-              <button
-                v-if="mainItem.random === 1 || mainItem.random === true"
-                @click="changeRandom"
-                class="change-btn"
-              >
-                换一个
-              </button>
             </div>
           </div>
         </div>
       </transition>
     </div>
-
-    <!-- 2. 图片拼图（瀑布流，支持视频/GIF/图片混排） -->
+    <span class="ht2">Random Gallery</span>
+    <!-- 2. 随机拼图区（每项独立悬浮窗，与大展示一致） -->
     <div class="gallery-masonry">
       <div
-        class="masonry-item"
         v-for="(item, index) in galleryItems"
         :key="index"
-        :style="{ height: item.height + 'px' }"
+        class="masonry-item"
+        @mouseenter="item.showInfo = true"
+        @mouseleave="item.showInfo = false"
       >
+        <!-- 媒体 -->
         <video
           v-if="item.type === 'video'"
           :src="item.src"
           autoplay
           loop
+          muted
           playsinline
           class="masonry-media"
         />
-        <img v-else :src="item.src" :alt="item.alt" class="masonry-media" />
-        <div class="masonry-overlay">
-          <span class="overlay-text">{{ item.alt || "未命名" }}</span>
-        </div>
-      </div>
-    </div>
+        <img
+          v-else
+          :src="item.src"
+          :alt="item.title || '未知'"
+          class="masonry-media"
+        />
 
-    <!-- 3. Blog 区域：左最新 + 右置顶 -->
-    <div class="blogs-container">
-      <!-- 左：最新 Blog -->
-      <div class="latest-blogs">
-        <h3 class="section-title">Latest Blogs</h3>
-        <div class="blog-list">
-          <div v-for="blog in latestBlogs" :key="blog.id" class="blog-card">
-            <img :src="blog.coverImage" :alt="blog.title" class="blog-cover" />
-            <div class="blog-info">
-              <h4>{{ blog.title }}</h4>
-              <p class="blog-desc">{{ blog.content.substring(0, 100) }}...</p>
-              <div class="blog-meta">
-                <span>@{{ blog.authorUsername }}</span>
-                <span>{{ new Date(blog.createdAt).toLocaleDateString() }}</span>
+        <!-- 每项悬浮窗：和主展示一模一样风格，向内伸进一小节 -->
+        <transition name="slide-up">
+          <div v-if="item.showInfo" class="gallery-info-bottom">
+            <div class="info-container">
+              <div class="uploader-left">
+                <img
+                  :src="item.uploaderAvatar || '/default-avatar.gif'"
+                  alt="上传者头像"
+                  class="uploader-avatar small"
+                />
+                <div class="uploader-text">
+                  <span class="uploader-name"
+                    >@{{ item.uploaderUsername || "V1rtual" }}</span
+                  >
+                  <span class="upload-time">{{
+                    formatShortDate(item.createdAt)
+                  }}</span>
+                </div>
+              </div>
+              <div class="content-right">
+                <h2 class="showcase-title">{{ item.title || "未知" }}</h2>
+                <p class="showcase-desc">
+                  {{ item.description || "暂无描述" }}
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        </transition>
       </div>
 
-      <!-- 右：置顶 Blog -->
-      <div class="pinned-blog" v-if="pinnedBlog">
-        <h3 class="section-title">Pinned Blog</h3>
-        <div class="blog-card pinned">
-          <img
-            :src="pinnedBlog.coverImage"
-            :alt="pinnedBlog.title"
-            class="blog-cover"
-          />
-          <div class="blog-info">
-            <h4>{{ pinnedBlog.title }} ★</h4>
-            <p class="blog-desc">
-              {{ pinnedBlog.content.substring(0, 150) }}...
-            </p>
-            <div class="blog-meta">
-              <span>@{{ pinnedBlog.authorUsername }}</span>
-              <span>{{
-                new Date(pinnedBlog.createdAt).toLocaleDateString()
-              }}</span>
-            </div>
-          </div>
-        </div>
+      <div v-if="galleryItems.length === 0" class="empty-masonry">
+        正在加载... 稍等哦～✨
       </div>
     </div>
   </div>
@@ -177,13 +171,22 @@ onMounted(async () => {
     pinnedBlog.value = data.pinnedBlog || null;
     availableFiles.value = data.availableFiles || [];
 
+    const galleryRes = await request.get("/home/eight-random-galleries");
+    galleryItems.value = (galleryRes.data || []).map((item) => ({
+      ...item,
+      showInfo: false, // 每项独立控制悬浮窗
+    }));
     // 第二步：页面加载后立即查数据库完整信息（用 src + type）
     await fetchFullMainItem();
   } catch (err) {
     console.error("加载 Home 配置失败", err);
   }
 });
-
+// 格式化时间（简短版）
+const formatShortDate = (date) => {
+  if (!date) return "未知";
+  return new Date(date).toLocaleDateString("zh-CN");
+};
 // 查询完整主展示信息（从 src + type 查数据库）
 const fetchFullMainItem = async () => {
   if (!mainItem.value || !mainItem.value.src || !mainItem.value.type) return;
@@ -238,12 +241,25 @@ const changeRandom = async () => {
 };
 </script>
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=LXGW+WenKai+Mono+TC&display=swap");
+
+.ht1,
+.ht2 {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-weight: 900;
+  font-size: 3rem;
+  color: #00ffff;
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  letter-spacing: 0.15em;
+}
+
 .home-wrapper {
   width: 100%;
   min-height: 100vh;
   background: #000;
   color: #00ffff;
-  padding: 40px 20px;
+  padding: 0px 20px;
   box-sizing: border-box;
 }
 
@@ -273,7 +289,7 @@ const changeRandom = async () => {
 }
 /* 弹出时给容器加底部 padding */
 .main-showcase.show-info {
-  padding-bottom: 100px; /* 栏高 80px + 20px 缓冲 */
+  padding-bottom: 150px; /* 栏高 80px + 20px 缓冲 */
 }
 /* 底部弹出栏：矮 + 左右布局 */
 .showcase-info-bottom {
@@ -281,7 +297,7 @@ const changeRandom = async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px; /* 矮小设计 */
+  height: 95px; /* 矮小设计 */
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(10px);
   padding: 10px 30px;
@@ -321,11 +337,12 @@ const changeRandom = async () => {
 }
 
 .uploader-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid #ff69b4;
-  box-shadow: 0 0 10px #ff1493;
+  width: 100px;
+  height: 100px;
+  border: 3px solid #ff69b4;
+  box-shadow: 0 0 15px #ff1493;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .uploader-text {
@@ -336,14 +353,15 @@ const changeRandom = async () => {
 .uploader-name {
   color: #ff69b4;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  text-shadow: 0 0 8px #ff1493, 0 0 15px #ff69b4; /* 双层粉光，温柔又醒目～ */
 }
 
 .upload-time {
-  color: #aaa;
-  font-size: 0.85rem;
+  color: #bbbbff;
+  font-size: 0.9rem;
+  text-shadow: 0 0 6px #00ffff44;
 }
-
 /* 右半边：标题 + 描述 */
 .content-right {
   flex: 1;
@@ -351,30 +369,60 @@ const changeRandom = async () => {
 }
 
 .showcase-title {
-  font-size: 1.5rem;
-  margin: 0 0 4px 0;
-  text-shadow: 0 0 10px #ff00ff;
-  white-space: nowrap;
+  font-size: 1.6rem;
+  margin: 0 0 8px 0;
+  text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff69b4, 0 0 30px #ff1493; /* 三层渐变光晕，超梦幻但不刺眼～ */
+  line-height: 1.4;
+  max-height: 4.8rem; /* 限制3行高度，超长淡出 */
   overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   text-overflow: ellipsis;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .showcase-desc {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   margin: 0;
-  text-shadow: 0 0 8px #00ffff;
-  white-space: nowrap;
+  text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff88;
+  line-height: 1.5;
+  max-height: 6rem; /* 限制4行 */
   overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
   text-overflow: ellipsis;
+  color: #ddffff;
+  word-break: break-word;
+}
+.change-btn {
+  margin-top: 12px;
+  padding: 8px 18px;
+  background: rgba(255, 105, 180, 0.3);
+  border: 1px solid #ff69b4;
+  color: #ff69b4;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.4s;
+  box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
+  text-shadow: 0 0 10px #ff1493;
 }
 
-/* 2. 图片拼图（瀑布流） */
+.change-btn:hover {
+  background: rgba(255, 105, 180, 0.6);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 0 25px rgba(255, 105, 180, 0.8);
+}
+/* 随机拼图区 */
 .gallery-masonry {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto 80px;
+  max-width: 1400px;
+  margin: 0 auto 100px;
 }
 
 .masonry-item {
@@ -382,7 +430,9 @@ const changeRandom = async () => {
   overflow: hidden;
   border-radius: 20px;
   box-shadow: 0 0 30px rgba(255, 20, 147, 0.3);
-  transition: transform 0.4s;
+  transition: all 0.4s ease;
+  aspect-ratio: 3 / 4;
+  cursor: pointer;
 }
 
 .masonry-item:hover {
@@ -399,11 +449,11 @@ const changeRandom = async () => {
 .masonry-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.6));
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity 0.4s;
 }
 
@@ -412,129 +462,123 @@ const changeRandom = async () => {
 }
 
 .overlay-text {
-  color: #fff;
-  font-size: 1.3rem;
-  text-shadow: 0 0 10px #00ffff;
+  color: #ffaae6;
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px #ff69b4;
   padding: 15px;
   text-align: center;
 }
 
-/* 3. 最新 Blog */
-.latest-blogs {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.section-title {
-  font-size: 2.5rem;
-  text-align: center;
-  margin-bottom: 40px;
-  color: #ff69b4;
-  text-shadow: 0 0 20px #ff00ff;
-}
-
-.blog-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 30px;
-}
-
-.blog-card {
-  background: rgba(10, 0, 20, 0.7);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 0 30px rgba(255, 105, 180, 0.3);
-  transition: transform 0.4s;
-}
-
-.blog-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
-}
-
-.blog-cover {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-}
-
-.blog-info {
-  padding: 20px;
-}
-
-.blog-info h4 {
-  margin: 0 0 10px;
-  color: #00ffff;
-}
-
-.blog-desc {
-  color: #aaa;
-  font-size: 1rem;
-  line-height: 1.5;
-  margin-bottom: 15px;
-}
-
-.blog-meta {
+/* 每项悬浮窗：从底部向上伸进，半透明 */
+.gallery-info-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 140px; /* 稍微高一点，给标题+描述更多空间 */
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  padding: 15px 20px;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+  transform: translateY(70%);
+  transition: transform 0.5s ease;
+  opacity: 0;
   display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
+  flex-direction: column; /* 改成 column，让标题+描述垂直排列 */
+}
+
+.masonry-item:hover .gallery-info-bottom {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* 内部容器：上头像+用户名，下标题+描述 */
+.gallery-info-bottom .info-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 上半部分：头像 + 用户名 + 时间 */
+.gallery-info-bottom .uploader-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gallery-info-bottom .uploader-avatar.small {
+  width: 55px;
+  height: 55px;
+  border: 2px solid #ff69b4;
+  box-shadow: 0 0 12px #ff1493;
+}
+
+.gallery-info-bottom .uploader-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.gallery-info-bottom .uploader-name {
   color: #ff69b4;
+  font-weight: bold;
+  font-size: 1.15rem;
+  text-shadow: 0 0 8px #ff1493;
+}
+
+.gallery-info-bottom .upload-time {
+  color: #cceeff;
+  font-size: 0.85rem;
+}
+
+/* 下半部分：标题 + 描述（居中偏左，不挤右边） */
+.gallery-info-bottom .content-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 10px; /* 轻微左移，避免太靠右 */
+}
+
+.gallery-info-bottom .showcase-title {
+  font-size: 1.35rem;
+  color: #ff69b4;
+  margin: 0 0 6px;
+  text-shadow: 0 0 10px #ff00ff;
+  line-height: 1.3;
+}
+
+.gallery-info-bottom .showcase-desc {
+  font-size: 0.95rem;
+  color: #ddffff;
+  text-shadow: 0 0 6px #00ffff;
+  line-height: 1.4;
+  max-height: 5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 /* 动画 */
-.fade-enter-active,
-.info-fade-enter-active {
-  transition: all 0.8s ease;
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.5s ease;
 }
-.fade-enter-from,
-.info-fade-enter-from {
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
   opacity: 0;
 }
-.info-fade-enter-from {
-  transform: translateY(20px);
-}
-.blogs-container {
-  display: flex;
-  gap: 40px;
-  max-width: 1200px;
-  margin: 80px auto;
-}
 
-.latest-blogs {
-  flex: 1;
-}
-
-.pinned-blog {
-  flex: 0 0 400px;
-}
-
-.blog-card.pinned {
-  border: 3px solid #ff69b4;
-  box-shadow: 0 0 40px rgba(255, 105, 180, 0.6);
-}
-
-.section-title {
-  font-size: 2.2rem;
+/* 空状态 */
+.empty-masonry {
   text-align: center;
-  margin-bottom: 30px;
-  color: #ff69b4;
-  text-shadow: 0 0 15px #ff00ff;
-}
-/* 换一个按钮 */
-.change-btn {
-  margin-top: 8px;
-  padding: 6px 14px;
-  background: rgba(255, 105, 180, 0.4);
-  border: 1px solid #ff69b4;
-  color: #ff69b4;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s;
-}
-
-.change-btn:hover {
-  background: rgba(255, 105, 180, 0.7);
-  transform: scale(1.05);
+  color: #00ffff;
+  font-size: 1.3rem;
+  padding: 100px 0;
+  opacity: 0.8;
 }
 </style>

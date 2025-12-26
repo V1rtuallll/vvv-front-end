@@ -9,6 +9,66 @@
 </head>
 
 <body>
+  <!-- 手机端拦截脚本 -->
+  <script>
+    (function () {
+      // 增强判断手机端：UA + 屏幕宽度 + 触屏特征
+      const isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        ('ontouchstart' in window) ||  // 支持触屏
+        window.innerWidth <= 768 ||
+        window.screen.width <= 768;
+
+      if (isMobile) {
+        // 清空页面，阻止 Vue 加载
+        document.body.innerHTML = `
+          <div style="
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom, #000, #0a001f);
+            color: #C257B3;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 999999;
+            overflow: hidden;
+          ">
+            <h1 style="
+              font-size: 3rem;
+              margin: 0 0 1.5rem;
+              text-shadow: 0 0 20px #7473EB, 0 0 40px #7473EB;
+              animation: glow 3s infinite alternate;
+            ">✦ 很遗憾，V1rtual暂未适配手机端 ✦</h1>
+            
+            <p style="font-size: 1.5rem; max-width: 90%; line-height: 1.6; margin: 0 0 2rem;">
+              请使用电脑访问哦～<br>
+              V1rtual等待你的到来❤️
+            </p>
+
+            <p style="font-size: 1.1rem; opacity: 0.8; margin-top: 2rem;">
+              电脑端地址：https://v1rtual.top<br>
+            </p>
+
+            <style>
+              @keyframes glow {
+                from { text-shadow: 0 0 10px #7473EB, 0 0 20px #7473EB; }
+                to   { text-shadow: 0 0 20px #7473EB, 0 0 40px #ff69b4, 0 0 60px #ff1493; }
+              }
+            </style>
+          </div>
+        `;
+
+        // 阻止 Vue 挂载
+        document.getElementById('app')?.remove();
+        throw new Error('Mobile access blocked');
+      }
+    })();
+  </script>
+
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
 </body>

@@ -34,7 +34,8 @@
 
         <p class="pure-black-tip">
           若没有此账号会自动创建.<br />
-          If this account does not exist, it will be created automatically.
+          If this account does not exist, it will be created automatically.<br />
+          You can be anyone you want to be.🖤
         </p>
       </div>
     </div>

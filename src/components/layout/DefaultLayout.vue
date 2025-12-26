@@ -14,10 +14,15 @@
         <div class="neon-marquee">
           <marquee behavior="scroll" direction="left" scrollamount="12">
             <span class="marquee-text">
-              ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱ ♱　shut　the fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈
+              <!-- ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱ ♱　shut　the fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈
               ˚₊‧✩⋆　♱ ♱　shut　the fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱
               ♱　shut　the fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱ ♱　shut　the
-              fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱ ♱　shut　the fuck　up　❤️‍🔥🖤✞
+              fuck　up　❤️‍🔥🖤✞ ⋆✩‧₊˚ 操你妈 ˚₊‧✩⋆　♱ ♱　shut　the fuck　up　❤️‍🔥🖤✞ -->
+              ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual
+              ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨
+              V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨
+              ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual
+              ✨ ✨ V1rtual ✨
             </span>
           </marquee>
         </div>
@@ -29,9 +34,9 @@
         <nav class="vf-nav">
           <router-link to="/home" class="nav-link">Home</router-link>
           <router-link to="/profile" class="nav-link">Profile</router-link>
-          <router-link to="/blog" class="nav-link">Blogs</router-link>
+          <!-- <router-link to="/blog" class="nav-link">Blogs</router-link> -->
           <router-link to="/gallery" class="nav-link">Gallery</router-link>
-          <router-link to="/tool" class="nav-link">Tools</router-link>
+          <!-- <router-link to="/tool" class="nav-link">Tools</router-link> -->
           <!-- <router-link to="/login" class="nav-link">Login</router-link> -->
         </nav>
       </aside>
@@ -71,16 +76,19 @@
           <audio ref="audioEl" preload="auto"></audio>
         </div>
 
-        <h3>Blogs</h3>
+        <!-- <h3>Blogs</h3>
         <ul class="top-list">
           <li>1. DarkAngel</li>
           <li>2. BloodRose</li>
-        </ul>
+        </ul> -->
         <h3>Imgs</h3>
         <div class="friends-grid">
           <img src="/stickers/skull1.gif" alt="sticker" />
           <img src="/stickers/heart2.gif" alt="sticker" />
+          <img src="/stickers/green_stars.gif" alt="sticker" />
         </div>
+        <br />
+        <span>我称此为，原初之地版本。</span>
       </aside>
     </div>
 

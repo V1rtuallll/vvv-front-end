@@ -30,7 +30,7 @@ const routes = generateRoutes({
 
 // 添加自定义路由
 const customRoutes = [
-  { path: '/', redirect: '/home' },
+  { path: '', redirect: '/home' },
 ];
 
 // 创建router实例
