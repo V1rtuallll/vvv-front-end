@@ -5,6 +5,10 @@
 ## 项目简介
 
 这是一个基于 Vue 3 构建的个人网站前端项目，具有暗色主题和霓虹风格的界面设计。项目目前为 v1.0 版本，专注于展示功能，后续将逐步添加 Blog 和 Tools 模块。
+<img width="1906" height="941" alt="image" src="https://github.com/user-attachments/assets/08e599c7-8cd7-444c-8b2c-8499e28dc25f" />
+<img width="1894" height="933" alt="image" src="https://github.com/user-attachments/assets/6f6888b8-3528-4431-abe3-cd28971c574f" />
+<img width="1835" height="928" alt="image" src="https://github.com/user-attachments/assets/11d832ed-a2a9-4bb4-8db7-502ff8d4d56e" />
+<img width="1887" height="944" alt="image" src="https://github.com/user-attachments/assets/dff94273-a28f-477a-a819-4f593e41cc3f" />
 
 ## 技术栈
 
