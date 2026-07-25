@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/auth'  // 保留导入
 
 const request = axios.create({
   baseURL: '/api', // Vite代理已处理，前端调用 /user/xxx
-  timeout: 10000
+  timeout: 1000000
 })
 
 // 请求拦截器：自动携带 token（关键：在这里调用 store！）

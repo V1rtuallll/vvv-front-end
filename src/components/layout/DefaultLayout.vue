@@ -7,8 +7,8 @@
       <div class="header-content">
         <h1 class="vf-title glitch-title">✞ V1rtual ✞</h1>
         <div class="freak-line neon-freak">
-          人类数量:
-          <span ref="userCountEl" class="counter-number">加载中...</span>
+          （若加载不出 刷新即可） 人类数量:
+          <span ref="userCountEl" class="counter-number">加载中... </span>
         </div>
         <p class="welcome-text neon-welcome">🖤 Welcome to my imagination 🖤</p>
         <div class="neon-marquee">
@@ -1271,7 +1271,7 @@ onMounted(async () => {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.25), 0 12px 40px rgba(0, 0, 0, 0.9);
 }
 
-/* 外层：彻底去掉标题方框边发光，只留整体城堡微光（不影响标题）～ */
+/* 外层*/
 .music-player::before {
   content: "";
   position: absolute;
@@ -1283,7 +1283,7 @@ onMounted(async () => {
   z-index: -2;
 }
 
-/* 内层：保留荆棘纹路 + 柔和冷白裂隙（整体氛围不丢～） */
+/* 内层*/
 .music-player::after {
   content: "";
   position: absolute;
@@ -1330,8 +1330,8 @@ onMounted(async () => {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   margin: 20px 8px 30px;
-  padding: 8px 12px; /* 轻微内边距，让光晕有空间“勾勒”～ */
-  line-height: 1.4;
+  padding: 8px 12px;
+  line-height: 2.5;
   text-shadow: 0 0 6px rgba(255, 255, 255, 1),
     /* 内层最亮，形成“隐形边框”核心～ */ 0 0 12px rgba(255, 255, 255, 0.8),
     0 0 20px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 255, 255, 0.4); /* 外层渐弱光晕，自然形成柔和边缘～ */

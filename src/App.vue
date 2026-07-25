@@ -34,6 +34,7 @@ window.playGlobalRandomSound = () => {
   const audio = globalSounds.value[randomIndex];
   if (audio) {
     audio.currentTime = 0;
+    audio.volume = 1.0;
     audio.play().catch(() => {
       console.log("Audio play failed");
     });
@@ -83,7 +84,7 @@ onMounted(() => {
         audio.muted = false;
         // 强制播放一次空音彻底解锁
         audio
-          .play()
+          .play(globalSounds.value[0])
           .then(() => {
             audio.pause();
             audio.currentTime = 0;

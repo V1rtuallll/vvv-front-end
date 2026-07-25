@@ -14,9 +14,9 @@ export default defineConfig({
   server: {
     port: 3001,
     host: '0.0.0.0',
-    open: true, // 自动打开浏览器，温柔迎接你～
+    open: true, // 自动打开浏览器
     proxy: {
-      // 开启代理～让前端的所有/api请求，都温柔转发到后端
+      // 开启代理 让前端的所有/api请求，都转发到后端
       '/api': {
         target: 'http://127.0.0.1:8080', // 你的Spring Boot后端地址
         changeOrigin: true,             // 允许跨域
@@ -26,10 +26,10 @@ export default defineConfig({
     }
   },
 
-  base: '',  // 打包时静态资源路径正确～
+  base: '',  // 打包时静态资源路径正确
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'), // @ 指向 src，代码更优雅～
+      '@': path.resolve(__dirname, 'src'), // @ 指向 src
     },
   },
 })
