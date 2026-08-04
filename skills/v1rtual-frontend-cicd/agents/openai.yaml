@@ -1,0 +1,4 @@
+interface:
+  display_name: "V1rtual Frontend CI/CD"
+  short_description: "Build and deploy the current Vite branch"
+  default_prompt: "Use $v1rtual-frontend-cicd to validate or deploy the current V1rtual frontend branch."
