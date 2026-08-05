@@ -3,7 +3,7 @@
 V1rtual 个人网站前端，当前分支版本为 `V1rtualSS`。
 
 - Website: [https://v1rtual.top/](https://v1rtual.top/)
-- Backend: [../vvv_backend](../vvv_backend)
+- Backend: [V1rtuallll/vvv-back-end](https://github.com/V1rtuallll/vvv-back-end/tree/V1rtualSS)
 
 ## 当前版本预览
 
