@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'  // 保留导入
 
 const request = axios.create({
-  baseURL: '/api', // Vite代理已处理，前端调用 /user/xxx
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 1000000
 })
 

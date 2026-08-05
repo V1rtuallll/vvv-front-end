@@ -25,6 +25,12 @@ Before a release, confirm the same branch exists and is pushed in the backend re
 
 Read [server-contract.md](references/server-contract.md) before modifying deployment resources. The relevant templates are in `assets/`. Run `scripts/validate-templates.sh` after editing this skill; it validates bundled template structure only and does not contact the server.
 
+## Environment Contract
+
+- `.env.development` keeps the Vite development server on `3001` and proxies `/api` to the local backend at `http://127.0.0.1:8848`.
+- `.env.production` keeps the browser API base URL as `/api`. Never place the production backend host, port, credentials, or SSH details in a `VITE_*` variable because those values are bundled into public assets.
+- Production routing belongs to Nginx: it serves the frontend `current` release and proxies `/api/` to the backend production listener. Verify both sides before changing either port.
+
 ## Rollback
 
 List the revision directories under `/www/wwwroot/vvv-front-end/releases/`, then run:

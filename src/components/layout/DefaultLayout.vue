@@ -101,6 +101,16 @@
           ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨
         </div>
       </div>
+      <div class="filing-footer">
+        <a
+          class="filing-link"
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          黔ICP备2025051637号-2
+        </a>
+      </div>
     </footer>
   </div>
 </template>
@@ -950,6 +960,53 @@ onMounted(async () => {
     0 0 5px #00ffff, 0 0 15px #00ffff;
   animation: neon-flicker 3s infinite ease-in-out, subtle-glitch 8s infinite,
     footer-marquee-scroll 40s linear infinite; /* 40s一圈，更慢更深情～ */
+}
+
+.filing-footer {
+  display: flex;
+  justify-content: center;
+  padding: 14px 24px 0;
+  margin-top: 14px;
+  border-top: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.filing-link {
+  color: rgba(220, 245, 255, 0.78);
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  line-height: 1.5;
+  text-decoration: none;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.25);
+  transition: color 160ms ease, text-shadow 160ms ease;
+}
+
+.filing-link:hover,
+.filing-link:focus-visible {
+  color: #00ffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.65);
+}
+
+.filing-link:focus-visible {
+  outline: 1px solid #ff69b4;
+  outline-offset: 5px;
+}
+
+@media (max-width: 600px) {
+  .neon-footer {
+    padding: 16px 0;
+  }
+
+  .filing-footer {
+    padding: 12px 16px 0;
+    margin-top: 12px;
+  }
+
+  .filing-link {
+    font-size: 0.82rem;
+  }
 }
 
 /* 关键：无缝滚动核心动画（平移50%，完美衔接） */
