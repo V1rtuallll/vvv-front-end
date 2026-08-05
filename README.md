@@ -1,117 +1,79 @@
-# V1rtual 个人网站 v1.0 - 原初之地版本 前端
+# V1rtual Frontend
 
-✨ **V1rtual** 的个人网站前端项目，代号"原初之地" ✨
+V1rtual 个人网站前端，当前分支版本为 `V1rtualSS`。
 
-## 项目简介
+- Website: [https://v1rtual.top/](https://v1rtual.top/)
+- Backend: [../vvv_backend](../vvv_backend)
 
-vue3+动态路由构建的个人网站前端。
-<img width="1906" height="941" alt="image" src="https://github.com/user-attachments/assets/08e599c7-8cd7-444c-8b2c-8499e28dc25f" />
+## 当前版本预览
 
-<img width="1894" height="933" alt="image" src="https://github.com/user-attachments/assets/6f6888b8-3528-4431-abe3-cd28971c574f" />
+<p align="center">
+  <img width="49%" alt="首页" src="https://github.com/user-attachments/assets/08e599c7-8cd7-444c-8b2c-8499e28dc25f" />
+  <img width="49%" alt="Gallery" src="https://github.com/user-attachments/assets/6f6888b8-3528-4431-abe3-cd28971c574f" />
+</p>
 
-<img width="1835" height="928" alt="image" src="https://github.com/user-attachments/assets/11d832ed-a2a9-4bb4-8db7-502ff8d4d56e" />
+<p align="center">
+  <img width="49%" alt="个人资料" src="https://github.com/user-attachments/assets/11d832ed-a2a9-4bb4-8db7-502ff8d4d56e" />
+  <img width="49%" alt="管理后台" src="https://github.com/user-attachments/assets/dff94273-a28f-477a-a819-4f593e41cc3f" />
+</p>
 
-<img width="1887" height="944" alt="image" src="https://github.com/user-attachments/assets/dff94273-a28f-477a-a819-4f593e41cc3f" />
+## 功能
 
+- 首页随机内容与首页配置展示。
+- Gallery 的媒体浏览、上传、点赞和评论。
+- 登录、个人资料、头像、用户名与密码维护。
+- 管理员资源上传、OSS 同步、首页与媒体资源管理。
+- 全局音效和站内音乐播放器。
+
+当前页面按桌面端设计；移动端会显示访问提示。
 
 ## 技术栈
 
-- **框架**: Vue 3
-- **构建工具**: Vite 7
-- **状态管理**: Pinia 3
-- **路由**: Vue Router 4
-- **UI 组件**: Element Plus 2
-- **HTTP 客户端**: Axios 1
-- **图片裁剪**: Vue Cropper 0.6
+| 类别 | 组件 |
+| --- | --- |
+| Framework | Vue 3 |
+| Build | Vite 7 |
+| Routing | Vue Router 4 |
+| State | Pinia |
+| UI | Element Plus |
+| HTTP | Axios |
+| Media | Vue Cropper |
 
-## 功能特性
+## 目录
 
-### 🎵 音乐播放器
-- 随机播放音乐列表
-- 音量控制
-- 上一首/下一首切换
-- 进度条显示
-
-### 🖼️ 多媒体展示
-- 主展示区支持视频/图片轮播
-- 瀑布流画廊展示（支持视频/GIF/图片混排）
-- 鼠标悬停显示详细信息
-
-### 👥 用户系统
-- 用户登录/认证
-- 个人中心页面
-- 管理员后台（仅限特定用户）
-
-### 📁 文件管理
-- 支持多种文件类型（video/gif/music/photo）
-- 云端资源同步功能
-
-## 项目结构
-
-```
+```text
 src/
-├── components/
-│   ├── layout/
-│   │   └── DefaultLayout.vue  # 默认布局组件
-│   └── VMessage.vue           # 消息组件
-├── views/
-│   ├── admin/                 # 管理员页面
-│   ├── gallery/               # 画廊页面
-│   ├── home/                  # 首页
-│   ├── login/                 # 登录页面
-│   └── profile/               # 个人中心页面
-├── stores/                    # Pinia 状态管理
-├── utils/                     # 工具函数
-│   ├── request.js             # HTTP 请求封装
-│   └── DateUtil.js            # 日期工具
-└── router/                    # 路由配置
+├── components/       # 默认布局、消息提示、音乐播放器
+├── views/            # home、gallery、login、profile、admin
+├── router/           # 路由生成与守卫
+├── stores/           # 登录状态
+└── utils/            # 请求、日期、主题工具
 ```
 
-## 管理功能
+## 本地运行
 
-- **资源同步**: 一键同步 OSS 资源到数据库
-- **首页配置**: 管理首页展示内容
-- **批量上传**: 支持批量上传文件
+要求：Node.js `20.19+` 或 `22.12+`、pnpm，以及运行在 `8848` 的后端。
 
-## 待实现功能
+```bash
+pnpm install
+pnpm dev
+```
 
-### 📝 Blog 模块
-- 博客发布系统
-- 博客编辑器
-- 博客分类与标签
-- 博客评论系统
+开发服务器地址为 `http://localhost:3001`。前端请求 `/api`，由 Vite 代理到 `http://127.0.0.1:8848`。
 
-### 🔧 Tools 模块
-- 实用工具集合
-- 在线计算器
-- 代码片段分享
+```bash
+pnpm build
+```
 
-## 安装与运行
+## 环境与发布
 
-1. 克隆项目到本地
-2. 安装依赖：
-   ```bash
-   pnpm install
-   ```
-3. 启动开发服务器：
-   ```bash
-   pnpm dev
-   ```
+| Mode | API 行为 |
+| --- | --- |
+| development | `/api` 代理到 `http://127.0.0.1:8848` |
+| production | 浏览器请求相对路径 `/api`，Nginx 负责转发 |
 
-## 项目特色
+`.env.development` 和 `.env.production` 已提交，均不包含密钥。
 
-- 🌙 暗色主题，护眼设计
-- ✨ 霓虹效果，现代感十足
-- 🎶 内置音乐播放器
-- 📱 响应式设计
-- 🎨 个性化定制
+每个分支代表一套完整网站版本。push 和 PR 只执行 CI 构建；部署由 GitHub Actions 手动选择分支执行。前后端接口联动时，两个仓库应使用同名分支，并分别通过 CI 后再发布。
 
-## 版本说明
-
-当前为 **v1.0 原初之地版本**，专注于基础展示功能，为后续功能扩展奠定基础。
-
-> ✨ V1rtual ✨ ✨ V1rtual ✨ ✨ V1rtual ✨
-
----
-
-*此项目仍在持续开发中，敬请期待后续版本的 Blog 和 Tools 模块！*
+发布细节见 [CICD规范.md](CICD规范.md) 和 [skills/v1rtual-frontend-cicd](skills/v1rtual-frontend-cicd/SKILL.md)。
