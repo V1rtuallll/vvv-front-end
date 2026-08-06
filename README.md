@@ -1,6 +1,6 @@
 # V1rtual Frontend
 
-V1rtual 个人网站前端，当前分支版本为 `V1rtualSS`。
+V1rtual 个人网站前端。`V1rtualSS` 是当前站点版本分支，`main` 汇总已合并的稳定代码。
 
 - Website: [https://v1rtual.top/](https://v1rtual.top/)
 - Backend: [V1rtuallll/vvv-back-end](https://github.com/V1rtuallll/vvv-back-end/tree/V1rtualSS)
@@ -43,12 +43,29 @@ V1rtual 个人网站前端，当前分支版本为 `V1rtualSS`。
 
 ```text
 src/
-├── components/       # 默认布局、消息提示、音乐播放器
-├── views/            # home、gallery、login、profile、admin
+├── components/       # 默认布局与消息提示
+├── modules/          # 按能力划分的 API 与 composable
+│   ├── admin/        # 管理端资源与首页配置
+│   ├── auth/         # 登录
+│   ├── gallery/      # Gallery 媒体与互动
+│   ├── home/         # 首页内容
+│   ├── player/       # 全局音乐播放器
+│   └── user/         # 用户资料与访客计数
+├── shared/auth/      # 站点所有者判断
+├── views/            # 页面编排
+│   ├── admin/components/    # 管理端表单、资源浏览与编辑弹窗
+│   └── gallery/components/  # 上传、详情与用户资料弹窗
 ├── router/           # 路由生成与守卫
 ├── stores/           # 登录状态
 └── utils/            # 请求、日期、主题工具
 ```
+
+## 页面与请求边界
+
+- `modules/*/api` 是页面请求的唯一入口，页面组件不直接调用 Axios。
+- `modules/*/composables` 管理页面状态、请求编排和交互逻辑。
+- `views/*` 负责页面组合；较复杂的 Gallery 和管理端交互位于各自的 `components/`。
+- 管理端入口沿用用户名精确为 `V1rtual` 的判断，不引入角色系统。
 
 ## 本地运行
 
@@ -64,6 +81,8 @@ pnpm dev
 ```bash
 pnpm build
 ```
+
+该命令用于生产构建验证。
 
 ## 环境与发布
 
