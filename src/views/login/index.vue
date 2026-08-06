@@ -45,7 +45,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import request from "@/utils/request";
+import { login } from "@/modules/auth/api/authApi";
 import { useAuthStore } from "@/stores/auth";
 
 const username = ref("");
@@ -62,7 +62,7 @@ onMounted(() => {
 
 const handleLogin = async () => {
   try {
-    const res = await request.post("/auth/login", {
+    const res = await login({
       username: username.value.trim(),
       password: password.value,
     });

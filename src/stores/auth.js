@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import request from '@/utils/request'
+import { getCurrentUser } from '@/modules/user/api/userApi'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchUserInfo() {
       try {
-        const res = await request.get('/user/info')
+        const res = await getCurrentUser()
 
         // 严格判断后端是否成功
         if (res.code !== 200) {
