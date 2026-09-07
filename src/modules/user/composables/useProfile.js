@@ -44,6 +44,7 @@ export function useProfile() {
     if (!editUsername.value.trim()) return window.$vmessage.warning("用户名不能为空哦～");
     try {
       const res = await updateUsername(editUsername.value);
+      if (res.data) authStore.token = res.data;
       await authStore.fetchUserInfo();
       window.$vmessage.success(res.msg || "用户名已变更～");
     } catch (err) {

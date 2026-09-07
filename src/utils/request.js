@@ -18,7 +18,14 @@ request.interceptors.request.use(config => {
 // 响应拦截器
 request.interceptors.response.use(
   response => {
-    return response.data  // { code, msg, data }
+    const data = response.data
+    if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'code') && data.code !== 200) {
+      const error = new Error(data.msg || '请求失败')
+      error.response = response
+      error.isBusinessError = true
+      return Promise.reject(error)
+    }
+    return data  // { code, msg, data }
   },
   error => {
     const authStore = useAuthStore()
