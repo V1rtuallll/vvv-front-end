@@ -19,7 +19,7 @@
           <input
             ref="avatarInput"
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.webp,.bmp,.gif"
             @change="handleAvatarUpload"
             hidden
           />

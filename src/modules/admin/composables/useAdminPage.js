@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { getAdminHomeConfig, getAdminResources, saveAdminHomeConfig, syncOssResources, updateAdminResource, uploadAdminResource } from "@/modules/admin/api/adminApi";
@@ -15,6 +15,7 @@ export function useAdminPage() {
   const uploadCompleted = ref(0);
   const homeConfig = ref({ main: { type: "video", src: "", title: "", desc: "", random: false }, gallery: [], pinnedBlogId: null });
   const availableFiles = ref([]);
+  const availableFilesByType = ref({});
   const resourceFilter = ref({ type: "" });
   const resourceList = ref([]);
   const resourceTotal = ref(0);
@@ -23,16 +24,26 @@ export function useAdminPage() {
   const pageSize = ref(5);
   const totalPages = computed(() => Math.ceil(resourceTotal.value / pageSize.value));
 
+  const normalizeMainType = (type) => type === "photo" ? "image" : type;
+  const refreshAvailableFiles = (type) => {
+    const files = availableFilesByType.value[normalizeMainType(type)];
+    if (files) availableFiles.value = files;
+  };
+
   const loadHomeConfig = async () => {
     try {
       const res = await getAdminHomeConfig();
+      availableFilesByType.value = res.data.availableFilesByType || {};
       homeConfig.value = res.data;
       availableFiles.value = res.data.availableFiles || [];
+      refreshAvailableFiles(homeConfig.value.main.type);
       if (typeof homeConfig.value.main.random === "boolean") homeConfig.value.main.random = homeConfig.value.main.random ? 1 : 0;
     } catch {
       console.log("加载 Home 配置失败，使用默认");
     }
   };
+
+  watch(() => homeConfig.value.main?.type, refreshAvailableFiles);
 
   const setAsMain = (file) => {
     homeConfig.value.main.src = file;

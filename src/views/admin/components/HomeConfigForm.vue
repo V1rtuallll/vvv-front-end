@@ -5,7 +5,8 @@
     <div class="field-group">
       <label>类型</label>
       <select v-model="config.main.type" class="crt-input">
-        <option value="image">图片/动图</option>
+        <option value="image">图片</option>
+        <option value="gif">动图</option>
         <option value="video">视频</option>
       </select>
     </div>

@@ -4,11 +4,11 @@
       <h2>上传到Gallery</h2>
       <div class="upload-area">
         <label class="file-label">
-          <span>选择文件（支持多选，一次只能上传同种类型）</span>
+          <span>选择文件（支持多选）</span>
           <input
             type="file"
             multiple
-            accept="image/*,video/*,.gif,audio/*"
+            accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg"
             class="hidden-input"
             @change="$emit('select-files', $event)"
           />

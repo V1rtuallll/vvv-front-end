@@ -12,7 +12,7 @@
           <input
             type="file"
             multiple
-            accept="image/*,video/*,.gif,.mp3,.wav"
+            accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg"
             class="hidden-file-input"
             :disabled="uploading"
             @change="$emit('upload', $event)"
