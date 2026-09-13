@@ -56,13 +56,27 @@ describe("注册页", () => {
     });
   });
 
-  it("密码不是 4 位时给出字段错误且不调用接口", async () => {
+  it("密码短于 4 位时给出字段错误且不调用接口", async () => {
     const wrapper = mountRegister();
 
     await submitForm(wrapper, { username: "moon", password: "123", confirmPassword: "123" });
 
-    expect(wrapper.text()).toContain("密码必须为 4 位");
+    expect(wrapper.text()).toContain("密码至少 4 位");
     expect(register).not.toHaveBeenCalled();
+  });
+
+  /** 规则是「至少 4 位」，更长的密码必须能提交，否则等于给用户设了个隐形的长度上限 */
+  it("密码长于 4 位时可以正常注册", async () => {
+    const wrapper = mountRegister();
+
+    await submitForm(wrapper, {
+      username: "moon",
+      password: "a-much-longer-password",
+      confirmPassword: "a-much-longer-password",
+    });
+
+    expect(register).toHaveBeenCalledTimes(1);
+    expect(register.mock.calls[0][0]).toMatchObject({ password: "a-much-longer-password" });
   });
 
   it("两次密码不一致时给出字段错误且不调用接口", async () => {

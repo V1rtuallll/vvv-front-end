@@ -5,7 +5,7 @@
         <h2 class="pure-black-title">REGISTER</h2>
 
         <p class="pure-black-hint">
-          用户名可用中文、英文、数字与 _ - . ，长度 2 到 20 个字符；密码为 4 位。
+          用户名可用中文、英文、数字与 _ - . ，长度 2 到 20 个字符；密码至少 4 位。
         </p>
 
         <form @submit.prevent="handleRegister" class="pure-black-form" novalidate>
@@ -60,7 +60,7 @@ import { useAuthStore } from "@/stores/auth";
 const USERNAME_PATTERN = /^[\p{Script=Han}A-Za-z0-9_.-]+$/u;
 const USERNAME_MIN_LENGTH = 2;
 const USERNAME_MAX_LENGTH = 20;
-const PASSWORD_LENGTH = 4;
+const PASSWORD_MIN_LENGTH = 4;
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -97,8 +97,8 @@ const validate = () => {
 
   if (!form.password) {
     errors.password = "密码不能为空";
-  } else if (form.password.length !== PASSWORD_LENGTH) {
-    errors.password = `密码必须为 ${PASSWORD_LENGTH} 位`;
+  } else if (form.password.length < PASSWORD_MIN_LENGTH) {
+    errors.password = `密码至少 ${PASSWORD_MIN_LENGTH} 位`;
   }
 
   if (!form.confirmPassword) {
