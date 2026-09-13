@@ -1,0 +1,124 @@
+/* 视觉与 login/index.vue 保持一致：纯黑背景 + 青色文字 + Orbitron 字体 */
+/* 引入字体：Orbitron英文 + LXGW WenKai Mono TC中文 */
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=LXGW+WenKai+Mono+TC&display=swap");
+
+/* 整体：纯黑背景，占满中间栏 */
+.pure-black-register {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.pure-black-screen {
+  width: 100%;
+  max-width: 800px;
+  background: #000;
+}
+
+/* 内容区：纯黑，文字自己发光 */
+.pure-black-content {
+  text-align: center;
+  padding: 60px 40px;
+}
+
+/* 标题：青蓝内glow，无外溢 */
+.pure-black-title {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-weight: 900;
+  font-size: 3rem;
+  color: #00ffff;
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  letter-spacing: 0.15em;
+  margin-bottom: 40px;
+}
+
+.pure-black-hint {
+  font-family: "LXGW WenKai Mono TC", monospace;
+  font-size: 1.1rem;
+  color: #00aaaa;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+/* 输入框：青蓝边框 + 内glow */
+.pure-black-input {
+  width: 80%;
+  max-width: 400px;
+  padding: 18px 24px;
+  margin: 20px 0;
+  background: transparent;
+  border: 2px solid #00ffff;
+  border-radius: 8px;
+  color: #00ffff;
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-shadow: 0 0 10px #00ffff;
+  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
+}
+
+.pure-black-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 25px rgba(0, 255, 255, 0.4);
+}
+
+/* 字段级校验错误 */
+.pure-black-error {
+  font-family: "LXGW WenKai Mono TC", monospace;
+  font-size: 1.1rem;
+  color: #ff5577;
+  line-height: 1.6;
+  margin: -8px 0 8px;
+}
+
+/* 按钮：青蓝边框 + 内glow */
+.pure-black-btn {
+  width: 80%;
+  max-width: 400px;
+  padding: 20px;
+  margin: 40px 0;
+  background: transparent;
+  border: 3px solid #00ffff;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.pure-black-btn:disabled {
+  border-color: #007777;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pure-black-btn:disabled .btn-text {
+  color: #007777;
+  text-shadow: none;
+}
+
+.btn-text {
+  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #00ffff;
+  text-shadow: 0 0 15px #00ffff;
+}
+
+/* 提示文字 */
+.pure-black-tip {
+  font-family: "LXGW WenKai Mono TC", monospace;
+  font-size: 1.2rem;
+  color: #00aaaa;
+  line-height: 2;
+  text-shadow: 0 0 8px #00ffff;
+}
+
+.pure-black-link {
+  color: #00ffff;
+  text-decoration: underline;
+}

@@ -33,9 +33,10 @@
         </div>
 
         <p class="pure-black-tip">
-          若没有此账号会自动创建.<br />
-          If this account does not exist, it will be created automatically.<br />
-          You can be anyone you want to be.🖤
+          若还没有账号，请先注册。<br />
+          No account yet? Register first.
+          <router-link to="/register" class="pure-black-link">Register</router-link><br />
+          You can be anyone you want to be.
         </p>
       </div>
     </div>
@@ -55,7 +56,7 @@ const authStore = useAuthStore();
 
 onMounted(() => {
   if (authStore.isLoggedIn) {
-    window.$vmessage.success(`Welcome back, ${authStore.username} ❤️‍🔥`);
+    window.$vmessage.success(`Welcome back, ${authStore.username}`);
     router.push("/home");
   }
 });
@@ -69,25 +70,25 @@ const handleLogin = async () => {
 
     // 严格判断后端是否真成功
     if (res.code !== 200) {
-      throw new Error(res.msg || "登录失败啦～");
+      throw new Error(res.msg || "登录失败");
     }
 
     // 取出 token（你后端直接放 data 里是字符串）
     const token = res.data; // ← 关键！直接是字符串
     if (!token) {
-      throw new Error("没拿到token哦～");
+      throw new Error("未返回 token");
     }
 
     // 登录 + 自动拉用户信息（会持久化）
     await authStore.login(token, username.value.trim());
 
-    window.$vmessage.success(res.msg || `Welcome～ ${username.value} ❤️‍🔥`);
+    window.$vmessage.success(res.msg || `Welcome, ${username.value}`);
     router.push("/home");
   } catch (e) {
-    // 这里才会走到密码错、新用户失败等情况
-    const msg =
-      e.response?.data?.msg || e.message || "密码不对吗？再试试看～🖤";
-    window.$vmessage.error(msg);
+    // 账号不存在、密码错误等 HTTP 错误已由 request.js 提示，这里不重复提示
+    if (!e.response) {
+      window.$vmessage.error(e.message || "登录失败");
+    }
   }
 };
 </script>
@@ -196,5 +197,10 @@ const handleLogin = async () => {
   color: #00aaaa;
   line-height: 2;
   text-shadow: 0 0 8px #00ffff;
+}
+
+.pure-black-link {
+  color: #00ffff;
+  text-decoration: underline;
 }
 </style>
