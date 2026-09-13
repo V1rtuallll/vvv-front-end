@@ -318,6 +318,9 @@ export function useGalleryPage() {
         }
         if (Object.keys(payload).length > 0) await updateGallery(targetId, payload);
         applyEditedFields(targetId, payload);
+        // 换文件会同时改掉两张表的 src。响应里带的是新地址，直接同步到界面，
+        // 否则用户会继续看到旧的那张图，只能靠手动刷新
+        if (res?.data?.url) applyEditedFields(targetId, { src: res.data.url });
         return res;
       },
       onCancel: async (task) => {

@@ -37,7 +37,7 @@ import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const ME = 7;
 const SOMEONE_ELSE = 8;
-const ITEM = { id: 100, title: "旧标题", description: "旧描述", userId: ME, commentCount: 2 };
+const ITEM = { id: 100, title: "旧标题", description: "旧描述", src: "https://example.test/old.png", userId: ME, commentCount: 2 };
 
 function signIn(id) {
   useAuthStore.mockReturnValue({ user: { id, username: "u" + id }, token: "t" });
@@ -199,6 +199,23 @@ describe("useGalleryPage 的编辑与删除", () => {
 
     expect(replaceGalleryFile).toHaveBeenCalled();
     expect(api.uploadItems.value[0].status).toBe("success");
+  });
+
+  /** 换完文件界面还显示旧图的话，用户会以为根本没换上 */
+  it("换文件后把新地址同步到列表与详情", async () => {
+    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
+    const api = await mountGallery();
+    api.openDetailModal(api.galleryList.value[0]);
+    await flushPromises();
+    const file = new File(["x"], "new.png", { type: "image/png" });
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.setReplacementFile(file);
+    api.submitEdit({});
+    await flushPromises();
+
+    expect(api.galleryList.value[0].src).toBe("https://example.test/new.png");
+    expect(api.currentItem.value.src).toBe("https://example.test/new.png");
   });
 
   it("删除成功后从列表移除，并在当前页被删空时回退补数据", async () => {
