@@ -10,18 +10,6 @@
         <span class="field-label">描述</span>
         <textarea v-model="form.description" rows="3" class="field-input field-textarea"></textarea>
       </label>
-      <label class="edit-field">
-        <span class="field-label">alt</span>
-        <input v-model="form.alt" class="field-input" />
-      </label>
-      <label class="edit-field">
-        <span class="field-label">标签</span>
-        <input v-model="form.tags" class="field-input" />
-      </label>
-      <label class="edit-field">
-        <span class="field-label">分类</span>
-        <input v-model="form.category" class="field-input" />
-      </label>
       <p class="edit-tip">资源文件与类型不可修改，更换文件请重新上传。</p>
       <div class="modal-actions">
         <button class="save-btn" :disabled="saving" @click="submit">{{ saving ? "保存中..." : "保存" }}</button>
@@ -42,8 +30,9 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "submit"]);
 
-// 只提交这五个字段，src / type / user_id 由后端拒绝修改
-const EDITABLE_KEYS = ["title", "description", "alt", "tags", "category"];
+// 只开放标题与描述。alt / 标签 / 分类目前没有对应的业务场景，先不放进表单；
+// src / type / user_id 由后端拒绝修改，换文件要走新的上传流程。
+const EDITABLE_KEYS = ["title", "description"];
 
 const emptyForm = () => EDITABLE_KEYS.reduce((form, key) => ({ ...form, [key]: "" }), {});
 
@@ -68,8 +57,7 @@ watch(
   { immediate: true },
 );
 
-// 只提交有改动的字段：列表接口不返回 alt / tags / category，
-// 全部提交会把界面上看不到的字段覆盖成空值。
+// 只提交真正改动过的字段，避免把没碰过的值也一起写回。
 const submit = () => {
   const payload = {};
   EDITABLE_KEYS.forEach((key) => {
