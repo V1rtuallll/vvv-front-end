@@ -105,13 +105,30 @@ describe("UploadQueuePanel", () => {
     expect(wrapper.find(".queue-head").exists()).toBe(true);
   });
 
-  it("点清空抛 clear", async () => {
-    const wrapper = mountPanel();
+  it("跑完之后才出现关闭按钮，点了抛 clear", async () => {
+    const wrapper = mountPanel({
+      items: [task({ status: "success", progress: 100 })],
+      overallProgress: 100,
+      successCount: 1,
+    });
 
-    const clearBtn = wrapper.findAll(".queue-head .queue-btn")[1];
-    await clearBtn.trigger("click");
+    const closeBtn = wrapper.findAll(".queue-head .queue-btn")[1];
+    expect(closeBtn.text()).toBe("关闭");
+    await closeBtn.trigger("click");
 
     expect(wrapper.emitted("clear")).toHaveLength(1);
+  });
+
+  /** 传输中就关掉会让用户以为任务没了 */
+  it("还在跑的时候不给关闭按钮", () => {
+    const wrapper = mountPanel({
+      items: [task({ status: "uploading", progress: 30 })],
+      overallProgress: 30,
+      busy: true,
+    });
+
+    const buttons = wrapper.findAll(".queue-head .queue-btn").map((node) => node.text());
+    expect(buttons).not.toContain("关闭");
   });
 
   it("上传中显示百分比而不是状态词", () => {

@@ -6,6 +6,18 @@
         <h2 class="crt-title">✦ 最高指挥中心 ✦</h2>
         <p class="admin-welcome">欢迎回来，V1rtual</p>
 
+        <!-- 上传进度显示在标题下面，不是浮层；跑完后出现「关闭」 -->
+        <UploadQueuePanel
+          :items="uploadItems"
+          :overall-progress="uploadOverallProgress"
+          :success-count="uploadSuccessCount"
+          :failed-count="uploadFailedCount"
+          :busy="uploadBusy"
+          @cancel="cancelTask"
+          @retry="retryUpload"
+          @clear="clearUploadResults"
+        />
+
         <AdminQuickActions
           :syncing="syncing"
           :uploading="uploading"
@@ -43,17 +55,6 @@
         <ResourceEditorDialog :item="editingItem" @save="saveEdit" @cancel="editingItem = null" />
       </main>
     </div>
-    <!-- 上传进度固定在视口顶部：长列表滚动时也看得见 -->
-    <UploadQueuePanel
-      :items="uploadItems"
-      :overall-progress="uploadOverallProgress"
-      :success-count="uploadSuccessCount"
-      :failed-count="uploadFailedCount"
-      :busy="uploadBusy"
-      @cancel="cancelTask"
-      @retry="retryUpload"
-      @clear="clearUploadResults"
-    />
   </div>
 </template>
 

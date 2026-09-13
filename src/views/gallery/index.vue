@@ -14,6 +14,19 @@
       </div>
     </header>
 
+    <!-- 上传 / 编辑 / 换文件的进度就显示在头像下面，不是浮层。
+         全部跑完之后出现「关闭」，用户自己决定什么时候把它收掉。 -->
+    <UploadQueuePanel
+      :items="uploadItems"
+      :overall-progress="uploadOverallProgress"
+      :success-count="uploadSuccessCount"
+      :failed-count="uploadFailedCount"
+      :busy="uploadBusy"
+      @cancel="cancelTask"
+      @retry="retryUpload"
+      @clear="clearTasks"
+    />
+
     <main class="gallery-grid">
       <article v-for="item in galleryList" :key="item.id" class="gallery-card" @click="openDetailModal(item)">
         <div class="media-preview-wrapper">
@@ -79,17 +92,6 @@
       @edit="openEditModal"
       @delete="requestDeleteItem"
       @delete-comment="requestDeleteComment"
-    />
-    <!-- 上传 / 编辑 / 换文件都排到这里，固定在视口顶部，滚动到哪儿都看得见进度 -->
-    <UploadQueuePanel
-      :items="uploadItems"
-      :overall-progress="uploadOverallProgress"
-      :success-count="uploadSuccessCount"
-      :failed-count="uploadFailedCount"
-      :busy="uploadBusy"
-      @cancel="cancelTask"
-      @retry="retryUpload"
-      @clear="clearTasks"
     />
     <GalleryUserProfileDialog
       :visible="showUserProfile"

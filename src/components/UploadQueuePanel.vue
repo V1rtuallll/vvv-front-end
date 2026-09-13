@@ -12,7 +12,8 @@
         <button class="queue-btn" @click="collapsed = !collapsed">
           {{ collapsed ? "展开" : "收起" }}
         </button>
-        <button class="queue-btn" @click="$emit('clear')">清空</button>
+        <!-- 跑完之后才给关闭：传输中关掉会让用户以为任务没了 -->
+        <button v-if="!busy" class="queue-btn" @click="$emit('clear')">关闭</button>
       </header>
 
       <ul v-if="!collapsed" class="queue-list">
@@ -100,23 +101,17 @@ const statusText = (item) => {
 </script>
 
 <style scoped>
-/* 固定在视口顶部：任务在后台跑，用户滚动到哪儿都看得见进度 */
+/* 页面内的普通区块，不是浮层：放在页面顶部、用户头像下面 */
 .queue-panel {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  z-index: 1200;
   box-sizing: border-box;
-  width: min(760px, calc(100vw - 24px));
-  max-height: 60vh;
-  overflow-y: auto;
-  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 24px;
   color: #00ffff;
-  background: rgba(0, 0, 20, 0.96);
+  background: rgba(0, 0, 20, 0.9);
   border: 2px solid #00ffff;
   border-radius: 12px;
-  box-shadow: 0 0 24px rgba(0, 255, 255, 0.45);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 0 24px rgba(0, 255, 255, 0.35);
 }
 
 .queue-head {
@@ -233,13 +228,12 @@ const statusText = (item) => {
 .queue-slide-enter-from,
 .queue-slide-leave-to {
   opacity: 0;
-  transform: translate(-50%, -16px);
+  transform: translateY(-12px);
 }
 
 @media (max-width: 768px) {
   .queue-panel {
-    top: 8px;
-    width: calc(100vw - 16px);
+    margin-bottom: 16px;
   }
 
   .queue-head {
