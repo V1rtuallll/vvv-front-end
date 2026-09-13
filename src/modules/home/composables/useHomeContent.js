@@ -1,3 +1,4 @@
+import { formatShortDate } from "@/utils/DateUtil";
 import { onMounted, ref } from "vue";
 
 import {
@@ -14,7 +15,6 @@ export function useHomeContent() {
   const pinnedBlog = ref(null);
   const showInfo = ref(false);
 
-  const formatShortDate = (date) => date ? new Date(date).toLocaleDateString("zh-CN") : "未知";
 
   // 只在请求成功后合并：失败时不提交新状态，避免新 URL 配旧元数据
   const applyMainItem = (data) => {

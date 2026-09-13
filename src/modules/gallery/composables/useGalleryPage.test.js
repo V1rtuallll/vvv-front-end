@@ -263,6 +263,40 @@ describe("useGalleryPage 的编辑与删除", () => {
   });
 });
 
+describe("useGalleryPage 的日期显示", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [], total: 0 } });
+    getGalleryComments.mockResolvedValue({ data: [] });
+  });
+
+  /** new Date(null) 会得到 1970-01-01 —— 界面会显示一个像真日期的错误时间 */
+  it("时间为空时显示未知时间，而不是 1970 年", async () => {
+    const api = await mountGallery();
+
+    expect(api.formatShortDate(null)).toBe("未知时间");
+    expect(api.formatShortDate(undefined)).toBe("未知时间");
+    expect(api.formatShortDate("")).toBe("未知时间");
+  });
+
+  it("时间无法解析时也显示未知时间", async () => {
+    const api = await mountGallery();
+
+    expect(api.formatShortDate("不是时间")).toBe("未知时间");
+    expect(api.formatDate("不是时间")).toBe("未知时间");
+  });
+
+  it("正常时间照常格式化", async () => {
+    const api = await mountGallery();
+
+    expect(api.formatShortDate("2026-09-13T15:57:41")).toBe(
+      new Date("2026-09-13T15:57:41").toLocaleDateString("zh-CN"),
+    );
+  });
+});
+
 describe("useGalleryPage 的评论回复", () => {
   const COMMENT = { id: 1, username: "甲", parentId: null, createdAt: "2026-01-01T10:00:00" };
 

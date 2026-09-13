@@ -5,6 +5,7 @@ import { getPublicUser } from "@/modules/user/api/userApi";
 import { isOwner } from "@/shared/auth/owner";
 import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 import { formatBytes } from "@/utils/bytes";
+import { formatDate, formatShortDate } from "@/utils/DateUtil";
 import {
   cancelUpload,
   deleteComment,
@@ -540,8 +541,6 @@ export function useGalleryPage() {
     document.removeEventListener("mouseup", stopResize);
   };
 
-  const formatDate = (date) => new Date(date).toLocaleString("zh-CN");
-  const formatShortDate = (date) => new Date(date).toLocaleDateString("zh-CN");
 
   onMounted(loadGallery);
   onBeforeUnmount(() => {

@@ -1,26 +1,36 @@
 import { toRaw } from 'vue'  // toRaw：剥掉 Vue 的 Proxy 外壳，拿到原始对象
 
-// 时间格式化。无法解析时统一返回「未知」，不会抛错。
-const formatDate = (input) => {
-  if (!input) return "未知";
+/** 取不到时间时的统一文案：数据缺失要如实说，不能显示成某个具体日期 */
+const UNKNOWN_DATE = "未知时间";
 
-  let timeStr = null;
+/**
+ * 把各种输入解析成 Date，解析不出来返回 null。
+ *
+ * 支持三种输入：时间字符串、Date、以及带 createdAt/createTime 等字段的对象
+ * （对象会先用 toRaw 剥掉 Vue 的 Proxy 外壳）。
+ *
+ * 注意 null/空串必须走 null 分支：`new Date(null)` 不报错，它会得到 1970-01-01，
+ * 于是界面上出现一个看起来像真日期的错误时间。
+ */
+function toDate(input) {
+  if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
+  if (!input) return null;
 
-  // 情况1：直接传时间字符串
-  if (typeof input === 'string') {
-    timeStr = input;
+  let timeStr = input;
+  if (typeof input === 'object') {
+    const raw = toRaw(input);
+    timeStr = raw.createdAt || raw.createTime || raw.createdTime || raw.createAt;
+    if (!timeStr) return null;
   }
-
-  // 情况2：传 Proxy(user) 或普通对象 → 先去掉 Proxy 外壳取纯对象
-  else if (typeof input === 'object' && input !== null) {
-    const rawUser = toRaw(input);  // 剥掉 Vue Proxy 层，拿到纯净原对象
-    timeStr = rawUser.createdAt || rawUser.createTime || rawUser.createdTime || rawUser.createAt;
-  }
-
-  if (!timeStr) return "未知";
 
   const date = new Date(timeStr);
-  if (isNaN(date.getTime())) return "未知";
+  return isNaN(date.getTime()) ? null : date;
+}
+
+// 完整时间：2026年9月13日 15:57:41
+const formatDate = (input) => {
+  const date = toDate(input);
+  if (!date) return UNKNOWN_DATE;
 
   return date.toLocaleString("zh-CN", {
     year: "numeric",
@@ -31,4 +41,11 @@ const formatDate = (input) => {
     second: "2-digit",
   });
 };
-export { formatDate };
+
+// 简短日期：2026/9/13
+const formatShortDate = (input) => {
+  const date = toDate(input);
+  return date ? date.toLocaleDateString("zh-CN") : UNKNOWN_DATE;
+};
+
+export { formatDate, formatShortDate, UNKNOWN_DATE };
