@@ -353,6 +353,48 @@ describe("useGalleryPage 的评论回复", () => {
     expect(threads[1].replies).toEqual([]);
   });
 
+  it("线程默认折叠，展开与收起可以来回切", async () => {
+    const api = await openItem();
+
+    expect(api.isThreadExpanded(1)).toBe(false);
+    api.toggleThread(1);
+    expect(api.isThreadExpanded(1)).toBe(true);
+    api.toggleThread(1);
+    expect(api.isThreadExpanded(1)).toBe(false);
+  });
+
+  it("数字与字符串 id 都认，展开状态不会被类型差异绕开", async () => {
+    const api = await openItem();
+
+    api.toggleThread(1);
+
+    expect(api.isThreadExpanded("1")).toBe(true);
+  });
+
+  /** 发完回复却不展开的话，用户看不到自己刚发的东西，等于白发 */
+  it("回复成功后自动展开所在的线程", async () => {
+    const api = await openItem();
+    api.comments.value = [
+      { ...COMMENT, id: 1, username: "甲" },
+      { ...COMMENT, id: 2, username: "乙", parentId: 1 },
+    ];
+    api.newComment.value = "回复你";
+
+    api.startReply({ id: 2, username: "乙" });
+    await api.postComment();
+
+    expect(api.isThreadExpanded(1)).toBe(true);
+  });
+
+  it("关掉详情时收起全部线程", async () => {
+    const api = await openItem();
+    api.toggleThread(1);
+
+    api.closeDetail();
+
+    expect(api.isThreadExpanded(1)).toBe(false);
+  });
+
   /** 父评论被删或不在当前页时，回复不能凭空消失 */
   it("找不到父评论的回复仍作为顶层展示", async () => {
     const api = await openItem();

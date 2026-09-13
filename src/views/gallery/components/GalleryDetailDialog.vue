@@ -33,7 +33,7 @@
           @touchstart="startTouchResize"
         ><span class="resize-tip">拖动调整上下高度</span></div>
         <div class="comments-scrollable">
-          <h3>Comments({{ displayComments.length }})</h3>
+          <h3>Comments({{ totalComments }})</h3>
           <div class="comment-composer">
             <!-- 进入回复态时先亮出回复对象，用户可以随时取消 -->
             <div v-if="replyTo" class="reply-banner">
@@ -61,7 +61,15 @@
               </div>
               <p class="comment-content">{{ entry.content }}</p>
               <div class="comment-footer">
-                <button class="comment-reply-btn" @click.stop="$emit('reply', entry)">回复</button>
+                <div class="comment-actions">
+                  <button class="comment-reply-btn" @click.stop="$emit('reply', entry)">回复</button>
+                  <!-- 回复默认折叠：评论一多，一屏全被回复占满就看不到别的了 -->
+                  <button
+                    v-if="entry.replies?.length"
+                    class="comment-replies-toggle"
+                    @click.stop="$emit('toggle-replies', entry.id)"
+                  >{{ isExpanded(entry.id) ? "收起回复" : `展开回复 (${entry.replies.length})` }}</button>
+                </div>
                 <div class="comment-like-area" @click.stop="$emit('like-comment', entry)"><span class="comment-like-count" :class="{ 'eternal-liked': entry.isLiked }">❤️ {{ entry.likes || entry.likeCount || 0 }}</span></div>
                 <button
                   v-if="canManageComment(entry)"
@@ -90,24 +98,34 @@ const props = defineProps({
   comment: { type: String, default: "" },
   /** 正在回复的评论；为空表示发的顶层评论 */
   replyTo: { type: Object, default: null },
+  /** 展开了回复的根评论 id 集合；展开状态由页面持有 */
+  expandedThreads: { type: Object, default: () => new Set() },
   formatDate: { type: Function, required: true },
   formatShortDate: { type: Function, required: true },
   canManage: { type: Function, default: () => () => false },
   canManageComment: { type: Function, default: () => () => false },
 });
 
-defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply"]);
+defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
 const description = ref(null);
 
+const isExpanded = (threadId) => props.expandedThreads.has(String(threadId));
+
 /**
- * 顶层评论与它的回复铺平成一串：回复紧跟在自己的根评论后面。
- * 这样只有一套评论模板，不必把整块标记复制两遍。
+ * 顶层评论与它的回复铺平成一串：回复紧跟在自己的根评论后面，
+ * 只有展开的线程才会带上回复。这样只有一套评论模板，不必把整块标记复制两遍。
  */
 const displayComments = computed(() =>
   props.threads.flatMap((thread) => [
     { ...thread, isReply: false },
-    ...(thread.replies || []).map((reply) => ({ ...reply, isReply: true })),
+    ...(isExpanded(thread.id)
+      ? (thread.replies || []).map((reply) => ({ ...reply, isReply: true }))
+      : []),
   ]));
+
+/** 标题里的评论数含折叠中的回复 */
+const totalComments = computed(() =>
+  props.threads.reduce((sum, thread) => sum + 1 + (thread.replies?.length ?? 0), 0));
 
 // useGalleryPage 的 drag 逻辑只监听 mousemove / mouseup，触屏设备不会触发。
 // 这里补一条触摸路径，调整方式与桌面端保持一致：最小 60px，最大不超过视口高度的一半。
@@ -192,8 +210,10 @@ onBeforeUnmount(stopTouchResize);
 .comment-reply-to { color: #ffaae6; font-size: 0.85rem; font-weight: normal; }
 .comment-content { color: #cceeff; line-height: 1.6; }
 .comment-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 12px; }
-/* 回复靠左，点赞与删除留在右边 */
-.comment-reply-btn { min-height: 32px; margin-right: auto; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
+/* 回复与展开靠左，点赞与删除留在右边 */
+.comment-actions { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.comment-reply-btn { min-height: 32px; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
+.comment-replies-toggle { min-height: 32px; padding: 4px 14px; color: #ffaae6; font-size: 0.9rem; background: rgba(255, 105, 180, 0.12); border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
 .comment-like-area { text-align: right; }
 .comment-delete-btn { min-height: 32px; padding: 4px 14px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.2); border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
 .comment-like-count { color: #ff69b4; cursor: pointer; }
@@ -227,6 +247,8 @@ onBeforeUnmount(stopTouchResize);
   .comment-input textarea { box-sizing: border-box; min-width: 0; padding: 12px; font-size: 1rem; }
   .send-btn { align-self: stretch; min-height: 44px; }
   .reply-cancel { min-height: 44px; }
+  .comment-reply-btn,
+  .comment-replies-toggle { min-height: 44px; }
   .comment-item { padding: 12px; margin-bottom: 12px; }
   .comment-reply-item { margin-left: 14px; }
   .comment-content { font-size: 0.95rem; }

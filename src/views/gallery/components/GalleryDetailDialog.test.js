@@ -12,6 +12,7 @@ function mountDialog(props = {}) {
       threads: [],
       comment: "",
       replyTo: null,
+      expandedThreads: new Set(),
       formatDate: () => "2026/9/12 10:00:00",
       formatShortDate: () => "2026/9/12",
       ...props,
@@ -110,8 +111,10 @@ describe("GalleryDetailDialog 的回复", () => {
   const THREAD = { ...ROOT, replies: [REPLY] };
 
   it("每条评论都有回复按钮，点了把这条评论抛出去", async () => {
-    const wrapper = mountDialog({ threads: [THREAD] });
+    // 折叠时只渲染根评论，展开后子评论也各自带上回复入口
+    expect(mountDialog({ threads: [THREAD] }).findAll(".comment-reply-btn")).toHaveLength(1);
 
+    const wrapper = mountDialog({ threads: [THREAD], expandedThreads: new Set(["1"]) });
     const buttons = wrapper.findAll(".comment-reply-btn");
     expect(buttons).toHaveLength(2);
     await buttons[0].trigger("click");
@@ -132,15 +135,43 @@ describe("GalleryDetailDialog 的回复", () => {
     expect(wrapper.emitted("cancel-reply")).toHaveLength(1);
   });
 
-  it("回复缩进渲染在根评论下面，并标出回复的是谁", () => {
+  it("有回复的评论默认折叠，只亮出一个展开按钮", () => {
     const wrapper = mountDialog({ threads: [THREAD] });
+
+    expect(wrapper.find(".comment-reply-item").exists()).toBe(false);
+    expect(wrapper.find(".comment-replies-toggle").text()).toContain("展开回复");
+  });
+
+  it("没有回复的评论不出现展开按钮", () => {
+    const wrapper = mountDialog({ threads: [{ ...ROOT, replies: [] }] });
+
+    expect(wrapper.find(".comment-replies-toggle").exists()).toBe(false);
+  });
+
+  it("展开后子评论缩进渲染，并标出回复的是谁", () => {
+    const wrapper = mountDialog({ threads: [THREAD], expandedThreads: new Set(["1"]) });
 
     const replies = wrapper.findAll(".comment-reply-item");
     expect(replies).toHaveLength(1);
     expect(replies[0].text()).toContain("回复 @甲");
   });
 
-  it("评论数把回复也计入", () => {
+  it("展开状态下按钮变成收起", () => {
+    const wrapper = mountDialog({ threads: [THREAD], expandedThreads: new Set(["1"]) });
+
+    expect(wrapper.find(".comment-replies-toggle").text()).toContain("收起回复");
+  });
+
+  /** 展开状态由页面持有，弹窗只负责把点击抛出去 */
+  it("点展开按钮抛出 toggle-replies 并带上根评论 id", async () => {
+    const wrapper = mountDialog({ threads: [THREAD] });
+
+    await wrapper.find(".comment-replies-toggle").trigger("click");
+
+    expect(wrapper.emitted("toggle-replies")[0]).toEqual([1]);
+  });
+
+  it("评论数把折叠中的回复也计入", () => {
     const wrapper = mountDialog({ threads: [THREAD] });
 
     expect(wrapper.find(".comments-scrollable h3").text()).toContain("2");

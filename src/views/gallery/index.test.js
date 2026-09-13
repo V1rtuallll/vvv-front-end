@@ -105,6 +105,47 @@ describe("Gallery 页面的评论", () => {
     });
   });
 
+  it("子评论默认折叠，点展开后才出现", async () => {
+    getGalleryComments.mockResolvedValue({
+      data: [
+        { ...EXISTING, id: 55 },
+        { ...EXISTING, id: 56, username: "小红", parentId: 55, content: "子评论内容" },
+      ],
+    });
+    const wrapper = await openDetail();
+
+    expect(wrapper.find(".comment-reply-item").exists()).toBe(false);
+    expect(wrapper.find(".comment-replies-toggle").text()).toContain("展开回复 (1)");
+
+    await wrapper.find(".comment-replies-toggle").trigger("click");
+
+    const replies = wrapper.findAll(".comment-reply-item");
+    expect(replies).toHaveLength(1);
+    expect(replies[0].text()).toContain("子评论内容");
+  });
+
+  /** 发完回复却看不到，用户会以为没发出去 */
+  it("发出的回复立刻可见：自动展开它所在的线程", async () => {
+    getGalleryComments.mockResolvedValue({ data: [{ ...EXISTING, id: 55 }] });
+    const wrapper = await openDetail();
+
+    await wrapper.find(".comment-reply-btn").trigger("click");
+    await wrapper.find(".comment-input textarea").setValue("回复你");
+    // 发送后后端会返回带新回复的列表
+    getGalleryComments.mockResolvedValue({
+      data: [
+        { ...EXISTING, id: 55 },
+        { ...EXISTING, id: 56, username: "我", parentId: 55, content: "回复你" },
+      ],
+    });
+    await wrapper.find(".send-btn").trigger("click");
+    await flushPromises();
+
+    const replies = wrapper.findAll(".comment-reply-item");
+    expect(replies).toHaveLength(1);
+    expect(replies[0].text()).toContain("回复你");
+  });
+
   it("取消回复后回到顶层评论", async () => {
     getGalleryComments.mockResolvedValue({ data: [{ ...EXISTING }] });
     const wrapper = await openDetail();

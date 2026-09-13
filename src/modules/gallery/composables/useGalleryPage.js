@@ -42,6 +42,8 @@ export function useGalleryPage() {
   const newComment = ref("");
   /** 正在回复的评论 { id, username }；为空表示发的是顶层评论 */
   const replyTarget = ref(null);
+  /** 展开了回复的根评论 id；默认全部折叠，评论多了也不会一屏刷不完 */
+  const expandedThreads = ref(new Set());
   const showUserProfile = ref(false);
   const selectedUser = ref(null);
   const isResizing = ref(false);
@@ -160,6 +162,7 @@ export function useGalleryPage() {
     comments.value = [];
     newComment.value = "";
     cancelReply();
+    collapseThreads();
   };
 
   /** 进入回复态：输入框会显示回复对象，发送时带上这条评论的 id */
@@ -170,6 +173,29 @@ export function useGalleryPage() {
 
   const cancelReply = () => {
     replyTarget.value = null;
+  };
+
+  // 后端 id 是 Long，前端可能拿到数字或字符串，统一按字符串判断
+  const isThreadExpanded = (rootId) => expandedThreads.value.has(String(rootId));
+
+  const toggleThread = (rootId) => {
+    const key = String(rootId);
+    if (expandedThreads.value.has(key)) expandedThreads.value.delete(key);
+    else expandedThreads.value.add(key);
+  };
+
+  const collapseThreads = () => {
+    expandedThreads.value = new Set();
+  };
+
+  /** 某条评论所属线程的根评论 id；列表里找不到时返回 null */
+  const threadRootIdOf = (commentId) => {
+    const key = String(commentId);
+    const thread = commentThreads.value.find(
+      (candidate) => String(candidate.id) === key
+        || candidate.replies.some((reply) => String(reply.id) === key),
+    );
+    return thread ? String(thread.id) : null;
   };
 
   const changePage = (nextPage) => {
@@ -301,6 +327,8 @@ export function useGalleryPage() {
   const postComment = async () => {
     if (!newComment.value.trim()) return;
     const parentId = replyTarget.value?.id ?? null;
+    // 记下回复目标属于哪条线程：请求回来会重新拉评论，那时旧的列表已经没了
+    const parentThreadId = parentId == null ? null : threadRootIdOf(parentId);
     try {
       await postGalleryComment({
         target_id: currentItem.value.id,
@@ -311,6 +339,8 @@ export function useGalleryPage() {
       newComment.value = "";
       cancelReply();
       await loadComments(currentItem.value.id);
+      // 展开回复所在的线程，否则用户看不到自己刚发的那条
+      if (parentThreadId != null) expandedThreads.value.add(parentThreadId);
       currentItem.value.commentCount = (currentItem.value.commentCount || 0) + 1;
     } catch {
       // 提示由 request.js 负责；失败时保留输入与回复对象，可以直接重发
@@ -524,6 +554,7 @@ export function useGalleryPage() {
     closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishOne, toggleLike, openDetailModal,
     postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
     formatDate, formatShortDate,
+    expandedThreads, isThreadExpanded, toggleThread,
     isAdmin, canManageItem, canManageComment, editingItem, replacementFile, openEditModal, closeEditModal,
     setReplacementFile, submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
     cancelDelete, confirmDelete,

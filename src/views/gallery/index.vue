@@ -74,6 +74,7 @@
       :threads="commentThreads"
       :comment="newComment"
       :reply-to="replyTarget"
+      :expanded-threads="expandedThreads"
       :format-date="formatDate"
       :format-short-date="formatShortDate"
       :can-manage="canManageItem"
@@ -86,6 +87,7 @@
       @post-comment="postComment"
       @reply="startReply"
       @cancel-reply="cancelReply"
+      @toggle-replies="toggleThread"
       @like-comment="likeComment"
       @edit="openEditModal"
       @delete="requestDeleteItem"
@@ -149,6 +151,8 @@ const {
   startReply,
   cancelReply,
   commentThreads,
+  expandedThreads,
+  toggleThread,
   showUserProfile,
   selectedUser,
   likeComment,
