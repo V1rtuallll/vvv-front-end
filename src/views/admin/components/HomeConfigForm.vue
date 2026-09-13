@@ -32,7 +32,7 @@
 
     <div class="field-group">
       <label>描述</label>
-      <textarea v-model="config.main.desc" class="crt-input"></textarea>
+      <textarea v-model="config.main.desc" class="crt-textarea"></textarea>
     </div>
 
     <div class="field-group">
@@ -41,10 +41,42 @@
     </div>
 
     <div v-if="config.main.random" class="field-group">
+      <label>随机源（{{ availableFiles.length }} 条，点缩略图可先预览）</label>
       <ul class="file-list">
-        <li v-for="(file, index) in availableFiles" :key="index">
-          <a :href="file" target="_blank" class="file-link">{{ file }}</a>
-          <button @click="$emit('set-main', file)" class="crt-mini-btn small">设为主展示</button>
+        <li v-for="(file, index) in availableFiles" :key="index" class="file-item">
+          <div class="file-preview">
+            <video
+              v-if="kindOf(file) === 'video'"
+              :src="file"
+              preload="metadata"
+              muted
+              playsinline
+              controls
+              class="preview-media"
+            ></video>
+            <img
+              v-else-if="kindOf(file) === 'image'"
+              :src="file"
+              loading="lazy"
+              alt=""
+              class="preview-img"
+            />
+            <audio
+              v-else-if="kindOf(file) === 'audio'"
+              :src="file"
+              preload="none"
+              controls
+              class="preview-media"
+            ></audio>
+            <span v-else class="preview-none">无预览</span>
+          </div>
+          <div class="file-meta">
+            <!-- 显示文件名而不是整条 URL，完整地址放在 title 与 href 里 -->
+            <a :href="file" target="_blank" rel="noopener" class="file-link" :title="file">
+              {{ shortName(file) }}
+            </a>
+            <button @click="$emit('set-main', file)" class="crt-mini-btn">设为主展示</button>
+          </div>
         </li>
       </ul>
     </div>
@@ -60,6 +92,28 @@ defineProps({
 });
 
 defineEmits(["save", "set-main"]);
+
+// 列表里只有 URL，按扩展名判断该用哪种预览元素
+const EXTENSION_KIND = {
+  mp4: "video", webm: "video", avi: "video", mov: "video", mkv: "video",
+  gif: "image", jpg: "image", jpeg: "image", png: "image", webp: "image", bmp: "image",
+  mp3: "audio", wav: "audio", flac: "audio", aac: "audio", ogg: "audio",
+};
+
+const pathOf = (url) => String(url).split("?")[0];
+
+const fileName = (url) => {
+  const path = pathOf(url);
+  return path.substring(path.lastIndexOf("/") + 1) || path;
+};
+
+const kindOf = (url) => {
+  const name = fileName(url);
+  const dot = name.lastIndexOf(".");
+  return EXTENSION_KIND[dot > 0 ? name.substring(dot + 1).toLowerCase() : ""] ?? "unknown";
+};
+
+const shortName = fileName;
 </script>
 
 <style scoped>
@@ -71,44 +125,15 @@ defineEmits(["save", "set-main"]);
   border-radius: 12px;
 }
 
-/* ==== 窄屏适配 ====
-   窄屏收紧内边距，输入控件铺满宽度并保证触摸尺寸；
-   可用文件列表中的 OSS 链接过长时换行，避免撑出横向滚动。
-*/
+.preview-none {
+  color: #00ffff88;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   .admin-section {
     margin: 30px 0;
     padding: 18px 14px;
-  }
-
-  .admin-section input,
-  .admin-section select,
-  .admin-section textarea {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 44px;
-    font-size: 1rem;
-  }
-
-  .file-list {
-    padding-left: 18px;
-  }
-
-  .file-list li {
-    margin-bottom: 12px;
-    word-break: break-all;
-  }
-
-  .file-list .crt-mini-btn,
-  .file-list button {
-    min-height: 44px;
-    margin-top: 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .admin-section {
-    padding: 14px 10px;
   }
 }
 </style>
