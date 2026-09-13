@@ -10,6 +10,8 @@ const task = (overrides = {}) => ({
   status: "queued",
   progress: 0,
   error: null,
+  // 默认当作已经发出过请求：面板就是为「跑起来之后」准备的
+  started: true,
   ...overrides,
 });
 
@@ -22,6 +24,22 @@ function mountPanel(props = {}) {
 describe("UploadQueuePanel", () => {
   it("没有任务时整个面板都不出现", () => {
     expect(mountPanel({ items: [] }).find(".queue-panel").exists()).toBe(false);
+  });
+
+  /**
+   * 选好文件但还没点确认时不该冒出来 —— 那还只是弹窗里的草稿，
+   * 弹出来会让用户以为已经在传了。
+   */
+  it("只是排队、还没开始的任务不会让面板弹出来", () => {
+    const wrapper = mountPanel({ items: [task({ started: false, status: "queued" })] });
+
+    expect(wrapper.find(".queue-panel").exists()).toBe(false);
+  });
+
+  it("有任务开始过之后面板才出现", () => {
+    const wrapper = mountPanel({ items: [task({ started: true, status: "uploading", progress: 10 })] });
+
+    expect(wrapper.find(".queue-panel").exists()).toBe(true);
   });
 
   it("进行中显示总进度，完成后显示成功与失败数", () => {

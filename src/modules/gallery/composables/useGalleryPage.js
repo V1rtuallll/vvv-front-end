@@ -146,7 +146,8 @@ export function useGalleryPage() {
   };
 
   const openUploadModal = () => {
-    clearUploadQueue();
+    // 有任务在跑时绝不能清空队列 —— 那会把正在上传的文件连同弹窗一起取消
+    if (!uploadQueue.hasUnfinished.value) clearUploadQueue();
     showUploadModal.value = true;
     if (!uploadLimitText.value) loadUploadLimit();
   };
@@ -181,6 +182,8 @@ export function useGalleryPage() {
 
   const uploadAll = () => {
     uploadQueue.start();
+    // 关掉弹窗，把舞台交给顶部面板：两者都固定定位，叠着会互相遮挡
+    showUploadModal.value = false;
   };
 
   const cancelTask = (item) => uploadQueue.cancel(item);

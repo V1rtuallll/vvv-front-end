@@ -1,12 +1,10 @@
 <template>
   <transition name="queue-slide">
-    <section v-if="items.length > 0" class="queue-panel">
+    <section v-if="visible" class="queue-panel">
       <header class="queue-head">
         <span class="queue-summary">
           <template v-if="busy">进行中 {{ runningCount }} 个 · 总进度 {{ overallProgress }}%</template>
-          <template v-else>
-            已完成（成功 {{ successCount }}<template v-if="failedCount">，失败 {{ failedCount }}</template>）
-          </template>
+          <template v-else>{{ settledSummary }}</template>
         </span>
         <span class="queue-track">
           <span class="queue-fill overall" :style="{ width: overallProgress + '%' }"></span>
@@ -55,6 +53,22 @@ const props = defineProps({
 defineEmits(["cancel", "retry", "clear"]);
 
 const collapsed = ref(false);
+
+/**
+ * 只有「真的开始过」或「已经有结果」的任务才值得弹出面板。
+ * 仅仅选好文件、还没点确认时不该冒出来 —— 那是弹窗里的事。
+ */
+const visible = computed(() =>
+  props.items.some((item) => item.started || item.status !== UPLOAD_STATUS.QUEUED),
+);
+
+const settledSummary = computed(() => {
+  const cancelled = props.items.filter((item) => item.status === UPLOAD_STATUS.CANCELLED).length;
+  const parts = [`成功 ${props.successCount}`];
+  if (props.failedCount) parts.push(`失败 ${props.failedCount}`);
+  if (cancelled) parts.push(`取消 ${cancelled}`);
+  return `已完成（${parts.join("，")}）`;
+});
 
 const KIND_LABEL = {
   [TASK_KIND.UPLOAD]: "上传",

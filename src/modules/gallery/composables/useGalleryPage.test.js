@@ -300,7 +300,22 @@ describe("useGalleryPage 的上传队列", () => {
     expect(uploadGalleryFile).toHaveBeenCalledTimes(2);
   });
 
-  it("还有文件在上传时关闭弹窗会先确认", async () => {
+  it("点确认上传后关掉弹窗，把舞台交给顶部面板", async () => {
+    uploadGalleryFile.mockReturnValue(new Promise(() => {}));
+    const api = await mountGallery();
+    api.openUploadModal();
+    api.handleFiles(selectFiles("a.png"));
+    expect(api.showUploadModal.value).toBe(true);
+
+    api.uploadAll();
+    await flushPromises();
+
+    expect(api.showUploadModal.value).toBe(false);
+    expect(uploadGalleryFile).toHaveBeenCalledTimes(1);
+  });
+
+  /** 重新打开弹窗只是为了看进度，不能把正在跑的任务清掉 */
+  it("上传进行中重新打开弹窗不会清空队列", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
     api.openUploadModal();
@@ -308,6 +323,21 @@ describe("useGalleryPage 的上传队列", () => {
     api.uploadAll();
     await flushPromises();
 
+    api.openUploadModal();
+
+    expect(api.uploadItems.value).toHaveLength(1);
+    expect(api.uploadItems.value[0].status).toBe("uploading");
+  });
+
+  it("上传还在进行时关闭弹窗会先确认", async () => {
+    uploadGalleryFile.mockReturnValue(new Promise(() => {}));
+    const api = await mountGallery();
+    api.openUploadModal();
+    api.handleFiles(selectFiles("a.png"));
+    api.uploadAll();
+    await flushPromises();
+
+    api.openUploadModal();
     window.confirm = vi.fn(() => false);
     api.closeUploadModal();
 
