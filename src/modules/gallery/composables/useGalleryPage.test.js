@@ -29,6 +29,7 @@ import {
   getGalleryComments,
   getGalleryPage,
   getUploadLimit,
+  postGalleryComment,
   replaceGalleryFile,
   uploadGalleryFile,
   updateGallery,
@@ -259,6 +260,108 @@ describe("useGalleryPage 的编辑与删除", () => {
 
     expect(api.galleryList.value).toHaveLength(1);
     expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("useGalleryPage 的评论回复", () => {
+  const COMMENT = { id: 1, username: "甲", parentId: null, createdAt: "2026-01-01T10:00:00" };
+
+  async function openItem() {
+    const api = await mountGallery();
+    api.currentItem.value = { ...ITEM };
+    return api;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    postGalleryComment.mockResolvedValue({ data: {} });
+  });
+
+  it("回复某条评论时带上 parent_id", async () => {
+    const api = await openItem();
+    api.newComment.value = "回复你";
+
+    api.startReply({ id: 55, username: "小明" });
+    await api.postComment();
+
+    expect(postGalleryComment).toHaveBeenCalledWith({
+      target_id: 100, content: "回复你", parent_id: 55,
+    });
+  });
+
+  /** 顶层评论多发一个 parent_id: null 会让载荷多出无意义的字段 */
+  it("顶层评论不带 parent_id", async () => {
+    const api = await openItem();
+    api.newComment.value = "新评论";
+
+    await api.postComment();
+
+    expect(postGalleryComment).toHaveBeenCalledWith({ target_id: 100, content: "新评论" });
+  });
+
+  it("发送成功后退出回复态并清空输入", async () => {
+    const api = await openItem();
+    api.newComment.value = "回复你";
+    api.startReply({ id: 55, username: "小明" });
+
+    await api.postComment();
+
+    expect(api.replyTarget.value).toBeNull();
+    expect(api.newComment.value).toBe("");
+  });
+
+  it("发送失败时保留回复态，用户可以直接重发", async () => {
+    postGalleryComment.mockRejectedValue(new Error("boom"));
+    const api = await openItem();
+    api.newComment.value = "回复你";
+    api.startReply({ id: 55, username: "小明" });
+
+    await api.postComment();
+
+    expect(api.replyTarget.value).toEqual({ id: 55, username: "小明" });
+    expect(api.newComment.value).toBe("回复你");
+  });
+
+  it("关掉详情时清掉回复态", async () => {
+    const api = await openItem();
+    api.startReply({ id: 55, username: "小明" });
+
+    api.closeDetail();
+
+    expect(api.replyTarget.value).toBeNull();
+  });
+
+  it("commentThreads 把回复挂到根评论下，并标出回复的是谁", async () => {
+    const api = await openItem();
+    api.comments.value = [
+      { ...COMMENT, id: 1, username: "甲" },
+      { ...COMMENT, id: 2, username: "乙", parentId: 1, createdAt: "2026-01-01T11:00:00" },
+      { ...COMMENT, id: 3, username: "丙", parentId: 2, createdAt: "2026-01-01T12:00:00" },
+      { ...COMMENT, id: 4, username: "丁", createdAt: "2026-01-01T09:00:00" },
+    ];
+
+    const threads = api.commentThreads.value;
+
+    expect(threads.map((thread) => thread.id)).toEqual([1, 4]);
+    expect(threads[0].replies.map((reply) => reply.id)).toEqual([2, 3]);
+    expect(threads[0].replies[0].replyToName).toBe("甲");
+    expect(threads[0].replies[1].replyToName).toBe("乙");
+    expect(threads[1].replies).toEqual([]);
+  });
+
+  /** 父评论被删或不在当前页时，回复不能凭空消失 */
+  it("找不到父评论的回复仍作为顶层展示", async () => {
+    const api = await openItem();
+    api.comments.value = [{ ...COMMENT, id: 9, username: "孤儿", parentId: 999 }];
+
+    const threads = api.commentThreads.value;
+
+    expect(threads.map((thread) => thread.id)).toEqual([9]);
+    expect(threads[0].replies).toEqual([]);
   });
 });
 

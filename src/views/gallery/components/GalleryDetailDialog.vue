@@ -33,25 +33,44 @@
           @touchstart="startTouchResize"
         ><span class="resize-tip">拖动调整上下高度</span></div>
         <div class="comments-scrollable">
-          <h3>Comments({{ comments.length }})</h3>
-          <div class="comment-input">
-            <textarea :value="comment" placeholder="Say something..." rows="3" @input="$emit('update:comment', $event.target.value)"></textarea>
-            <button @click="$emit('post-comment')" :disabled="!comment.trim()" class="crt-mini-btn send-btn">发送</button>
+          <h3>Comments({{ displayComments.length }})</h3>
+          <div class="comment-composer">
+            <!-- 进入回复态时先亮出回复对象，用户可以随时取消 -->
+            <div v-if="replyTo" class="reply-banner">
+              <span>回复 @{{ replyTo.username }}</span>
+              <button class="reply-cancel" @click="$emit('cancel-reply')">取消</button>
+            </div>
+            <div class="comment-input">
+              <textarea :value="comment" placeholder="Say something..." rows="3" @input="$emit('update:comment', $event.target.value)"></textarea>
+              <button @click="$emit('post-comment')" :disabled="!comment.trim()" class="crt-mini-btn send-btn">发送</button>
+            </div>
           </div>
           <div class="comment-list">
-            <article v-for="currentComment in comments" :key="currentComment.id" class="comment-item">
-              <div class="comment-header"><strong>@{{ currentComment.username }}</strong><span class="comment-time">{{ formatShortDate(currentComment.createdAt) }}</span></div>
-              <p class="comment-content">{{ currentComment.content }}</p>
+            <article
+              v-for="entry in displayComments"
+              :key="entry.id"
+              class="comment-item"
+              :class="{ 'comment-reply-item': entry.isReply }"
+            >
+              <div class="comment-header">
+                <span class="comment-author">
+                  <strong>@{{ entry.username }}</strong>
+                  <span v-if="entry.isReply" class="comment-reply-to">回复 @{{ entry.replyToName }}</span>
+                </span>
+                <span class="comment-time">{{ formatShortDate(entry.createdAt) }}</span>
+              </div>
+              <p class="comment-content">{{ entry.content }}</p>
               <div class="comment-footer">
-                <div class="comment-like-area" @click.stop="$emit('like-comment', currentComment)"><span class="comment-like-count" :class="{ 'eternal-liked': currentComment.isLiked }">❤️ {{ currentComment.likes || currentComment.likeCount || 0 }}</span></div>
+                <button class="comment-reply-btn" @click.stop="$emit('reply', entry)">回复</button>
+                <div class="comment-like-area" @click.stop="$emit('like-comment', entry)"><span class="comment-like-count" :class="{ 'eternal-liked': entry.isLiked }">❤️ {{ entry.likes || entry.likeCount || 0 }}</span></div>
                 <button
-                  v-if="canManageComment(currentComment)"
+                  v-if="canManageComment(entry)"
                   class="comment-delete-btn"
-                  @click.stop="$emit('delete-comment', currentComment)"
+                  @click.stop="$emit('delete-comment', entry)"
                 >删除</button>
               </div>
             </article>
-            <div v-if="comments.length === 0" class="no-comment">There's no comment.</div>
+            <div v-if="displayComments.length === 0" class="no-comment">There's no comment.</div>
           </div>
         </div>
       </div>
@@ -60,22 +79,35 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 
 // canManage / canManageComment 由页面注入：编辑、删除入口只在作者本人或管理员处显示，
 // 组件自身不判断身份，保持纯展示。
-defineProps({
+const props = defineProps({
   item: { type: Object, default: null },
-  comments: { type: Array, default: () => [] },
+  /** 已按父子关系排好的评论：顶层评论各自带 replies，层级不在弹窗里算 */
+  threads: { type: Array, default: () => [] },
   comment: { type: String, default: "" },
+  /** 正在回复的评论；为空表示发的顶层评论 */
+  replyTo: { type: Object, default: null },
   formatDate: { type: Function, required: true },
   formatShortDate: { type: Function, required: true },
   canManage: { type: Function, default: () => () => false },
   canManageComment: { type: Function, default: () => () => false },
 });
 
-defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment"]);
+defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply"]);
 const description = ref(null);
+
+/**
+ * 顶层评论与它的回复铺平成一串：回复紧跟在自己的根评论后面。
+ * 这样只有一套评论模板，不必把整块标记复制两遍。
+ */
+const displayComments = computed(() =>
+  props.threads.flatMap((thread) => [
+    { ...thread, isReply: false },
+    ...(thread.replies || []).map((reply) => ({ ...reply, isReply: true })),
+  ]));
 
 // useGalleryPage 的 drag 逻辑只监听 mousemove / mouseup，触屏设备不会触发。
 // 这里补一条触摸路径，调整方式与桌面端保持一致：最小 60px，最大不超过视口高度的一半。
@@ -144,14 +176,24 @@ onBeforeUnmount(stopTouchResize);
 .delete-btn { color: #ff69b4; background: rgba(255, 105, 180, 0.2); border: 2px solid #ff69b4; }
 .resize-handle { display: flex; align-items: center; justify-content: center; height: 8px; margin: 12px 0; background: rgba(255, 105, 180, 0.3); border-radius: 4px; cursor: ns-resize; user-select: none; }
 .comments-scrollable { display: flex; flex: 1; flex-direction: column; min-height: 200px; overflow: hidden; }
-.comment-input { display: flex; gap: 12px; margin-bottom: 20px; }
+/* 回复条与输入框属于同一条输入流，所以放进同一个纵向容器 */
+.comment-composer { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.comment-input { display: flex; gap: 12px; }
 .comment-input textarea { flex: 1; padding: 16px; color: #00ffff; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 15px; resize: vertical; }
 .send-btn { align-self: flex-end; }
+.reply-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: #ffaae6; font-size: 0.95rem; background: rgba(255, 105, 180, 0.12); border-left: 3px solid #ff69b4; border-radius: 8px; }
+.reply-cancel { min-height: 32px; padding: 4px 14px; color: #ff69b4; font-size: 0.85rem; background: transparent; border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
 .comment-list { flex: 1; padding-right: 8px; overflow-y: auto; }
 .comment-item { padding: 18px; margin-bottom: 18px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
+/* 回复缩进一格，并用一条竖线连回所属的根评论 */
+.comment-reply-item { margin-left: 28px; border-left: 2px solid rgba(255, 105, 180, 0.45); border-radius: 0 15px 15px 0; }
 .comment-header { display: flex; justify-content: space-between; margin-bottom: 10px; color: #ff69b4; }
+.comment-author { display: flex; align-items: center; gap: 10px; }
+.comment-reply-to { color: #ffaae6; font-size: 0.85rem; font-weight: normal; }
 .comment-content { color: #cceeff; line-height: 1.6; }
 .comment-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 12px; }
+/* 回复靠左，点赞与删除留在右边 */
+.comment-reply-btn { min-height: 32px; margin-right: auto; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
 .comment-like-area { text-align: right; }
 .comment-delete-btn { min-height: 32px; padding: 4px 14px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.2); border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
 .comment-like-count { color: #ff69b4; cursor: pointer; }
@@ -180,10 +222,13 @@ onBeforeUnmount(stopTouchResize);
   .resize-handle { height: 22px; margin: 10px 0; touch-action: none; }
   .comments-scrollable { min-height: 0; }
   .comments-scrollable h3 { margin-bottom: 8px; font-size: 1.1rem; }
-  .comment-input { flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .comment-composer { gap: 8px; margin-bottom: 14px; }
+  .comment-input { flex-direction: column; gap: 8px; }
   .comment-input textarea { box-sizing: border-box; min-width: 0; padding: 12px; font-size: 1rem; }
   .send-btn { align-self: stretch; min-height: 44px; }
+  .reply-cancel { min-height: 44px; }
   .comment-item { padding: 12px; margin-bottom: 12px; }
+  .comment-reply-item { margin-left: 14px; }
   .comment-content { font-size: 0.95rem; }
   .no-comment { padding: 30px 12px; }
 }

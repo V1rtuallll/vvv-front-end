@@ -5,14 +5,16 @@ import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.
 
 const ITEM = { id: 1, type: "photo", src: "/a.jpg", title: "标题", description: "描述" };
 
-function mountDialog() {
+function mountDialog(props = {}) {
   return mount(GalleryDetailDialog, {
     props: {
       item: ITEM,
-      comments: [],
+      threads: [],
       comment: "",
+      replyTo: null,
       formatDate: () => "2026/9/12 10:00:00",
       formatShortDate: () => "2026/9/12",
+      ...props,
     },
   });
 }
@@ -93,5 +95,54 @@ describe("GalleryDetailDialog 拖动调整高度", () => {
     wrapper.unmount();
 
     expect(removeSpy).toHaveBeenCalledWith("touchmove", expect.any(Function));
+  });
+});
+
+describe("GalleryDetailDialog 的回复", () => {
+  const ROOT = {
+    id: 1, username: "甲", content: "顶层评论", likes: 0,
+    createdAt: "2026-01-01T10:00:00", replies: [],
+  };
+  const REPLY = {
+    id: 2, username: "乙", content: "回复内容", likes: 0,
+    createdAt: "2026-01-01T11:00:00", replyToName: "甲",
+  };
+  const THREAD = { ...ROOT, replies: [REPLY] };
+
+  it("每条评论都有回复按钮，点了把这条评论抛出去", async () => {
+    const wrapper = mountDialog({ threads: [THREAD] });
+
+    const buttons = wrapper.findAll(".comment-reply-btn");
+    expect(buttons).toHaveLength(2);
+    await buttons[0].trigger("click");
+
+    expect(wrapper.emitted("reply")[0][0]).toMatchObject({ id: 1, username: "甲" });
+  });
+
+  it("没有回复对象时不显示回复条", () => {
+    expect(mountDialog({ threads: [THREAD] }).find(".reply-banner").exists()).toBe(false);
+  });
+
+  it("有回复对象时显示回复了谁，取消按钮抛 cancel-reply", async () => {
+    const wrapper = mountDialog({ threads: [THREAD], replyTo: { id: 1, username: "甲" } });
+
+    expect(wrapper.find(".reply-banner").text()).toContain("甲");
+    await wrapper.find(".reply-cancel").trigger("click");
+
+    expect(wrapper.emitted("cancel-reply")).toHaveLength(1);
+  });
+
+  it("回复缩进渲染在根评论下面，并标出回复的是谁", () => {
+    const wrapper = mountDialog({ threads: [THREAD] });
+
+    const replies = wrapper.findAll(".comment-reply-item");
+    expect(replies).toHaveLength(1);
+    expect(replies[0].text()).toContain("回复 @甲");
+  });
+
+  it("评论数把回复也计入", () => {
+    const wrapper = mountDialog({ threads: [THREAD] });
+
+    expect(wrapper.find(".comments-scrollable h3").text()).toContain("2");
   });
 });

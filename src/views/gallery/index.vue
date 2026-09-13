@@ -71,8 +71,9 @@
     />
     <GalleryDetailDialog
       :item="currentItem"
-      :comments="comments"
+      :threads="commentThreads"
       :comment="newComment"
+      :reply-to="replyTarget"
       :format-date="formatDate"
       :format-short-date="formatShortDate"
       :can-manage="canManageItem"
@@ -83,6 +84,8 @@
       @resize-start="startResize"
       @update:comment="newComment = $event"
       @post-comment="postComment"
+      @reply="startReply"
+      @cancel-reply="cancelReply"
       @like-comment="likeComment"
       @edit="openEditModal"
       @delete="requestDeleteItem"
@@ -141,8 +144,11 @@ const {
   cancelTask,
   clearTasks,
   currentItem,
-  comments,
   newComment,
+  replyTarget,
+  startReply,
+  cancelReply,
+  commentThreads,
   showUserProfile,
   selectedUser,
   likeComment,

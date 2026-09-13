@@ -40,6 +40,8 @@ export function useGalleryPage() {
   const currentItem = ref(null);
   const comments = ref([]);
   const newComment = ref("");
+  /** 正在回复的评论 { id, username }；为空表示发的是顶层评论 */
+  const replyTarget = ref(null);
   const showUserProfile = ref(false);
   const selectedUser = ref(null);
   const isResizing = ref(false);
@@ -83,6 +85,50 @@ export function useGalleryPage() {
     comments.value = normalizeComments(res.data);
   };
 
+  /**
+   * 评论排成两层：顶层评论各自带上自己的回复。
+   * 「回复的回复」也挂到根评论下，用 replyToName 标出直接回复对象，
+   * 弹窗因此不需要递归渲染。父评论不在当前列表时按顶层展示，保证内容不丢。
+   */
+  const commentThreads = computed(() => {
+    const byId = new Map(comments.value.map((comment) => [String(comment.id), comment]));
+
+    const findRoot = (comment) => {
+      let current = comment;
+      const visited = new Set([String(comment.id)]);
+      while (current?.parentId != null) {
+        const parentKey = String(current.parentId);
+        // 数据异常成环时不要一直转下去
+        if (visited.has(parentKey)) break;
+        visited.add(parentKey);
+        const parent = byId.get(parentKey);
+        if (!parent) break;
+        current = parent;
+      }
+      return current;
+    };
+
+    const threads = new Map();
+    comments.value.forEach((comment) => {
+      const root = findRoot(comment);
+      const rootKey = String(root.id);
+      if (!threads.has(rootKey)) threads.set(rootKey, { ...root, replies: [] });
+      if (String(comment.id) === rootKey) return;
+      threads.get(rootKey).replies.push({
+        ...comment,
+        // 回复的是直接父评论，不是根评论
+        replyToName: byId.get(String(comment.parentId))?.username ?? root.username,
+      });
+    });
+
+    threads.forEach((thread) => {
+      // 整个列表是倒序的，但一个线程内部按时间正序读起来才像对话
+      thread.replies.sort((left, right) =>
+        String(left.createdAt).localeCompare(String(right.createdAt)));
+    });
+    return [...threads.values()];
+  });
+
   const likeComment = async (comment) => {
     if (comment.isLiked) return window.$vmessage.info("不能重复点赞");
     try {
@@ -113,6 +159,17 @@ export function useGalleryPage() {
     currentItem.value = null;
     comments.value = [];
     newComment.value = "";
+    cancelReply();
+  };
+
+  /** 进入回复态：输入框会显示回复对象，发送时带上这条评论的 id */
+  const startReply = (comment) => {
+    if (!comment) return;
+    replyTarget.value = { id: comment.id, username: comment.username };
+  };
+
+  const cancelReply = () => {
+    replyTarget.value = null;
   };
 
   const changePage = (nextPage) => {
@@ -243,13 +300,20 @@ export function useGalleryPage() {
 
   const postComment = async () => {
     if (!newComment.value.trim()) return;
+    const parentId = replyTarget.value?.id ?? null;
     try {
-      await postGalleryComment({ target_id: currentItem.value.id, content: newComment.value });
+      await postGalleryComment({
+        target_id: currentItem.value.id,
+        content: newComment.value,
+        // 顶层评论不带 parent_id 这个字段
+        ...(parentId == null ? {} : { parent_id: parentId }),
+      });
       newComment.value = "";
+      cancelReply();
       await loadComments(currentItem.value.id);
       currentItem.value.commentCount = (currentItem.value.commentCount || 0) + 1;
     } catch {
-      // 提示由 request.js 负责
+      // 提示由 request.js 负责；失败时保留输入与回复对象，可以直接重发
     }
   };
 
@@ -458,7 +522,8 @@ export function useGalleryPage() {
     authStore, page, limit, total, totalPages, galleryList, showUploadModal,
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
     closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishOne, toggleLike, openDetailModal,
-    postComment, displayGender, startResize, formatDate, formatShortDate,
+    postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
+    formatDate, formatShortDate,
     isAdmin, canManageItem, canManageComment, editingItem, replacementFile, openEditModal, closeEditModal,
     setReplacementFile, submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
     cancelDelete, confirmDelete,
