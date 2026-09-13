@@ -15,6 +15,17 @@ request.interceptors.request.use(config => {
   return config
 })
 
+// 后端没有给出 msg 时按状态码兜底，避免用户只看到一句无信息量的提示
+const STATUS_MESSAGE = {
+  400: '请求参数不合法',
+  401: '登录已过期，请重新登录',
+  403: '没有权限执行该操作',
+  404: '请求的资源不存在',
+  409: '数据已存在，无法重复写入',
+  413: '上传文件超过大小限制',
+  500: '服务器内部错误'
+}
+
 // 响应拦截器
 request.interceptors.response.use(
   response => {
@@ -29,17 +40,25 @@ request.interceptors.response.use(
   },
   error => {
     const authStore = useAuthStore()
-    let msg = "网络错误～再试一次好吗？"
+    const status = error.response?.status
 
-    if (error.response?.data?.msg) {
-      msg = error.response.data.msg
-    } else if (error.response?.status === 401) {
+    if (status === 401) {
       authStore.logout()
-      msg = "登录已过期啦～"
-    } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      msg = "请求超时了～✨"
-    } else if (!error.response) {
-      msg = "网络开小差了？"
+    }
+
+    // 后端错误契约保证 4xx/5xx 的 msg 里是真实原因，优先透传
+    let msg = error.response?.data?.msg
+
+    if (!msg) {
+      if (STATUS_MESSAGE[status]) {
+        msg = STATUS_MESSAGE[status]
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        msg = '请求超时，请稍后重试'
+      } else if (!error.response) {
+        msg = '网络错误，请稍后重试'
+      } else {
+        msg = '请求失败'
+      }
     }
 
     if (window.$vmessage) {

@@ -25,12 +25,9 @@ export const useAuthStore = defineStore('auth', {
         if (res.code !== 200) {
           throw new Error(res.msg || "获取用户信息失败")
         }
-        // 正确取出真正的用户对象
         this.user = res.data
-        // 可选：调试用，正式版可删
-        // console.log("🌙 月光花园完整绽放～user:", this.user)
-      } catch (e) {
-        window.$vmessage.error(e.message || "无法加载～先登出再试试？")
+      } catch {
+        // 错误提示由 request.js 统一负责，这里只做登出，避免重复提示
         this.logout()
       }
     },
@@ -40,5 +37,5 @@ export const useAuthStore = defineStore('auth', {
       // 插件自动清 localStorage
     }
   },
-  persist: true  // 关键！整个 store（token + user）都持久化～刷新不丢！
+  persist: true  // 整个 store（token + user）都持久化，刷新不丢
 })

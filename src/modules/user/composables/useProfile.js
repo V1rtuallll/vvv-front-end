@@ -6,6 +6,8 @@ import { useAuthStore } from "@/stores/auth";
 import { updatePassword, updateProfile, updateUsername, uploadAvatar } from "@/modules/user/api/userApi";
 import { formatDate } from "@/utils/DateUtil";
 
+// 发请求的方法，catch 里只做状态回滚，不弹提示：
+// 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
 export function useProfile() {
   const router = useRouter();
   const authStore = useAuthStore();
@@ -34,50 +36,50 @@ export function useProfile() {
     try {
       const res = await uploadAvatar(formData);
       await authStore.fetchUserInfo();
-      window.$vmessage.success(res.msg || "头像已更换～");
-    } catch (err) {
-      window.$vmessage.error(err.response?.data?.msg || "上传失败～");
+      window.$vmessage.success(res.msg || "头像已更新");
+    } catch {
+      // 提示由 request.js 负责
     }
   };
 
   const saveUsername = async () => {
-    if (!editUsername.value.trim()) return window.$vmessage.warning("用户名不能为空哦～");
+    if (!editUsername.value.trim()) return window.$vmessage.warning("用户名不能为空");
     try {
       const res = await updateUsername(editUsername.value);
       if (res.data) authStore.token = res.data;
       await authStore.fetchUserInfo();
-      window.$vmessage.success(res.msg || "用户名已变更～");
-    } catch (err) {
-      window.$vmessage.error(err.response?.data?.msg || "修改失败～可能已被占用？");
+      window.$vmessage.success(res.msg || "用户名已更新");
+    } catch {
+      // 提示由 request.js 负责
     }
   };
 
-  const updateGender = async () => saveProfile({ sex: editGender.value }, "性别已更新～");
-  const updateDescription = async () => saveProfile({ description: editDescription.value }, "个人描述已更新～");
+  const updateGender = async () => saveProfile({ sex: editGender.value }, "性别已更新");
+  const updateDescription = async () => saveProfile({ description: editDescription.value }, "个人描述已更新");
   const saveProfile = async (payload, message) => {
     try {
       await updateProfile(payload);
       await authStore.fetchUserInfo();
       window.$vmessage.success(message);
-    } catch (err) {
-      window.$vmessage.error(err.response?.data?.msg || "修改失败～");
+    } catch {
+      // 提示由 request.js 负责
     }
   };
 
   const savePassword = async () => {
-    if (!newPassword.value) return window.$vmessage.info("密码留空就不改了～");
+    if (!newPassword.value) return window.$vmessage.info("密码留空则不修改");
     try {
       const res = await updatePassword(newPassword.value);
       newPassword.value = "";
-      window.$vmessage.success(res.msg || "密码已安全更新～");
-    } catch (err) {
-      window.$vmessage.error(err.response?.data?.msg || "修改失败～");
+      window.$vmessage.success(res.msg || "密码已更新");
+    } catch {
+      // 提示由 request.js 负责
     }
   };
 
   const handleLogout = () => {
     authStore.logout();
-    window.$vmessage.info("已安全离开～");
+    window.$vmessage.info("已退出登录");
     router.push("/home");
   };
 
@@ -92,7 +94,7 @@ export function useProfile() {
   const isSuperAdmin = computed(() => isOwner(authStore.user));
   const goToAdmin = () => {
     router.push("/admin");
-    window.$vmessage.success("欢迎回来，最特别的V1rtual酱～✞");
+    window.$vmessage.success("欢迎回来，管理员");
   };
 
   return {

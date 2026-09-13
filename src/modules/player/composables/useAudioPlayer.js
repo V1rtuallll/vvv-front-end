@@ -56,7 +56,7 @@ export function useAudioPlayer() {
       playButton.textContent = "▶";
     };
     const playSong = () => {
-      audio.play().catch((error) => console.warn("播放失败～", error));
+      audio.play().catch((error) => console.warn("音频播放失败", error));
       playButton.textContent = "■";
     };
     const switchSong = (direction, autoPlay = false) => {

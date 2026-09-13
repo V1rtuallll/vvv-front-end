@@ -1,9 +1,7 @@
-import { toRaw } from 'vue'  // ← 新增导入！关键去掉 Proxy 外壳
+import { toRaw } from 'vue'  // toRaw：剥掉 Vue 的 Proxy 外壳，拿到原始对象
 
-// 终极月光时间解析器～永不“未知”❤️
+// 时间格式化。无法解析时统一返回「未知」，不会抛错。
 const formatDate = (input) => {
-  console.log("bbbb", input);
-
   if (!input) return "未知";
 
   let timeStr = null;
@@ -15,7 +13,7 @@ const formatDate = (input) => {
 
   // 情况2：传 Proxy(user) 或普通对象 → 先去掉 Proxy 外壳取纯对象
   else if (typeof input === 'object' && input !== null) {
-    const rawUser = toRaw(input);  // ← 关键！剥掉 Vue Proxy 层，拿到纯净原对象
+    const rawUser = toRaw(input);  // 剥掉 Vue Proxy 层，拿到纯净原对象
     timeStr = rawUser.createdAt || rawUser.createTime || rawUser.createdTime || rawUser.createAt;
   }
 

@@ -5,6 +5,10 @@ import { getAdminHomeConfig, getAdminResources, saveAdminHomeConfig, syncOssReso
 import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
 
+// 发请求的方法，catch 里只做状态回滚，不弹提示：
+// 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
+// 例外：逐文件上传的结果会显示在 uploadedFiles 列表里（AdminQuickActions.vue），
+// 所以不需要额外的 toast 也能看到每个文件为什么失败。
 export function useAdminPage() {
   const router = useRouter();
   const authStore = useAuthStore();
@@ -39,7 +43,7 @@ export function useAdminPage() {
       refreshAvailableFiles(homeConfig.value.main.type);
       if (typeof homeConfig.value.main.random === "boolean") homeConfig.value.main.random = homeConfig.value.main.random ? 1 : 0;
     } catch {
-      console.log("加载 Home 配置失败，使用默认");
+      console.log("Home 配置加载失败，使用默认值");
     }
   };
 
@@ -54,10 +58,10 @@ export function useAdminPage() {
     try {
       const payload = { ...homeConfig.value, main: { ...homeConfig.value.main, random: homeConfig.value.main.random ? 1 : 0 } };
       await saveAdminHomeConfig(payload);
-      window.$vmessage.success("Home 配置保存成功～✞");
+      window.$vmessage.success("Home 配置已保存");
       await loadHomeConfig();
     } catch {
-      window.$vmessage.error("保存失败...");
+      // 提示由 request.js 负责
     }
   };
 
@@ -67,9 +71,9 @@ export function useAdminPage() {
     try {
       const res = await syncOssResources(["video", "gif", "music", "photo"]);
       const count = res.data?.insertedCount ?? 0;
-      window.$vmessage.success(`同步完成！新增 ${count} 条记录～✞ 月光更亮了哦～`);
+      window.$vmessage.success(`同步完成，新增 ${count} 条记录`);
     } catch (err) {
-      window.$vmessage.error("同步失败...月光好像被乌云遮住了QAQ");
+      // 提示由 request.js 负责，这里只记录详情便于排查
       console.error("同步错误详情:", err.response?.data || err);
     } finally {
       syncing.value = false;
@@ -92,11 +96,10 @@ export function useAdminPage() {
         const res = await uploadAdminResource(formData);
         result.status = "success";
         result.url = res.data.url;
-        window.$vmessage.success(`[${file.name}] 上传成功！已存入 ${res.data.type} 目录～✨`);
       } catch (err) {
+        // 失败原因会显示在 uploadedFiles 列表里，不再弹 toast（request.js 已经弹过）
         result.status = "error";
         result.error = err.response?.data?.msg || "上传失败";
-        window.$vmessage.error(`[${file.name}] ${result.error}`);
       } finally {
         uploadCompleted.value++;
       }
@@ -115,7 +118,7 @@ export function useAdminPage() {
       resourceList.value = res.data.list || [];
       resourceTotal.value = res.data.total || 0;
     } catch {
-      window.$vmessage.error("加载资源失败啦～月光暂时被云遮住了QAQ");
+      // 提示由 request.js 负责
       resourceList.value = [];
       resourceTotal.value = 0;
     }
@@ -131,9 +134,9 @@ export function useAdminPage() {
       await updateAdminResource(payload);
       const index = resourceList.value.findIndex((item) => item.id === editingItem.value.id);
       if (index !== -1) resourceList.value[index] = { ...editingItem.value };
-      window.$vmessage.success("资源信息已温柔保存到数据库～✞");
+      window.$vmessage.success("资源信息已保存");
     } catch {
-      window.$vmessage.error("保存失败啦QAQ…月光抖了一下");
+      // 提示由 request.js 负责
     } finally {
       editingItem.value = null;
     }
@@ -142,9 +145,10 @@ export function useAdminPage() {
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
-      window.$vmessage.success("SRC 已复制～❤️");
+      window.$vmessage.success("SRC 已复制");
     } catch {
-      window.$vmessage.error("复制失败QAQ");
+      // 剪贴板失败是本地错误，没有经过 request.js，需要自己提示
+      window.$vmessage.error("复制失败");
     }
   };
 
@@ -153,7 +157,7 @@ export function useAdminPage() {
   onMounted(async () => {
     if (!isOwner(authStore.user)) {
       router.push("/profile");
-      window.$vmessage.error("这扇银门只为你一人敞开哦～🖤");
+      window.$vmessage.error("没有权限访问后台");
       return;
     }
     await loadHomeConfig();

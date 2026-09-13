@@ -3,7 +3,7 @@
     <h3 class="section-title">快速资源管理</h3>
     <div class="action-buttons">
       <button @click="$emit('sync')" class="crt-btn sync-btn" :disabled="syncing">
-        {{ syncing ? "同步中...✧" : "一键同步 OSS → 数据库" }}
+        {{ syncing ? "同步中..." : "一键同步 OSS → 数据库" }}
       </button>
 
       <div class="upload-area">
@@ -69,5 +69,53 @@ defineEmits(["sync", "upload", "clear-results"]);
 .quick-actions {
   background: rgba(20, 0, 30, 0.65);
   border-color: #ff00ff55;
+}
+
+/* ==== 窄屏适配 ====
+   窄屏收紧内边距，按钮铺满宽度并保证触摸尺寸；
+   上传进度与结果里的文件名、URL 允许换行，避免溢出容器。
+*/
+@media (max-width: 768px) {
+  .admin-section {
+    margin: 30px 0;
+    padding: 18px 14px;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .quick-actions button,
+  .crt-file-label .crt-mini-btn {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .upload-status {
+    font-size: 0.95rem;
+    word-break: break-word;
+  }
+
+  .upload-results ul {
+    padding-left: 18px;
+  }
+
+  .upload-results li {
+    word-break: break-all;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-section {
+    padding: 14px 10px;
+  }
 }
 </style>

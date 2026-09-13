@@ -39,32 +39,30 @@ const router = createRouter({
   routes: [...routes, ...customRoutes],
 });
 
-// 路由守卫
+// 路由守卫。这里的提示都是本地守卫，不经过 request.js，所以需要自己弹
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
 
-  // 如果要去/profile 但没登录 → 温柔提示 + 跳转登录银门
   if (to.path === '/profile' && !authStore.isLoggedIn) {
-    window.$vmessage.info('想看个人空间？先登录哦～');
+    window.$vmessage.info('请先登录');
     next('/login');
     return;
   }
 
-  // 如果已登录却还在登录页 → 温柔欢迎回家
+  // 已登录时访问登录页，直接回首页
   if (to.path === '/login' && authStore.isLoggedIn) {
-    window.$vmessage.success(`欢迎回来～ ${authStore.username} ❤️‍🔥`);
+    window.$vmessage.success(`欢迎回来，${authStore.username}`);
     next('/home');
     return;
   }
 
-  // 未来扩展：支持page.js里meta.requiresAuth = true的页面保护
+  // 支持 page.js 里 meta.requiresAuth = true 的页面保护
   if (to.meta?.requiresAuth && !authStore.isLoggedIn) {
-    window.$vmessage.info('需要登录才能进入哦～');
+    window.$vmessage.info('请先登录');
     next('/login');
     return;
   }
 
-  // 其他情况
   next();
 });
 
