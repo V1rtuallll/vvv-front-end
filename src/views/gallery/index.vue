@@ -25,12 +25,17 @@
 
         <div class="card-body">
           <h3 class="card-title">{{ item.title }}</h3>
-          <p class="card-desc">{{ item.description || "无描述～" }}</p>
+          <p class="card-desc">{{ item.description || "无描述" }}</p>
           <div class="card-meta" @click.stop="openUserProfile(item.userId || item.uploaderId, item.uploaderUsername)">
             <img :src="item.uploaderAvatar || item.uploader_avatar || '/default-avatar.gif'" alt="上传者头像" class="card-avatar" />
             <div class="meta-text"><span class="uploader">@{{ item.uploaderUsername || "神秘人" }}</span><span class="time">{{ formatShortDate(item.createdAt) }}</span></div>
           </div>
           <div class="interactions"><span class="like-count">❤️ {{ item.likes }}</span><span class="comment-count">💬 {{ item.commentCount || 0 }}</span></div>
+          <!-- 入口只在作者本人或管理员可见。隐藏只是显示逻辑，越权请求由接口拒绝 -->
+          <div v-if="canManageItem(item)" class="card-actions" @click.stop>
+            <button class="crt-mini-btn" @click="openEditModal(item)">编辑</button>
+            <button class="crt-mini-btn" @click="requestDeleteItem(item)">删除</button>
+          </div>
         </div>
       </article>
 
@@ -63,6 +68,8 @@
       :comment="newComment"
       :format-date="formatDate"
       :format-short-date="formatShortDate"
+      :can-manage="canManageItem"
+      :can-manage-comment="canManageComment"
       @close="closeDetail"
       @show-user="openUserProfile"
       @toggle-like="toggleLike"
@@ -70,6 +77,9 @@
       @update:comment="newComment = $event"
       @post-comment="postComment"
       @like-comment="likeComment"
+      @edit="openEditModal"
+      @delete="requestDeleteItem"
+      @delete-comment="requestDeleteComment"
     />
     <GalleryUserProfileDialog
       :visible="showUserProfile"
@@ -78,11 +88,28 @@
       :format-date="formatDate"
       @close="showUserProfile = false"
     />
+    <GalleryEditDialog
+      :visible="!!editingItem"
+      :item="editingItem"
+      :saving="savingEdit"
+      @close="closeEditModal"
+      @submit="submitEdit"
+    />
+    <GalleryConfirmDialog
+      :visible="!!deleteTarget"
+      :title="deleteTarget?.type === 'comment' ? '删除评论' : '删除资源'"
+      :message="deleteTarget ? `确定删除 ${deleteTarget.label}？该操作不可撤销。` : ''"
+      :confirming="deleting"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
 <script setup>
+import GalleryConfirmDialog from "./components/GalleryConfirmDialog.vue";
 import GalleryDetailDialog from "./components/GalleryDetailDialog.vue";
+import GalleryEditDialog from "./components/GalleryEditDialog.vue";
 import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
@@ -118,6 +145,19 @@ const {
   startResize,
   formatDate,
   formatShortDate,
+  canManageItem,
+  canManageComment,
+  editingItem,
+  savingEdit,
+  openEditModal,
+  closeEditModal,
+  submitEdit,
+  deleteTarget,
+  deleting,
+  requestDeleteItem,
+  requestDeleteComment,
+  cancelDelete,
+  confirmDelete,
 } = useGalleryPage();
 </script>
 
