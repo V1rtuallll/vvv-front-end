@@ -155,11 +155,13 @@ export function useAdminPage() {
     saveHomeConfig, setAsMain, syncOssToDb, selectUploadFiles, startUploads, clearUploadResults, backToProfile,
     uploadItems: uploadQueue.items,
     uploading: uploadQueue.hasUnfinished,
+    uploadBusy: uploadQueue.isBusy,
     uploadOverallProgress: uploadQueue.overallProgress,
     uploadSuccessCount: uploadQueue.successCount,
     uploadFailedCount: uploadQueue.failedCount,
     retryUpload: uploadQueue.retry,
     retryAllFailedUploads: uploadQueue.retryAllFailed,
+    cancelTask: uploadQueue.cancel,
     resourceFilter, resourceList, resourceTotal, resourcePage, totalPages, fetchResources, formatDate,
     editingItem, openEditModal, saveEdit, copyToClipboard, pageSize, onPageSizeChange,
   };

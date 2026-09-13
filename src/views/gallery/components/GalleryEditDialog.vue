@@ -2,15 +2,38 @@
   <div v-if="visible" class="modal-overlay" @click="$emit('close')">
     <div class="edit-modal" @click.stop>
       <h2>编辑资源</h2>
+
+      <div class="edit-field">
+        <span class="field-label">文件</span>
+        <div class="file-row">
+          <span class="file-current" :title="item?.src">{{ currentName }}</span>
+          <label class="file-pick">
+            <input type="file" :accept="ACCEPT" class="file-input" @change="onPickFile" />
+            <span class="file-pick-btn">{{ replacementFile ? "换一个" : "更换文件" }}</span>
+          </label>
+          <button v-if="replacementFile" class="file-clear" @click="$emit('select-replacement', null)">
+            撤销更换
+          </button>
+        </div>
+        <p v-if="replacementFile" class="file-chosen">
+          将替换为：<strong>{{ replacementFile.name }}</strong>
+          （保存后才会上传，进度显示在页面顶部）
+        </p>
+        <p v-else class="file-hint">
+          不选新文件就只改标题与描述；换了文件则保存后依次上传新文件、更新资源。
+        </p>
+      </div>
+
       <label class="edit-field">
         <span class="field-label">标题</span>
         <input v-model="form.title" class="field-input" />
       </label>
+
       <label class="edit-field">
         <span class="field-label">描述</span>
         <textarea v-model="form.description" rows="3" class="field-input field-textarea"></textarea>
       </label>
-      <p class="edit-tip">资源文件与类型不可修改，更换文件请重新上传。</p>
+
       <div class="modal-actions">
         <button class="save-btn" :disabled="saving" @click="submit">{{ saving ? "保存中..." : "保存" }}</button>
         <button class="cancel-btn" :disabled="saving" @click="$emit('close')">取消</button>
@@ -20,24 +43,33 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   visible: Boolean,
   item: { type: Object, default: null },
   saving: Boolean,
+  /** 已选好的替换文件；为空表示只改元数据 */
+  replacementFile: { type: Object, default: null },
 });
 
-const emit = defineEmits(["close", "submit"]);
+const emit = defineEmits(["close", "submit", "select-replacement"]);
 
-// 只开放标题与描述。alt / 标签 / 分类目前没有对应的业务场景，先不放进表单；
-// src / type / user_id 由后端拒绝修改，换文件要走新的上传流程。
+const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
+
+// 只开放标题与描述。alt / 标签 / 分类目前没有对应的业务场景，先不放进表单。
 const EDITABLE_KEYS = ["title", "description"];
 
 const emptyForm = () => EDITABLE_KEYS.reduce((form, key) => ({ ...form, [key]: "" }), {});
 
 const form = ref(emptyForm());
 let initialForm = emptyForm();
+
+const currentName = computed(() => {
+  const src = props.item?.src ?? "";
+  const path = String(src).split("?")[0];
+  return path.substring(path.lastIndexOf("/") + 1) || "（未知文件）";
+});
 
 const syncForm = (item) => {
   const next = emptyForm();
@@ -56,6 +88,12 @@ watch(
   },
   { immediate: true },
 );
+
+const onPickFile = (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (file) emit("select-replacement", file);
+};
 
 // 只提交真正改动过的字段，避免把没碰过的值也一起写回。
 const submit = () => {
@@ -76,7 +114,18 @@ const submit = () => {
 .field-label { color: #ffaae6; font-size: 1rem; }
 .field-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 12px; color: #00ffff; font-size: 1rem; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 10px; }
 .field-textarea { min-height: 80px; resize: vertical; }
-.edit-tip { margin-bottom: 20px; color: #aaa; font-size: 0.9rem; }
+
+/* 文件行：当前文件名 + 更换 + 撤销，窄屏自动折行 */
+.file-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.file-current { flex: 1 1 200px; min-width: 0; overflow: hidden; color: #cceeff; font-size: 0.92rem; white-space: nowrap; text-overflow: ellipsis; }
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file-pick { flex: 0 0 auto; cursor: pointer; }
+/* 触摸目标不小于 44px */
+.file-pick-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 8px; }
+.file-clear { min-height: 44px; padding: 8px 16px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.15); border: 1px solid #ff69b4; border-radius: 8px; cursor: pointer; }
+.file-chosen { color: #ffaae6; font-size: 0.88rem; line-height: 1.6; word-break: break-all; }
+.file-hint { color: #aaa; font-size: 0.85rem; line-height: 1.6; }
+
 .modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
 .modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; border-radius: 30px; cursor: pointer; }
 .save-btn { color: #000; font-weight: bold; background: #00ffff; border: 2px solid #00ffff; }

@@ -12,8 +12,12 @@ export const likeGallery = (id) => request.post("/gallery/like", { id });
 export const isGalleryLiked = (id) => request.get(`/gallery/isLiked/${id}`);
 export const likeGalleryComment = (commentId) => request.post("/gallery/comment/like", { comment_id: commentId });
 
-// 只允许提交 title / description / alt / tags / category：
-// src / type / user_id 由后端拒绝修改，换文件要走新的上传流程。
+// 换文件走独立接口：它会同步两张表的 src 并清掉旧的 OSS 对象
+export const replaceGalleryFile = (id, formData, onUploadProgress, signal) =>
+  request.post(`/gallery/${id}/replace`, formData, { onUploadProgress, signal });
+// 撤销一次上传：按客户端上传 ID 删掉已入库的行与已上传的 OSS 对象（幂等）
+export const cancelUpload = (clientUploadId) =>
+  request.delete(`/gallery/upload/${encodeURIComponent(clientUploadId)}`);
 export const updateGallery = (id, payload) => request.patch(`/gallery/${id}`, payload);
 export const deleteGallery = (id) => request.delete(`/gallery/${id}`);
 export const deleteComment = (commentId) => request.delete(`/gallery/comments/${commentId}`);

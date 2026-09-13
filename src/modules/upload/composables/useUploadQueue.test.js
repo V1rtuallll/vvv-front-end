@@ -195,3 +195,93 @@ describe("useUploadQueue", () => {
     expect(item.resource).toEqual({ id: 42, url: "https://example.test/a.png", status: "duplicate" });
   });
 });
+
+describe("useUploadQueue 的忙碌状态与取消清理", () => {
+  const controlled = () => vi.fn(() => {
+    const d = deferred();
+    controlled.last = d;
+    return d.promise;
+  });
+
+  it("只是排队时不算忙碌，真正开始上传才算", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    queue.add(file("a.png", 10));
+
+    // 还没点确认：按钮应该显示「确认上传」而不是「上传中」
+    expect(queue.hasUnfinished.value).toBe(true);
+    expect(queue.isBusy.value).toBe(false);
+
+    queue.start();
+    await flushPromises();
+    expect(queue.isBusy.value).toBe(true);
+
+    controlled.last.resolve({ data: { id: 1 } });
+    await flushPromises();
+    expect(queue.isBusy.value).toBe(false);
+  });
+
+  it("取消会调 onCancel，并且等请求落定之后才调", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    const order = [];
+    const item = queue.add(file("a.png", 10), {
+      onCancel: async () => { order.push("cleanup"); },
+    });
+    queue.start();
+    await flushPromises();
+
+    const cancelling = queue.cancel(item);
+    // 请求还没落定，清理不能先跑 —— 否则会漏掉刚提交的那一份
+    expect(order).toEqual([]);
+
+    controlled.last.reject(new Error("aborted"));
+    await cancelling;
+    expect(order).toEqual(["cleanup"]);
+    expect(item.status).toBe(UPLOAD_STATUS.CANCELLED);
+  });
+
+  it("还没发过请求就取消时不会去服务端清理", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    let cleaned = false;
+    const item = queue.add(file("a.png", 10), {
+      onCancel: async () => { cleaned = true; },
+    });
+
+    // 一直没 start()，任务停在排队状态
+    await queue.cancel(item);
+
+    expect(item.status).toBe(UPLOAD_STATUS.CANCELLED);
+    expect(item.started).toBe(false);
+    expect(upload).not.toHaveBeenCalled();
+    expect(cleaned).toBe(true);
+  });
+
+  it("带 execute 的任务走自己的执行函数，不碰文件上传", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    const execute = vi.fn().mockResolvedValue({ data: { id: 9 } });
+    const item = queue.add(null, { kind: "edit", name: "改标题", execute });
+
+    queue.start();
+    await flushPromises();
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(upload).not.toHaveBeenCalled();
+    expect(item.status).toBe(UPLOAD_STATUS.SUCCESS);
+  });
+
+  it("编辑任务没有文件体积时，总进度按完成比例算", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    const execute = vi.fn().mockResolvedValue({ data: {} });
+    queue.add(null, { kind: "edit", execute });
+    queue.add(null, { kind: "edit", execute });
+
+    expect(queue.overallProgress.value).toBe(0);
+    queue.start();
+    await flushPromises();
+    expect(queue.overallProgress.value).toBe(100);
+  });
+});

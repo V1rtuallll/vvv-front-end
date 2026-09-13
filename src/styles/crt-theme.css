@@ -145,6 +145,17 @@
   box-shadow: 0 0 40px rgba(0, 255, 255, 0.9);
 }
 
+/* 与 .crt-btn 同尺寸，只换颜色：同一排按钮大小不一致会显得很随意 */
+.crt-btn.danger {
+  color: #ff69b4;
+  border-color: #ff69b4;
+  box-shadow: 0 0 25px rgba(255, 105, 180, 0.6);
+}
+
+.crt-btn.danger:hover {
+  box-shadow: 0 0 40px rgba(255, 105, 180, 0.9);
+}
+
 .crt-mini-btn {
   box-sizing: border-box;
   min-height: 36px;

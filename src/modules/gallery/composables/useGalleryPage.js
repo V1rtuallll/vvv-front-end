@@ -3,9 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { getPublicUser } from "@/modules/user/api/userApi";
 import { isOwner } from "@/shared/auth/owner";
-import { useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
+import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 import { formatBytes } from "@/utils/bytes";
 import {
+  cancelUpload,
   deleteComment,
   deleteGallery,
   getGalleryComments,
@@ -15,6 +16,7 @@ import {
   likeGallery,
   likeGalleryComment,
   postGalleryComment,
+  replaceGalleryFile,
   updateGallery,
   uploadGalleryFile,
 } from "@/modules/gallery/api/galleryApi";
@@ -45,7 +47,8 @@ export function useGalleryPage() {
   const initialDescHeight = ref(0);
   const resizeTarget = ref(null);
   const editingItem = ref(null);
-  const savingEdit = ref(false);
+  /** 编辑弹窗里选好的新文件；为空表示只改元数据 */
+  const replacementFile = ref(null);
   // 待删除目标：{ type: "gallery" | "comment", id, label }
   const deleteTarget = ref(null);
   const deleting = ref(false);
@@ -157,7 +160,21 @@ export function useGalleryPage() {
   // 追加而不是替换：队列模型下用户可以分几次挑文件
   const handleFiles = (event) => {
     Array.from(event.target.files).forEach((file) => {
-      uploadQueue.add(file, { preview: URL.createObjectURL(file) });
+      uploadQueue.add(file, {
+        kind: TASK_KIND.UPLOAD,
+        preview: URL.createObjectURL(file),
+        // 中途取消：把服务端已经产生的行与 OSS 对象一起清掉
+        onCancel: async (item) => {
+          // 没发过请求就什么都没产生，不用白跑一趟
+          if (!item.started) return;
+          try {
+            await cancelUpload(item.clientUploadId);
+            loadGallery();
+          } catch {
+            // 提示由 request.js 负责
+          }
+        },
+      });
     });
     event.target.value = "";
   };
@@ -166,12 +183,37 @@ export function useGalleryPage() {
     uploadQueue.start();
   };
 
-  // 列表以服务端结果为准：全部跑完后重新拉一次，不用本地的成功推断
+  const cancelTask = (item) => uploadQueue.cancel(item);
+
+  /** 给某个资源换文件：走同一个队列，进度与取消都在顶部面板里 */
+  const replaceResourceFile = (item, file) => {
+    if (!item?.id || !file) return;
+    uploadQueue.add(file, {
+      kind: TASK_KIND.REPLACE,
+      targetId: item.id,
+      name: file.name,
+      preview: URL.createObjectURL(file),
+      execute: (_task, { onProgress, signal }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return replaceGalleryFile(item.id, formData, onProgress, signal);
+      },
+    });
+    uploadQueue.start();
+  };
+
+  // 列表以服务端结果为准：上传跑完后重新拉一次，不用本地的成功推断。
+  // 编辑与换文件不走这条路 —— 它们已经在本地把那一行更新过了，再拉整页是白跑。
   watch(
-    () => uploadQueue.hasUnfinished.value,
-    (unfinished) => {
-      if (!unfinished && uploadQueue.successCount.value > 0) loadGallery();
+    () => uploadQueue.items.value.length,
+    () => {
+      if (uploadQueue.hasUnfinished.value) return;
+      const addedResource = uploadQueue.items.value.some(
+        (item) => item.kind === TASK_KIND.UPLOAD && item.status === UPLOAD_STATUS.SUCCESS,
+      );
+      if (addedResource) loadGallery();
     },
+    { deep: true },
   );
 
   const toggleLike = async (item) => {
@@ -214,11 +256,18 @@ export function useGalleryPage() {
   };
 
   const openEditModal = (item) => {
+    replacementFile.value = null;
     editingItem.value = item;
   };
 
   const closeEditModal = () => {
     editingItem.value = null;
+    replacementFile.value = null;
+  };
+
+  /** 编辑弹窗里选好了用来替换当前资源的新文件 */
+  const setReplacementFile = (file) => {
+    replacementFile.value = file;
   };
 
   // 局部更新列表与详情中对应的那条，不重新拉取整页
@@ -230,10 +279,16 @@ export function useGalleryPage() {
     apply(galleryList.value.find((item) => isSameId(item.id, id)));
   };
 
-  const submitEdit = async (payload) => {
+  /**
+   * 保存编辑。做成队列任务而不是立刻发请求：
+   * 顶部队列面板会显示它，中途取消还能把已经改上去的值改回来。
+   * 如果同时选了新文件，换文件与改元数据合成一个任务，一次点在一条进度里跑完。
+   */
+  const submitEdit = (payload) => {
     const target = editingItem.value;
     if (!target) return;
-    if (Object.keys(payload).length === 0) {
+    const file = replacementFile.value;
+    if (Object.keys(payload).length === 0 && !file) {
       window.$vmessage.info("未修改任何内容");
       closeEditModal();
       return;
@@ -241,17 +296,44 @@ export function useGalleryPage() {
     if (payload.title !== undefined && !payload.title.trim()) {
       return window.$vmessage.warning("标题不能为空");
     }
-    savingEdit.value = true;
-    try {
-      await updateGallery(target.id, payload);
-      applyEditedFields(target.id, payload);
-      window.$vmessage.success("修改成功");
-      closeEditModal();
-    } catch {
-      // 提示由 request.js 负责，失败时不改动已展示的数据
-    } finally {
-      savingEdit.value = false;
-    }
+
+    // 取消要能回滚：记下这几个字段改之前的值
+    const before = {};
+    Object.keys(payload).forEach((key) => {
+      before[key] = target[key] ?? null;
+    });
+    const targetId = target.id;
+    const targetName = payload.title ?? target.title;
+    closeEditModal();
+
+    uploadQueue.add(file, {
+      kind: file ? TASK_KIND.REPLACE : TASK_KIND.EDIT,
+      targetId,
+      name: targetName,
+      preview: file ? URL.createObjectURL(file) : null,
+      execute: async (_task, { onProgress, signal }) => {
+        let res = null;
+        if (file) {
+          const formData = new FormData();
+          formData.append("file", file);
+          res = await replaceGalleryFile(targetId, formData, onProgress, signal);
+        }
+        if (Object.keys(payload).length > 0) await updateGallery(targetId, payload);
+        applyEditedFields(targetId, payload);
+        return res;
+      },
+      onCancel: async (task) => {
+        // 没发过请求，或者压根没改元数据，就没有要回滚的东西
+        if (!task.started || Object.keys(before).length === 0) return;
+        try {
+          await updateGallery(targetId, before);
+          applyEditedFields(targetId, before);
+        } catch {
+          // 提示由 request.js 负责
+        }
+      },
+    });
+    uploadQueue.start();
   };
 
   const requestDeleteItem = (item) => {
@@ -376,17 +458,20 @@ export function useGalleryPage() {
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
     closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, handleFiles, uploadAll, toggleLike, openDetailModal,
     postComment, displayGender, startResize, formatDate, formatShortDate,
-    isAdmin, canManageItem, canManageComment, editingItem, savingEdit, openEditModal, closeEditModal,
-    submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment, cancelDelete, confirmDelete,
+    isAdmin, canManageItem, canManageComment, editingItem, replacementFile, openEditModal, closeEditModal,
+    setReplacementFile, submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
+    cancelDelete, confirmDelete, replaceResourceFile,
     uploadItems: uploadQueue.items,
     uploadOverallProgress: uploadQueue.overallProgress,
     uploadSuccessCount: uploadQueue.successCount,
     uploadFailedCount: uploadQueue.failedCount,
     uploadHasUnfinished: uploadQueue.hasUnfinished,
+    uploadBusy: uploadQueue.isBusy,
     uploadLimitText,
     retryUpload: uploadQueue.retry,
     retryAllFailedUploads: uploadQueue.retryAllFailed,
-    cancelUpload: uploadQueue.cancel,
+    cancelTask,
+    clearTasks: clearUploadQueue,
     removeUpload: uploadQueue.remove,
   };
 }

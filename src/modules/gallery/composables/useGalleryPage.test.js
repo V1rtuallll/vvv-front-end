@@ -5,6 +5,7 @@ vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
 vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
+  cancelUpload: vi.fn(),
   getGalleryComments: vi.fn(),
   getGalleryPage: vi.fn(),
   getUploadLimit: vi.fn(),
@@ -12,6 +13,7 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
   likeGallery: vi.fn(),
   likeGalleryComment: vi.fn(),
   postGalleryComment: vi.fn(),
+  replaceGalleryFile: vi.fn(),
   uploadGalleryFile: vi.fn(),
   updateGallery: vi.fn(),
   deleteGallery: vi.fn(),
@@ -21,11 +23,13 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
 import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
 import {
+  cancelUpload,
   deleteComment,
   deleteGallery,
   getGalleryComments,
   getGalleryPage,
   getUploadLimit,
+  replaceGalleryFile,
   uploadGalleryFile,
   updateGallery,
 } from "@/modules/gallery/api/galleryApi";
@@ -96,7 +100,8 @@ describe("useGalleryPage 的编辑与删除", () => {
     getGalleryPage.mockClear();
 
     api.openEditModal(api.galleryList.value[0]);
-    await api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题" });
+    await flushPromises();
 
     expect(updateGallery).toHaveBeenCalledWith(100, { title: "新标题" });
     expect(api.galleryList.value[0].title).toBe("新标题");
@@ -105,14 +110,18 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(api.editingItem.value).toBeNull();
   });
 
-  it("编辑成功后弹一次成功提示（错误提示归 request.js 管）", async () => {
+  it("编辑会作为任务出现在队列里，而不是悄悄发一个请求", async () => {
     updateGallery.mockResolvedValue({ data: {} });
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    await api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题" });
 
-    expect(window.$vmessage.success).toHaveBeenCalledTimes(1);
+    expect(api.uploadItems.value).toHaveLength(1);
+    expect(api.uploadItems.value[0].kind).toBe("edit");
+
+    await flushPromises();
+    expect(api.uploadItems.value[0].status).toBe("success");
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 
@@ -121,20 +130,75 @@ describe("useGalleryPage 的编辑与删除", () => {
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    await api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题" });
+    await flushPromises();
 
     expect(api.galleryList.value[0].title).toBe("旧标题");
+    expect(api.uploadItems.value[0].status).toBe("failed");
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 
-  it("标题清空属于本地校验，直接拦下不发请求", async () => {
+  /** 取消编辑要把已经改上去的值改回来，否则用户以为取消了、数据却变了 */
+  it("编辑中途取消会回滚成原来的值", async () => {
+    let releaseFirst;
+    updateGallery
+      .mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = resolve; }))
+      .mockResolvedValue({ data: {} });
+    const api = await mountGallery();
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({ title: "新标题" });
+    await flushPromises();
+
+    const cancelling = api.cancelTask(api.uploadItems.value[0]);
+    releaseFirst({ data: {} });
+    await cancelling;
+    await flushPromises();
+
+    expect(updateGallery).toHaveBeenLastCalledWith(100, { title: "旧标题" });
+  });
+
+  it("标题清空属于本地校验，直接拦下不入队", async () => {
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    await api.submitEdit({ title: "  " });
+    api.submitEdit({ title: "  " });
 
     expect(updateGallery).not.toHaveBeenCalled();
+    expect(api.uploadItems.value).toHaveLength(0);
     expect(window.$vmessage.warning).toHaveBeenCalled();
+  });
+
+  it("选了新文件时换文件与改元数据合成一个任务", async () => {
+    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
+    updateGallery.mockResolvedValue({ data: {} });
+    const api = await mountGallery();
+    const file = new File(["x"], "new.png", { type: "image/png" });
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.setReplacementFile(file);
+    api.submitEdit({ title: "新标题" });
+    await flushPromises();
+
+    expect(api.uploadItems.value).toHaveLength(1);
+    expect(api.uploadItems.value[0].kind).toBe("replace");
+    expect(replaceGalleryFile).toHaveBeenCalledWith(
+      100, expect.any(FormData), expect.any(Function), expect.any(AbortSignal),
+    );
+    expect(updateGallery).toHaveBeenCalledWith(100, { title: "新标题" });
+  });
+
+  it("只选文件不改字段也能保存", async () => {
+    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
+    const api = await mountGallery();
+    const file = new File(["x"], "new.png", { type: "image/png" });
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.setReplacementFile(file);
+    api.submitEdit({});
+    await flushPromises();
+
+    expect(replaceGalleryFile).toHaveBeenCalled();
+    expect(api.uploadItems.value[0].status).toBe("success");
   });
 
   it("删除成功后从列表移除，并在当前页被删空时回退补数据", async () => {

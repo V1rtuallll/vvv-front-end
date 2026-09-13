@@ -10,14 +10,9 @@
           :syncing="syncing"
           :uploading="uploading"
           :upload-items="uploadItems"
-          :upload-overall-progress="uploadOverallProgress"
-          :upload-success-count="uploadSuccessCount"
-          :upload-failed-count="uploadFailedCount"
           @sync="syncOssToDb"
           @select-files="selectUploadFiles"
           @upload="startUploads"
-          @retry="retryUpload"
-          @retry-all="retryAllFailedUploads"
           @clear-results="clearUploadResults"
         />
 
@@ -48,6 +43,17 @@
         <ResourceEditorDialog :item="editingItem" @save="saveEdit" @cancel="editingItem = null" />
       </main>
     </div>
+    <!-- 上传进度固定在视口顶部：长列表滚动时也看得见 -->
+    <UploadQueuePanel
+      :items="uploadItems"
+      :overall-progress="uploadOverallProgress"
+      :success-count="uploadSuccessCount"
+      :failed-count="uploadFailedCount"
+      :busy="uploadBusy"
+      @cancel="cancelTask"
+      @retry="retryUpload"
+      @clear="clearUploadResults"
+    />
   </div>
 </template>
 
@@ -56,17 +62,19 @@ import AdminQuickActions from "./components/AdminQuickActions.vue";
 import HomeConfigForm from "./components/HomeConfigForm.vue";
 import ResourceBrowser from "./components/ResourceBrowser.vue";
 import ResourceEditorDialog from "./components/ResourceEditorDialog.vue";
+import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 import { useAdminPage } from "@/modules/admin/composables/useAdminPage";
 
 const {
   syncing,
   uploading,
   uploadItems,
+  uploadBusy,
   uploadOverallProgress,
   uploadSuccessCount,
   uploadFailedCount,
   retryUpload,
-  retryAllFailedUploads,
+  cancelTask,
   homeConfig,
   availableFiles,
   saveHomeConfig,

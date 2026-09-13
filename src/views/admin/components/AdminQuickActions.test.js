@@ -48,7 +48,8 @@ describe("AdminQuickActions 的上传确认", () => {
     const wrapper = mountActions({ uploading: true, uploadItems: [queued("a.png")] });
 
     expect(wrapper.find(".start-upload-btn").exists()).toBe(false);
-    expect(wrapper.text()).toContain("总进度");
+    // 进度交给页面顶部的队列面板，这里不再重复一份
+    expect(wrapper.text()).toContain("进度见页面顶部");
   });
 
   it("上传中禁用文件选择，避免中途换批次", () => {
@@ -57,12 +58,9 @@ describe("AdminQuickActions 的上传确认", () => {
     expect(wrapper.find("input[type=file]").attributes("disabled")).toBeDefined();
   });
 
-  it("失败项可以单独重试", async () => {
+  it("不再自己渲染上传结果列表，交给顶部面板统一显示", () => {
     const failed = { key: 1, name: "a.png", status: "failed", error: "上传失败", progress: 0 };
-    const wrapper = mountActions({ uploadItems: [failed] });
 
-    await wrapper.find(".upload-results .crt-mini-btn").trigger("click");
-
-    expect(wrapper.emitted("retry")).toEqual([[failed]]);
+    expect(mountActions({ uploadItems: [failed] }).find(".upload-results").exists()).toBe(false);
   });
 });

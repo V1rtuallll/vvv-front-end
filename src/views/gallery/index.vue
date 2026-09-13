@@ -54,17 +54,11 @@
       :visible="showUploadModal"
       :items="uploadItems"
       :limit-text="uploadLimitText"
-      :overall-progress="uploadOverallProgress"
-      :success-count="uploadSuccessCount"
-      :failed-count="uploadFailedCount"
-      :has-unfinished="uploadHasUnfinished"
+      :busy="uploadBusy"
       :can-upload="uploadItems.length > 0"
       @close="closeUploadModal"
       @select-files="handleFiles"
       @upload="uploadAll"
-      @retry="retryUpload"
-      @retry-all="retryAllFailedUploads"
-      @cancel="cancelUpload"
       @remove="removeUpload"
     />
     <GalleryDetailDialog
@@ -86,6 +80,17 @@
       @delete="requestDeleteItem"
       @delete-comment="requestDeleteComment"
     />
+    <!-- 上传 / 编辑 / 换文件都排到这里，固定在视口顶部，滚动到哪儿都看得见进度 -->
+    <UploadQueuePanel
+      :items="uploadItems"
+      :overall-progress="uploadOverallProgress"
+      :success-count="uploadSuccessCount"
+      :failed-count="uploadFailedCount"
+      :busy="uploadBusy"
+      @cancel="cancelTask"
+      @retry="retryUpload"
+      @clear="clearTasks"
+    />
     <GalleryUserProfileDialog
       :visible="showUserProfile"
       :user="selectedUser"
@@ -96,9 +101,10 @@
     <GalleryEditDialog
       :visible="!!editingItem"
       :item="editingItem"
-      :saving="savingEdit"
+      :replacement-file="replacementFile"
       @close="closeEditModal"
       @submit="submitEdit"
+      @select-replacement="setReplacementFile"
     />
     <GalleryConfirmDialog
       :visible="!!deleteTarget"
@@ -117,6 +123,7 @@ import GalleryDetailDialog from "./components/GalleryDetailDialog.vue";
 import GalleryEditDialog from "./components/GalleryEditDialog.vue";
 import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
+import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const {
@@ -132,10 +139,10 @@ const {
   uploadOverallProgress,
   uploadSuccessCount,
   uploadFailedCount,
-  uploadHasUnfinished,
+  uploadBusy,
   retryUpload,
-  retryAllFailedUploads,
-  cancelUpload,
+  cancelTask,
+  clearTasks,
   removeUpload,
   currentItem,
   comments,
@@ -161,10 +168,12 @@ const {
   canManageItem,
   canManageComment,
   editingItem,
-  savingEdit,
+  replacementFile,
+  setReplacementFile,
   openEditModal,
   closeEditModal,
   submitEdit,
+  replaceResourceFile,
   deleteTarget,
   deleting,
   requestDeleteItem,

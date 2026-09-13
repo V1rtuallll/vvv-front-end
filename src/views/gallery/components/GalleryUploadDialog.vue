@@ -17,22 +17,14 @@
         <p v-if="limitText" class="limit-tip">{{ limitText }}</p>
       </div>
 
-      <div v-if="items.length > 0" class="overall">
-        <div class="progress-track">
-          <div class="progress-fill overall-fill" :style="{ width: overallProgress + '%' }"></div>
-        </div>
-        <span class="overall-text">
-          总进度 {{ overallProgress }}%
-          <template v-if="successCount || failedCount">
-            （成功 {{ successCount }}<template v-if="failedCount">，失败 {{ failedCount }}</template>）
-          </template>
-        </span>
-      </div>
+      <p v-if="items.length > 0" class="stage-tip">
+        已选 {{ items.length }} 个文件，确认后才会开始上传。上传进度显示在页面顶部。
+      </p>
 
       <div v-if="items.length > 0" class="preview-list">
         <div v-for="item in items" :key="item.key" class="preview-item" :class="'status-' + item.status">
           <div class="thumb-wrapper">
-            <img v-if="item.preview && isImage(item)" :src="item.preview" class="thumb" />
+            <img v-if="item.preview && isImage(item)" :src="item.preview" class="thumb" alt="" />
             <video v-else-if="item.preview && isVideo(item)" :src="item.preview" class="thumb"></video>
             <audio v-else-if="item.preview && isAudio(item)" :src="item.preview" controls class="thumb"></audio>
             <div v-else class="thumb-placeholder">{{ item.name }}</div>
@@ -51,31 +43,21 @@
             class="desc-input"
           ></textarea>
 
-          <div class="progress-track">
-            <div class="progress-fill" :class="'fill-' + item.status" :style="{ width: item.progress + '%' }"></div>
-          </div>
           <div class="item-status">
             <span class="status-text">{{ statusText(item) }}</span>
-            <button v-if="item.status === 'uploading'" class="item-btn" @click="$emit('cancel', item)">取消</button>
-            <button
-              v-else-if="item.status === 'failed' || item.status === 'cancelled'"
-              class="item-btn"
-              @click="$emit('retry', item)"
-            >
-              重试
+            <button v-if="item.status === 'success'" class="item-btn" @click="$emit('remove', item)">
+              移除
             </button>
-            <button v-else-if="item.status === 'success'" class="item-btn" @click="$emit('remove', item)">移除</button>
           </div>
           <p v-if="item.error" class="error-text">{{ item.error }}</p>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button @click="$emit('upload')" :disabled="!canUpload" class="crt-btn">
-          {{ hasUnfinished ? "上传中..." : "确认上传" }}
+        <button @click="$emit('upload')" :disabled="!canUpload || busy" class="crt-btn">
+          {{ busy ? "上传中，见顶部进度" : `确认上传（${items.length}）` }}
         </button>
-        <button v-if="failedCount > 1" @click="$emit('retry-all')" class="crt-mini-btn">重试全部失败项</button>
-        <button @click="$emit('close')" class="crt-mini-btn danger">关闭</button>
+        <button @click="$emit('close')" class="crt-btn danger">关闭</button>
       </div>
     </div>
   </div>
@@ -84,20 +66,18 @@
 <script setup>
 const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
 
-defineProps({
+const props = defineProps({
   visible: Boolean,
-  /** useUploadQueue 的 items：每个文件的状态、进度与错误 */
+  /** useUploadQueue 的 items：待上传的文件清单 */
   items: { type: Array, default: () => [] },
   /** 来自后端配置的大小上限提示 */
   limitText: { type: String, default: "" },
-  overallProgress: { type: Number, default: 0 },
-  successCount: { type: Number, default: 0 },
-  failedCount: { type: Number, default: 0 },
-  hasUnfinished: Boolean,
+  /** 队列是否真的在跑：在跑时不允许重复点确认 */
+  busy: Boolean,
   canUpload: Boolean,
 });
 
-defineEmits(["close", "select-files", "upload", "retry", "retry-all", "cancel", "remove"]);
+defineEmits(["close", "select-files", "upload", "remove"]);
 
 const typeOf = (item) => item.file?.type || "";
 
@@ -120,7 +100,6 @@ const statusText = (item) => {
     // 服务端告诉我们是这次传的，还是之前已经传过的那一份
     return item.resource?.status === "duplicate" ? "已存在，未重复上传" : "已完成";
   }
-  if (item.status === "uploading") return `上传中 ${item.progress}%`;
   return STATUS_TEXT[item.status] || item.status;
 };
 </script>
@@ -134,12 +113,10 @@ const statusText = (item) => {
 /* 触摸目标不小于 44px */
 .select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 6px; }
 .limit-tip { margin-top: 10px; color: #ffaae6; font-size: 0.9rem; }
-
-.overall { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; }
-.overall-text { color: #ffaae6; font-size: 0.9rem; }
+.stage-tip { margin: 20px 0 0; color: #ffaae6; font-size: 0.92rem; }
 
 /* minmax 用 min(100%, 300px)，保证容器再窄也不会撑出横向滚动 */
-.preview-list { max-height: 60vh; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 25px; margin: 30px 0; padding: 10px; overflow-y: auto; }
+.preview-list { max-height: 60vh; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 25px; margin: 24px 0; padding: 10px; overflow-y: auto; }
 .preview-item { display: flex; flex-direction: column; gap: 12px; padding: 15px; background: rgba(0, 0, 0, 0.5); border-radius: 15px; box-shadow: 0 0 15px rgba(255, 105, 180, 0.3); }
 .preview-item.status-success { border: 1px solid #00ffff; }
 .preview-item.status-failed { border: 1px solid #ff69b4; }
@@ -151,20 +128,14 @@ const statusText = (item) => {
 .desc-input { min-height: 80px; resize: vertical; }
 .title-input:disabled, .desc-input:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.progress-track { width: 100%; height: 8px; overflow: hidden; background: rgba(0, 255, 255, 0.15); border-radius: 4px; }
-.progress-fill { height: 100%; width: 0; background: #00ffff; transition: width 0.2s ease; }
-.fill-success { background: #00ffff; }
-.fill-failed { background: #ff69b4; }
-.fill-cancelled { background: #888; }
-.overall-fill { background: #ff69b4; }
-
 .item-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .status-text { color: #cceeff; font-size: 0.9rem; }
 .item-btn { min-height: 32px; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.15); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
 .error-text { color: #ff69b4; font-size: 0.88rem; line-height: 1.5; word-break: break-word; }
 
 .modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-.modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; }
+/* 两个按钮尺寸完全一致，只靠颜色区分主次 */
+.modal-actions > * { flex: 0 0 auto; min-width: 180px; margin: 0; }
 
 /* ==== 窄屏适配 ====
    <=768px：弹窗改为底部面板，占满宽度、贴着屏幕下沿；
@@ -184,6 +155,6 @@ const statusText = (item) => {
   .thumb-wrapper { height: 140px; }
   .preview-item { padding: 12px; }
   .modal-actions { flex-direction: column; }
-  .modal-actions button { width: 100%; }
+  .modal-actions > * { width: 100%; min-width: 0; }
 }
 </style>
