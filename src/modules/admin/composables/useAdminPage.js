@@ -80,13 +80,18 @@ export function useAdminPage() {
     }
   };
 
-  const handleFileUpload = (event) => {
+  /** 只把文件排进队列，不立刻上传 —— 等用户确认后再开始 */
+  const selectUploadFiles = (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
     uploadQueue.reset();
     files.forEach((file) => uploadQueue.add(file));
-    uploadQueue.start();
     event.target.value = "";
+  };
+
+  /** 用户点了「开始上传」才真正发起请求 */
+  const startUploads = () => {
+    uploadQueue.start();
   };
 
   const clearUploadResults = () => { uploadQueue.reset(); };
@@ -147,7 +152,7 @@ export function useAdminPage() {
 
   return {
     syncing, homeConfig, availableFiles,
-    saveHomeConfig, setAsMain, syncOssToDb, handleFileUpload, clearUploadResults, backToProfile,
+    saveHomeConfig, setAsMain, syncOssToDb, selectUploadFiles, startUploads, clearUploadResults, backToProfile,
     uploadItems: uploadQueue.items,
     uploading: uploadQueue.hasUnfinished,
     uploadOverallProgress: uploadQueue.overallProgress,

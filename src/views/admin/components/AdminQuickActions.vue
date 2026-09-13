@@ -15,12 +15,24 @@
             accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg"
             class="hidden-file-input"
             :disabled="uploading"
-            @change="$emit('upload', $event)"
+            @change="$emit('select-files', $event)"
           />
           <span class="crt-mini-btn upload-btn" :class="{ disabled: uploading }">
-            {{ uploading ? "上传中..." : "选择文件（可多选）" }}
+            选择文件（可多选）
           </span>
         </label>
+
+        <!-- 选完只是排队，确认之后才开始上传 -->
+        <p v-if="pendingCount > 0 && !uploading" class="upload-status">
+          已选 {{ pendingCount }} 个文件，确认后才会开始上传。
+        </p>
+        <button
+          v-if="pendingCount > 0 && !uploading"
+          class="crt-btn start-upload-btn"
+          @click="$emit('upload')"
+        >
+          开始上传（{{ pendingCount }} 个）
+        </button>
 
         <p v-if="uploading" class="upload-status">
           正在上传，总进度 {{ uploadOverallProgress }}%
@@ -69,7 +81,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
   syncing: Boolean,
   /** 还有文件在上传 */
   uploading: Boolean,
@@ -80,7 +94,12 @@ defineProps({
   uploadFailedCount: { type: Number, default: 0 },
 });
 
-defineEmits(["sync", "upload", "retry", "retry-all", "clear-results"]);
+defineEmits(["sync", "select-files", "upload", "retry", "retry-all", "clear-results"]);
+
+/** 已选但还没开始上传的文件数：有值时才显示「开始上传」 */
+const pendingCount = computed(
+  () => props.uploadItems.filter((item) => item.status === "queued").length,
+);
 </script>
 
 <style scoped>

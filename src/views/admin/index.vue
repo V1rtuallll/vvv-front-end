@@ -14,7 +14,8 @@
           :upload-success-count="uploadSuccessCount"
           :upload-failed-count="uploadFailedCount"
           @sync="syncOssToDb"
-          @upload="handleFileUpload"
+          @select-files="selectUploadFiles"
+          @upload="startUploads"
           @retry="retryUpload"
           @retry-all="retryAllFailedUploads"
           @clear-results="clearUploadResults"
@@ -71,7 +72,8 @@ const {
   saveHomeConfig,
   setAsMain,
   syncOssToDb,
-  handleFileUpload,
+  selectUploadFiles,
+  startUploads,
   clearUploadResults,
   backToProfile,
   resourceFilter,
