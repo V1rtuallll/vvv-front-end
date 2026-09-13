@@ -1,19 +1,22 @@
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { useAuthStore } from "@/stores/auth";
 import { getPublicUser } from "@/modules/user/api/userApi";
 import { isOwner } from "@/shared/auth/owner";
+import { useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
+import { formatBytes } from "@/utils/bytes";
 import {
   deleteComment,
   deleteGallery,
   getGalleryComments,
   getGalleryPage,
+  getUploadLimit,
   isGalleryLiked,
   likeGallery,
   likeGalleryComment,
   postGalleryComment,
   updateGallery,
-  uploadGalleryMedia,
+  uploadGalleryFile,
 } from "@/modules/gallery/api/galleryApi";
 
 // 后端 ID 是 Long，序列化后可能是数字或字符串，统一转成字符串比较
@@ -29,8 +32,9 @@ export function useGalleryPage() {
   const totalPages = computed(() => Math.ceil(total.value / limit.value));
   const galleryList = ref([]);
   const showUploadModal = ref(false);
-  const pendingFiles = ref([]);
-  const uploading = ref(false);
+  // 每个文件一个请求、最多 3 个并发；单文件进度与状态都由队列维护
+  const uploadQueue = useUploadQueue(uploadGalleryFile, { maxConcurrent: 3 });
+  const uploadLimitText = ref("");
   const currentItem = ref(null);
   const comments = ref([]);
   const newComment = ref("");
@@ -119,54 +123,56 @@ export function useGalleryPage() {
     loadGallery();
   };
 
-  const resetPendingFiles = () => {
-    pendingFiles.value.forEach((item) => URL.revokeObjectURL(item.preview));
-    pendingFiles.value = [];
+  const clearUploadQueue = () => {
+    uploadQueue.items.value.forEach((item) => {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    });
+    uploadQueue.reset();
+  };
+
+  // 大小上限来自后端配置，前端不另写固定值
+  const loadUploadLimit = async () => {
+    try {
+      const res = await getUploadLimit();
+      uploadLimitText.value = res.data?.maxFileSizeBytes
+        ? `单个文件最大 ${formatBytes(res.data.maxFileSizeBytes)}`
+        : "";
+    } catch {
+      // 提示由 request.js 负责
+    }
   };
 
   const openUploadModal = () => {
-    resetPendingFiles();
+    clearUploadQueue();
     showUploadModal.value = true;
+    if (!uploadLimitText.value) loadUploadLimit();
   };
 
   const closeUploadModal = () => {
-    resetPendingFiles();
+    if (uploadQueue.hasUnfinished.value && !window.confirm("还有文件在上传，确定关闭吗？")) return;
+    clearUploadQueue();
     showUploadModal.value = false;
   };
 
+  // 追加而不是替换：队列模型下用户可以分几次挑文件
   const handleFiles = (event) => {
-    const files = Array.from(event.target.files);
-    resetPendingFiles();
-    pendingFiles.value = files.map((file, index) => ({
-      file,
-      name: file.name,
-      type: file.type,
-      preview: URL.createObjectURL(file),
-      title: file.name.split(".").slice(0, -1).join(".") + (files.length > 1 ? ` (${index + 1})` : ""),
-      description: "",
-    }));
+    Array.from(event.target.files).forEach((file) => {
+      uploadQueue.add(file, { preview: URL.createObjectURL(file) });
+    });
+    event.target.value = "";
   };
 
-  const uploadAll = async () => {
-    if (pendingFiles.value.length === 0) return;
-    uploading.value = true;
-    const formData = new FormData();
-    pendingFiles.value.forEach((item) => {
-      formData.append("files", item.file);
-      formData.append("titles", item.title);
-      formData.append("descriptions", item.description);
-    });
-    try {
-      await uploadGalleryMedia(formData);
-      window.$vmessage.success("上传成功");
-      closeUploadModal();
-      loadGallery();
-    } catch {
-      // 提示由 request.js 负责
-    } finally {
-      uploading.value = false;
-    }
+  const uploadAll = () => {
+    uploadQueue.start();
   };
+
+  // 列表以服务端结果为准：全部跑完后重新拉一次，不用本地的成功推断
+  watch(
+    () => uploadQueue.hasUnfinished.value,
+    (unfinished) => {
+      if (!unfinished && uploadQueue.successCount.value > 0) loadGallery();
+    },
+  );
 
   const toggleLike = async (item) => {
     if (item.isLiked) return window.$vmessage.info("不能重复点赞");
@@ -363,14 +369,24 @@ export function useGalleryPage() {
   onMounted(loadGallery);
   onBeforeUnmount(() => {
     stopResize();
-    resetPendingFiles();
+    clearUploadQueue();
   });
   return {
-    authStore, page, limit, total, totalPages, galleryList, showUploadModal, pendingFiles, uploading,
+    authStore, page, limit, total, totalPages, galleryList, showUploadModal,
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
     closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, handleFiles, uploadAll, toggleLike, openDetailModal,
     postComment, displayGender, startResize, formatDate, formatShortDate,
     isAdmin, canManageItem, canManageComment, editingItem, savingEdit, openEditModal, closeEditModal,
     submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment, cancelDelete, confirmDelete,
+    uploadItems: uploadQueue.items,
+    uploadOverallProgress: uploadQueue.overallProgress,
+    uploadSuccessCount: uploadQueue.successCount,
+    uploadFailedCount: uploadQueue.failedCount,
+    uploadHasUnfinished: uploadQueue.hasUnfinished,
+    uploadLimitText,
+    retryUpload: uploadQueue.retry,
+    retryAllFailedUploads: uploadQueue.retryAllFailed,
+    cancelUpload: uploadQueue.cancel,
+    removeUpload: uploadQueue.remove,
   };
 }

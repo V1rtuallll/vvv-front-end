@@ -23,22 +23,45 @@
         </label>
 
         <p v-if="uploading" class="upload-status">
-          正在处理 {{ uploadTotal }} 个文件，已完成 {{ uploadCompleted }} / {{ uploadTotal }}...
+          正在上传，总进度 {{ uploadOverallProgress }}%
         </p>
 
-        <div v-if="uploadedFiles.length > 0" class="upload-results">
-          <h4>本次上传结果</h4>
+        <div v-if="uploadItems.length > 0" class="upload-results">
+          <h4>
+            本次上传结果
+            <template v-if="uploadFailedCount">
+              （成功 {{ uploadSuccessCount }}，失败 {{ uploadFailedCount }}）
+            </template>
+          </h4>
           <ul>
-            <li v-for="(item, index) in uploadedFiles" :key="index">
+            <li v-for="item in uploadItems" :key="item.key">
               <span class="status-icon" :class="item.status">
-                {{ item.status === "success" ? "✓" : item.status === "error" ? "✗" : "→" }}
+                {{ item.status === "success" ? "✓" : item.status === "failed" ? "✗" : "→" }}
               </span>
-              <span class="file-name">{{ item.fileName }}</span>
-              <a v-if="item.url" :href="item.url" target="_blank">{{ item.url }}</a>
+              <span class="file-name">{{ item.name }}</span>
+              <div class="file-progress">
+                <div class="progress-track">
+                  <div class="progress-fill" :class="'fill-' + item.status" :style="{ width: item.progress + '%' }"></div>
+                </div>
+                <span class="progress-text">
+                  {{ item.status === "success" ? "已完成" : item.status === "uploading" ? item.progress + "%" : "" }}
+                </span>
+              </div>
+              <a v-if="item.resource?.url" :href="item.resource.url" target="_blank">{{ item.resource.url }}</a>
               <span v-else-if="item.error" class="error-msg">{{ item.error }}</span>
+              <button
+                v-if="item.status === 'failed' || item.status === 'cancelled'"
+                class="crt-mini-btn"
+                @click="$emit('retry', item)"
+              >
+                重试
+              </button>
             </li>
           </ul>
-          <button @click="$emit('clear-results')" class="crt-mini-btn">清空结果</button>
+          <div class="result-actions">
+            <button v-if="uploadFailedCount > 1" @click="$emit('retry-all')" class="crt-mini-btn">重试全部失败项</button>
+            <button @click="$emit('clear-results')" class="crt-mini-btn">清空结果</button>
+          </div>
         </div>
       </div>
     </div>
@@ -48,13 +71,16 @@
 <script setup>
 defineProps({
   syncing: Boolean,
+  /** 还有文件在上传 */
   uploading: Boolean,
-  uploadTotal: Number,
-  uploadCompleted: Number,
-  uploadedFiles: { type: Array, default: () => [] },
+  /** useUploadQueue 的 items：每个文件的状态与进度 */
+  uploadItems: { type: Array, default: () => [] },
+  uploadOverallProgress: { type: Number, default: 0 },
+  uploadSuccessCount: { type: Number, default: 0 },
+  uploadFailedCount: { type: Number, default: 0 },
 });
 
-defineEmits(["sync", "upload", "clear-results"]);
+defineEmits(["sync", "upload", "retry", "retry-all", "clear-results"]);
 </script>
 
 <style scoped>
@@ -70,6 +96,16 @@ defineEmits(["sync", "upload", "clear-results"]);
   background: rgba(20, 0, 30, 0.65);
   border-color: #ff00ff55;
 }
+
+/* 逐文件上传进度 */
+.file-progress { display: inline-flex; align-items: center; gap: 8px; min-width: 140px; }
+.progress-track { flex: 1; height: 6px; overflow: hidden; background: rgba(0, 255, 255, 0.15); border-radius: 3px; }
+.progress-fill { height: 100%; width: 0; background: #00ffff; transition: width 0.2s ease; }
+.fill-success { background: #00ffff; }
+.fill-failed { background: #ff69b4; }
+.fill-cancelled { background: #888; }
+.progress-text { color: #cceeff; font-size: 0.85rem; }
+.result-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ==== 窄屏适配 ====
    窄屏收紧内边距，按钮铺满宽度并保证触摸尺寸；

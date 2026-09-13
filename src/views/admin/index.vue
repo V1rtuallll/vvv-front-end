@@ -9,11 +9,14 @@
         <AdminQuickActions
           :syncing="syncing"
           :uploading="uploading"
-          :upload-total="uploadTotal"
-          :upload-completed="uploadCompleted"
-          :uploaded-files="uploadedFiles"
+          :upload-items="uploadItems"
+          :upload-overall-progress="uploadOverallProgress"
+          :upload-success-count="uploadSuccessCount"
+          :upload-failed-count="uploadFailedCount"
           @sync="syncOssToDb"
           @upload="handleFileUpload"
+          @retry="retryUpload"
+          @retry-all="retryAllFailedUploads"
           @clear-results="clearUploadResults"
         />
 
@@ -57,9 +60,12 @@ import { useAdminPage } from "@/modules/admin/composables/useAdminPage";
 const {
   syncing,
   uploading,
-  uploadedFiles,
-  uploadTotal,
-  uploadCompleted,
+  uploadItems,
+  uploadOverallProgress,
+  uploadSuccessCount,
+  uploadFailedCount,
+  retryUpload,
+  retryAllFailedUploads,
   homeConfig,
   availableFiles,
   saveHomeConfig,

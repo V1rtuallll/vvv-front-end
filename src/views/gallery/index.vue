@@ -56,11 +56,20 @@
 
     <GalleryUploadDialog
       :visible="showUploadModal"
-      :files="pendingFiles"
-      :uploading="uploading"
+      :items="uploadItems"
+      :limit-text="uploadLimitText"
+      :overall-progress="uploadOverallProgress"
+      :success-count="uploadSuccessCount"
+      :failed-count="uploadFailedCount"
+      :has-unfinished="uploadHasUnfinished"
+      :can-upload="uploadItems.length > 0"
       @close="closeUploadModal"
       @select-files="handleFiles"
       @upload="uploadAll"
+      @retry="retryUpload"
+      @retry-all="retryAllFailedUploads"
+      @cancel="cancelUpload"
+      @remove="removeUpload"
     />
     <GalleryDetailDialog
       :item="currentItem"
@@ -122,8 +131,16 @@ const {
   totalPages,
   galleryList,
   showUploadModal,
-  pendingFiles,
-  uploading,
+  uploadItems,
+  uploadLimitText,
+  uploadOverallProgress,
+  uploadSuccessCount,
+  uploadFailedCount,
+  uploadHasUnfinished,
+  retryUpload,
+  retryAllFailedUploads,
+  cancelUpload,
+  removeUpload,
   currentItem,
   comments,
   newComment,

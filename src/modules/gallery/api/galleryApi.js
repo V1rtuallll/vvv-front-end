@@ -1,7 +1,11 @@
 import request from "@/utils/request";
 
 export const getGalleryPage = (params) => request.get("/gallery/list", { params });
-export const uploadGalleryMedia = (formData) => request.post("/gallery/upload", formData);
+// 一次请求一个文件。onUploadProgress 驱动进度条，signal 用于取消。
+export const uploadGalleryFile = (formData, onUploadProgress, signal) =>
+  request.post("/gallery/upload", formData, { onUploadProgress, signal });
+// 大小上限来自后端配置，前端不另写固定值
+export const getUploadLimit = () => request.get("/gallery/upload-limit");
 export const getGalleryComments = (id) => request.get(`/gallery/comments/${id}`);
 export const postGalleryComment = (payload) => request.post("/gallery/comment", payload);
 export const likeGallery = (id) => request.post("/gallery/like", { id });

@@ -7,11 +7,12 @@ vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
   getGalleryComments: vi.fn(),
   getGalleryPage: vi.fn(),
+  getUploadLimit: vi.fn(),
   isGalleryLiked: vi.fn(),
   likeGallery: vi.fn(),
   likeGalleryComment: vi.fn(),
   postGalleryComment: vi.fn(),
-  uploadGalleryMedia: vi.fn(),
+  uploadGalleryFile: vi.fn(),
   updateGallery: vi.fn(),
   deleteGallery: vi.fn(),
   deleteComment: vi.fn(),
@@ -24,6 +25,8 @@ import {
   deleteGallery,
   getGalleryComments,
   getGalleryPage,
+  getUploadLimit,
+  uploadGalleryFile,
   updateGallery,
 } from "@/modules/gallery/api/galleryApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
@@ -175,5 +178,87 @@ describe("useGalleryPage 的编辑与删除", () => {
 
     expect(api.galleryList.value).toHaveLength(1);
     expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("useGalleryPage 的上传队列", () => {
+  function selectFiles(...names) {
+    const files = names.map((name) => ({ name, size: 10, type: "image/png" }));
+    return { target: { files, value: "x" } };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [], total: 0 } });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 5 * 1024 * 1024 } });
+    URL.createObjectURL = vi.fn(() => "blob:preview");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it("分几次挑文件是追加而不是替换", async () => {
+    const api = await mountGallery();
+
+    api.handleFiles(selectFiles("a.png"));
+    api.handleFiles(selectFiles("b.png", "c.png"));
+
+    expect(api.uploadItems.value.map((item) => item.name)).toEqual(["a.png", "b.png", "c.png"]);
+  });
+
+  it("每个文件的标题默认取去掉扩展名的文件名", async () => {
+    const api = await mountGallery();
+
+    api.handleFiles(selectFiles("月光.png"));
+
+    expect(api.uploadItems.value[0].title).toBe("月光");
+  });
+
+  it("大小上限提示来自后端配置，前端不写死", async () => {
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 20 * 1024 * 1024 } });
+    const api = await mountGallery();
+
+    api.openUploadModal();
+    await flushPromises();
+
+    expect(getUploadLimit).toHaveBeenCalled();
+    expect(api.uploadLimitText.value).toBe("单个文件最大 20 MB");
+  });
+
+  it("确认上传会启动队列并逐文件发起请求", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1, status: "success" } });
+    const api = await mountGallery();
+    api.handleFiles(selectFiles("a.png", "b.png"));
+
+    api.uploadAll();
+    await flushPromises();
+
+    expect(uploadGalleryFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("还有文件在上传时关闭弹窗会先确认", async () => {
+    uploadGalleryFile.mockReturnValue(new Promise(() => {}));
+    const api = await mountGallery();
+    api.openUploadModal();
+    api.handleFiles(selectFiles("a.png"));
+    api.uploadAll();
+    await flushPromises();
+
+    window.confirm = vi.fn(() => false);
+    api.closeUploadModal();
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.showUploadModal.value).toBe(true);
+  });
+
+  it("没有未完成的上传时直接关闭，不打扰用户", async () => {
+    const api = await mountGallery();
+    api.openUploadModal();
+    window.confirm = vi.fn(() => true);
+
+    api.closeUploadModal();
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(api.showUploadModal.value).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { getAdminHomeConfig, getAdminResources, saveAdminHomeConfig, syncOssResources, updateAdminResource, uploadAdminResource } from "@/modules/admin/api/adminApi";
 import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
+import { useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 
 // 发请求的方法，catch 里只做状态回滚，不弹提示：
 // 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
@@ -13,10 +14,9 @@ export function useAdminPage() {
   const router = useRouter();
   const authStore = useAuthStore();
   const syncing = ref(false);
-  const uploading = ref(false);
-  const uploadedFiles = ref([]);
-  const uploadTotal = ref(0);
-  const uploadCompleted = ref(0);
+  // 与画廊上传共用同一套状态模型：每个文件一个请求、最多 3 个并发、可重试可取消。
+  // 后端的管理上传接口只读 file，队列多带的 title/description/clientUploadId 会被忽略。
+  const uploadQueue = useUploadQueue(uploadAdminResource, { maxConcurrent: 3 });
   const homeConfig = ref({ main: { type: "video", src: "", title: "", desc: "", random: false }, gallery: [], pinnedBlogId: null });
   const availableFiles = ref([]);
   const availableFilesByType = ref({});
@@ -80,35 +80,16 @@ export function useAdminPage() {
     }
   };
 
-  const handleFileUpload = async (event) => {
+  const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
-    uploading.value = true;
-    uploadTotal.value = files.length;
-    uploadCompleted.value = 0;
-    uploadedFiles.value = [];
-    for (const file of files) {
-      const result = { fileName: file.name, status: "uploading", url: null, error: null };
-      uploadedFiles.value.push(result);
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await uploadAdminResource(formData);
-        result.status = "success";
-        result.url = res.data.url;
-      } catch (err) {
-        // 失败原因会显示在 uploadedFiles 列表里，不再弹 toast（request.js 已经弹过）
-        result.status = "error";
-        result.error = err.response?.data?.msg || "上传失败";
-      } finally {
-        uploadCompleted.value++;
-      }
-    }
-    uploading.value = false;
+    uploadQueue.reset();
+    files.forEach((file) => uploadQueue.add(file));
+    uploadQueue.start();
     event.target.value = "";
   };
 
-  const clearUploadResults = () => { uploadedFiles.value = []; };
+  const clearUploadResults = () => { uploadQueue.reset(); };
   const backToProfile = () => router.push("/profile");
 
   const fetchResources = async (nextPage = 1) => {
@@ -165,8 +146,15 @@ export function useAdminPage() {
   });
 
   return {
-    syncing, uploading, uploadedFiles, uploadTotal, uploadCompleted, homeConfig, availableFiles,
+    syncing, homeConfig, availableFiles,
     saveHomeConfig, setAsMain, syncOssToDb, handleFileUpload, clearUploadResults, backToProfile,
+    uploadItems: uploadQueue.items,
+    uploading: uploadQueue.hasUnfinished,
+    uploadOverallProgress: uploadQueue.overallProgress,
+    uploadSuccessCount: uploadQueue.successCount,
+    uploadFailedCount: uploadQueue.failedCount,
+    retryUpload: uploadQueue.retry,
+    retryAllFailedUploads: uploadQueue.retryAllFailed,
     resourceFilter, resourceList, resourceTotal, resourcePage, totalPages, fetchResources, formatDate,
     editingItem, openEditModal, saveEdit, copyToClipboard, pageSize, onPageSizeChange,
   };
