@@ -36,5 +36,22 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, 'src'), // @ 指向 src
       },
     },
+
+    // Vitest 配置放在这里而不是单独的 vitest.config.js：
+    // 本文件的 defineConfig 是「函数式」导出，mergeConfig 那种写法对它不可靠；
+    // 放一起还能保证 @ 别名和插件只有一份定义。
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test/setup.js'],
+      include: ['src/**/*.{test,spec}.js'],
+      restoreMocks: true,
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        include: ['src/**/*.{js,vue}'],
+        exclude: ['src/main.js', 'src/test/**', 'src/**/*.test.js'],
+      },
+    },
   }
 })
