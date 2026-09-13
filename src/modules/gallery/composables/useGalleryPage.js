@@ -190,17 +190,28 @@ export function useGalleryPage() {
   const cancelTask = (item) => uploadQueue.cancel(item);
 
   // 列表以服务端结果为准：上传跑完后重新拉一次，不用本地的成功推断。
-  // 编辑与换文件不走这条路 —— 它们已经在本地把那一行更新过了，再拉整页是白跑。
+  //
+  // 触发条件不能盯 items.length —— 任务完成只改 status、数组长度不变，
+  // 那样刷新永远不会发生。改成两个信号：
+  //   1. 出现过成功入库的上传 → 记下「欠一次刷新」
+  //   2. 队列彻底空下来 → 兑现这次刷新
+  // 中间有别的任务在跑时先不动，多个并发上传因此只会刷新一次，列表也只闪一次。
+  const pendingRefresh = ref(false);
   watch(
-    () => uploadQueue.items.value.length,
-    () => {
-      if (uploadQueue.hasUnfinished.value) return;
-      const addedResource = uploadQueue.items.value.some(
-        (item) => item.kind === TASK_KIND.UPLOAD && item.status === UPLOAD_STATUS.SUCCESS,
-      );
-      if (addedResource) loadGallery();
+    () => uploadQueue.items.value.some(
+      (item) => item.kind === TASK_KIND.UPLOAD && item.status === UPLOAD_STATUS.SUCCESS,
+    ),
+    (uploaded) => {
+      if (uploaded) pendingRefresh.value = true;
     },
-    { deep: true },
+  );
+  watch(
+    () => uploadQueue.hasUnfinished.value,
+    (unfinished) => {
+      if (unfinished || !pendingRefresh.value) return;
+      pendingRefresh.value = false;
+      loadGallery();
+    },
   );
 
   const toggleLike = async (item) => {

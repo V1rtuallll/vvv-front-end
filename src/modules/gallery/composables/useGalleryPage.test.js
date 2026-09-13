@@ -340,6 +340,55 @@ describe("useGalleryPage 的上传队列", () => {
     expect(api.uploadItems.value[0].status).toBe("uploading");
   });
 
+  /** 传完不刷新的话，用户看不到自己刚传的东西，会以为传丢了 */
+  it("上传成功后自动刷新列表，立刻能看到刚传的内容", async () => {
+    let release;
+    uploadGalleryFile.mockReturnValue(new Promise((resolve) => { release = resolve; }));
+    const api = await mountGallery();
+    api.publishOne({ file: picked("月光.png"), title: "月光" });
+    await flushPromises();
+
+    getGalleryPage.mockClear();
+    getGalleryPage.mockResolvedValue({ data: { list: [{ id: 1, title: "月光" }], total: 1 } });
+    release({ data: { id: 1 } });
+    await flushPromises();
+
+    expect(getGalleryPage).toHaveBeenCalledTimes(1);
+    expect(api.galleryList.value[0].title).toBe("月光");
+  });
+
+  /** 并发上传会先后完成，逐个刷新既浪费请求又会让列表闪多次 */
+  it("多个上传一起跑完时只刷新一次", async () => {
+    const pending = [];
+    uploadGalleryFile.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
+    const api = await mountGallery();
+    api.publishOne({ file: picked("a.png") });
+    api.publishOne({ file: picked("b.png") });
+    await flushPromises();
+
+    getGalleryPage.mockClear();
+    pending[0]({ data: { id: 1 } });
+    await flushPromises();
+    expect(getGalleryPage).not.toHaveBeenCalled();
+
+    pending[1]({ data: { id: 2 } });
+    await flushPromises();
+    expect(getGalleryPage).toHaveBeenCalledTimes(1);
+  });
+
+  /** 失败的任务什么都没产生，不该白拉一次列表 */
+  it("上传全部失败时不刷新列表", async () => {
+    uploadGalleryFile.mockRejectedValue(new Error("boom"));
+    const api = await mountGallery();
+
+    api.publishOne({ file: picked("a.png") });
+    await flushPromises();
+    getGalleryPage.mockClear();
+    await flushPromises();
+
+    expect(getGalleryPage).not.toHaveBeenCalled();
+  });
+
   it("上传还在进行时关闭弹窗会先确认", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
