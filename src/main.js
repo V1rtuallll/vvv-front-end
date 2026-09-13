@@ -4,6 +4,9 @@ import { useAuthStore } from '@/stores/auth.js'
 import App from './App.vue'
 import router from "./router/index.js";
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+// CRT 主题：全局引入一次。它原本只存在于 profile 的 scoped 样式里，
+// 导致后台用到同名类却没有任何样式——详见该文件头部说明。
+import '@/styles/crt-theme.css'
 
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
