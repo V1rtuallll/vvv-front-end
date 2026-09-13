@@ -158,52 +158,36 @@ export function useGalleryPage() {
     showUploadModal.value = false;
   };
 
-  // 追加而不是替换：队列模型下用户可以分几次挑文件
-  const handleFiles = (event) => {
-    Array.from(event.target.files).forEach((file) => {
-      uploadQueue.add(file, {
-        kind: TASK_KIND.UPLOAD,
-        preview: URL.createObjectURL(file),
-        // 中途取消：把服务端已经产生的行与 OSS 对象一起清掉
-        onCancel: async (item) => {
-          // 没发过请求就什么都没产生，不用白跑一趟
-          if (!item.started) return;
-          try {
-            await cancelUpload(item.clientUploadId);
-            loadGallery();
-          } catch {
-            // 提示由 request.js 负责
-          }
-        },
-      });
+  /**
+   * 发表一个资源：一次一个文件、一份信息。
+   * 想连发多个就再点一次「上传」，队列本身支持并发，进度在页面顶部的面板里看。
+   */
+  const publishOne = ({ file, title, description } = {}) => {
+    if (!file) return;
+    uploadQueue.add(file, {
+      kind: TASK_KIND.UPLOAD,
+      preview: URL.createObjectURL(file),
+      // 留空时由队列按文件名兜底
+      title: title || undefined,
+      description: description || "",
+      // 中途取消：把服务端已经产生的行与 OSS 对象一起清掉
+      onCancel: async (item) => {
+        // 没发过请求就什么都没产生，不用白跑一趟
+        if (!item.started) return;
+        try {
+          await cancelUpload(item.clientUploadId);
+          loadGallery();
+        } catch {
+          // 提示由 request.js 负责
+        }
+      },
     });
-    event.target.value = "";
-  };
-
-  const uploadAll = () => {
     uploadQueue.start();
-    // 关掉弹窗，把舞台交给顶部面板：两者都固定定位，叠着会互相遮挡
+    // 关掉弹窗，把舞台交给页面里的队列面板
     showUploadModal.value = false;
   };
 
   const cancelTask = (item) => uploadQueue.cancel(item);
-
-  /** 给某个资源换文件：走同一个队列，进度与取消都在顶部面板里 */
-  const replaceResourceFile = (item, file) => {
-    if (!item?.id || !file) return;
-    uploadQueue.add(file, {
-      kind: TASK_KIND.REPLACE,
-      targetId: item.id,
-      name: file.name,
-      preview: URL.createObjectURL(file),
-      execute: (_task, { onProgress, signal }) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        return replaceGalleryFile(item.id, formData, onProgress, signal);
-      },
-    });
-    uploadQueue.start();
-  };
 
   // 列表以服务端结果为准：上传跑完后重新拉一次，不用本地的成功推断。
   // 编辑与换文件不走这条路 —— 它们已经在本地把那一行更新过了，再拉整页是白跑。
@@ -459,11 +443,11 @@ export function useGalleryPage() {
   return {
     authStore, page, limit, total, totalPages, galleryList, showUploadModal,
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
-    closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, handleFiles, uploadAll, toggleLike, openDetailModal,
+    closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishOne, toggleLike, openDetailModal,
     postComment, displayGender, startResize, formatDate, formatShortDate,
     isAdmin, canManageItem, canManageComment, editingItem, replacementFile, openEditModal, closeEditModal,
     setReplacementFile, submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
-    cancelDelete, confirmDelete, replaceResourceFile,
+    cancelDelete, confirmDelete,
     uploadItems: uploadQueue.items,
     uploadOverallProgress: uploadQueue.overallProgress,
     uploadSuccessCount: uploadQueue.successCount,
@@ -475,6 +459,5 @@ export function useGalleryPage() {
     retryAllFailedUploads: uploadQueue.retryAllFailed,
     cancelTask,
     clearTasks: clearUploadQueue,
-    removeUpload: uploadQueue.remove,
   };
 }

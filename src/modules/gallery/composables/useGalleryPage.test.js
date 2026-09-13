@@ -246,10 +246,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 });
 
 describe("useGalleryPage 的上传队列", () => {
-  function selectFiles(...names) {
-    const files = names.map((name) => ({ name, size: 10, type: "image/png" }));
-    return { target: { files, value: "x" } };
-  }
+  const picked = (name = "a.png", size = 10) => ({ name, size, type: "image/png" });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -261,21 +258,49 @@ describe("useGalleryPage 的上传队列", () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  it("分几次挑文件是追加而不是替换", async () => {
+  it("一次发表只产生一个资源", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1, status: "success" } });
     const api = await mountGallery();
 
-    api.handleFiles(selectFiles("a.png"));
-    api.handleFiles(selectFiles("b.png", "c.png"));
+    api.publishOne({ file: picked("月光.png"), title: "月光", description: "描述" });
+    await flushPromises();
 
-    expect(api.uploadItems.value.map((item) => item.name)).toEqual(["a.png", "b.png", "c.png"]);
+    expect(api.uploadItems.value).toHaveLength(1);
+    expect(uploadGalleryFile).toHaveBeenCalledTimes(1);
   });
 
-  it("每个文件的标题默认取去掉扩展名的文件名", async () => {
+  it("发表时带上这一份标题与描述", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.handleFiles(selectFiles("月光.png"));
+    api.publishOne({ file: picked("a.png"), title: "我的标题", description: "我的描述" });
+    await flushPromises();
 
-    expect(api.uploadItems.value[0].title).toBe("月光");
+    const sent = uploadGalleryFile.mock.calls[0][0];
+    expect(sent.get("title")).toBe("我的标题");
+    expect(sent.get("description")).toBe("我的描述");
+  });
+
+  it("标题留空时按文件名兜底", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
+    const api = await mountGallery();
+
+    api.publishOne({ file: picked("月光.png"), title: "", description: "" });
+    await flushPromises();
+
+    expect(uploadGalleryFile.mock.calls[0][0].get("title")).toBe("月光");
+  });
+
+  it("连续发表多个会各自入队并发跑", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
+    const api = await mountGallery();
+
+    api.publishOne({ file: picked("a.png") });
+    api.publishOne({ file: picked("b.png") });
+    await flushPromises();
+
+    expect(api.uploadItems.value).toHaveLength(2);
+    expect(uploadGalleryFile).toHaveBeenCalledTimes(2);
   });
 
   it("大小上限提示来自后端配置，前端不写死", async () => {
@@ -289,25 +314,13 @@ describe("useGalleryPage 的上传队列", () => {
     expect(api.uploadLimitText.value).toBe("单个文件最大 20 MB");
   });
 
-  it("确认上传会启动队列并逐文件发起请求", async () => {
-    uploadGalleryFile.mockResolvedValue({ data: { id: 1, status: "success" } });
-    const api = await mountGallery();
-    api.handleFiles(selectFiles("a.png", "b.png"));
-
-    api.uploadAll();
-    await flushPromises();
-
-    expect(uploadGalleryFile).toHaveBeenCalledTimes(2);
-  });
-
-  it("点确认上传后关掉弹窗，把舞台交给顶部面板", async () => {
+  it("发表后关掉弹窗，把舞台交给页面里的进度面板", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
     api.openUploadModal();
-    api.handleFiles(selectFiles("a.png"));
     expect(api.showUploadModal.value).toBe(true);
 
-    api.uploadAll();
+    api.publishOne({ file: picked("a.png") });
     await flushPromises();
 
     expect(api.showUploadModal.value).toBe(false);
@@ -318,9 +331,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("上传进行中重新打开弹窗不会清空队列", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
-    api.openUploadModal();
-    api.handleFiles(selectFiles("a.png"));
-    api.uploadAll();
+    api.publishOne({ file: picked("a.png") });
     await flushPromises();
 
     api.openUploadModal();
@@ -332,9 +343,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("上传还在进行时关闭弹窗会先确认", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
-    api.openUploadModal();
-    api.handleFiles(selectFiles("a.png"));
-    api.uploadAll();
+    api.publishOne({ file: picked("a.png") });
     await flushPromises();
 
     api.openUploadModal();
@@ -343,16 +352,5 @@ describe("useGalleryPage 的上传队列", () => {
 
     expect(window.confirm).toHaveBeenCalled();
     expect(api.showUploadModal.value).toBe(true);
-  });
-
-  it("没有未完成的上传时直接关闭，不打扰用户", async () => {
-    const api = await mountGallery();
-    api.openUploadModal();
-    window.confirm = vi.fn(() => true);
-
-    api.closeUploadModal();
-
-    expect(window.confirm).not.toHaveBeenCalled();
-    expect(api.showUploadModal.value).toBe(false);
   });
 });

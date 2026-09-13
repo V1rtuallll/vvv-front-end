@@ -65,14 +65,9 @@
 
     <GalleryUploadDialog
       :visible="showUploadModal"
-      :items="uploadItems"
       :limit-text="uploadLimitText"
-      :busy="uploadBusy"
-      :can-upload="uploadItems.length > 0"
       @close="closeUploadModal"
-      @select-files="handleFiles"
-      @upload="uploadAll"
-      @remove="removeUpload"
+      @publish="publishOne"
     />
     <GalleryDetailDialog
       :item="currentItem"
@@ -145,7 +140,6 @@ const {
   retryUpload,
   cancelTask,
   clearTasks,
-  removeUpload,
   currentItem,
   comments,
   newComment,
@@ -158,8 +152,7 @@ const {
   changeLimit,
   openUploadModal,
   closeUploadModal,
-  handleFiles,
-  uploadAll,
+  publishOne,
   toggleLike,
   openDetailModal,
   postComment,
@@ -175,7 +168,6 @@ const {
   openEditModal,
   closeEditModal,
   submitEdit,
-  replaceResourceFile,
   deleteTarget,
   deleting,
   requestDeleteItem,

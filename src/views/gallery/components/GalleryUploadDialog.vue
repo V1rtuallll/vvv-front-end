@@ -2,158 +2,153 @@
   <div v-if="visible" class="modal-overlay" @click="$emit('close')">
     <div class="upload-modal" @click.stop>
       <h2>上传到Gallery</h2>
+
       <div class="upload-area">
         <label class="file-label">
-          <span>选择文件（支持多选）</span>
-          <input
-            type="file"
-            multiple
-            :accept="ACCEPT"
-            class="hidden-input"
-            @change="$emit('select-files', $event)"
-          />
+          <span>选择文件（一次一个）</span>
+          <input type="file" :accept="ACCEPT" class="hidden-input" @change="onPickFile" />
           <span class="select-btn">选择文件</span>
         </label>
         <p v-if="limitText" class="limit-tip">{{ limitText }}</p>
       </div>
 
-      <p v-if="items.length > 0" class="stage-tip">
-        已选 {{ items.length }} 个文件，确认后才会开始上传。上传进度显示在页面顶部。
-      </p>
-
-      <div v-if="items.length > 0" class="preview-list">
-        <div v-for="item in items" :key="item.key" class="preview-item" :class="'status-' + item.status">
-          <div class="thumb-wrapper">
-            <img v-if="item.preview && isImage(item)" :src="item.preview" class="thumb" alt="" />
-            <video v-else-if="item.preview && isVideo(item)" :src="item.preview" class="thumb"></video>
-            <audio v-else-if="item.preview && isAudio(item)" :src="item.preview" controls class="thumb"></audio>
-            <div v-else class="thumb-placeholder">{{ item.name }}</div>
-          </div>
-
-          <input
-            v-model="item.title"
-            :disabled="!isEditable(item)"
-            placeholder="标题（默认文件名）"
-            class="title-input"
-          />
-          <textarea
-            v-model="item.description"
-            :disabled="!isEditable(item)"
-            placeholder="写点描述"
-            class="desc-input"
-          ></textarea>
-
-          <div class="item-status">
-            <span class="status-text">{{ statusText(item) }}</span>
-            <button v-if="item.status === 'success'" class="item-btn" @click="$emit('remove', item)">
-              移除
-            </button>
-          </div>
-          <p v-if="item.error" class="error-text">{{ item.error }}</p>
+      <template v-if="file">
+        <div class="preview-box">
+          <img v-if="kind === 'image'" :src="previewUrl" class="preview-media" alt="" />
+          <video v-else-if="kind === 'video'" :src="previewUrl" class="preview-media" controls></video>
+          <audio v-else-if="kind === 'audio'" :src="previewUrl" class="preview-media" controls></audio>
+          <span v-else class="preview-none">{{ file.name }}</span>
         </div>
-      </div>
+
+        <label class="edit-field">
+          <span class="field-label">标题</span>
+          <input v-model="title" class="crt-input" placeholder="默认用文件名" />
+        </label>
+
+        <label class="edit-field">
+          <span class="field-label">描述</span>
+          <textarea v-model="description" class="crt-input" placeholder="写点描述"></textarea>
+        </label>
+      </template>
 
       <div class="modal-actions">
-        <button @click="$emit('upload')" :disabled="!canUpload || busy" class="crt-btn">
-          {{ busy ? "上传中，见顶部进度" : `确认上传（${items.length}）` }}
-        </button>
-        <button @click="$emit('close')" class="crt-btn danger">关闭</button>
+        <button class="crt-btn" :disabled="!file" @click="publish">发表</button>
+        <button class="crt-btn danger" @click="$emit('close')">关闭</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 const props = defineProps({
   visible: Boolean,
-  /** useUploadQueue 的 items：待上传的文件清单 */
-  items: { type: Array, default: () => [] },
   /** 来自后端配置的大小上限提示 */
   limitText: { type: String, default: "" },
-  /** 队列是否真的在跑：在跑时不允许重复点确认 */
-  busy: Boolean,
-  canUpload: Boolean,
 });
 
-defineEmits(["close", "select-files", "upload", "remove"]);
+const emit = defineEmits(["close", "publish"]);
 
-const typeOf = (item) => item.file?.type || "";
+const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
 
-// 只有排队中的文件还能改标题和描述：已经提交过的改动不算数
-const isEditable = (item) => item.status === "queued";
+// 一次上传对应一个资源，所以只需要一份标题与描述
+const file = ref(null);
+const title = ref("");
+const description = ref("");
+const previewUrl = ref("");
 
-const isImage = (item) => typeOf(item).startsWith("image");
-const isVideo = (item) => typeOf(item).startsWith("video");
-const isAudio = (item) => typeOf(item).startsWith("audio");
-
-const STATUS_TEXT = {
-  queued: "等待上传",
-  uploading: "上传中",
-  failed: "上传失败",
-  cancelled: "已取消",
+const releasePreview = () => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+  previewUrl.value = "";
 };
 
-const statusText = (item) => {
-  if (item.status === "success") {
-    // 服务端告诉我们是这次传的，还是之前已经传过的那一份
-    return item.resource?.status === "duplicate" ? "已存在，未重复上传" : "已完成";
-  }
-  return STATUS_TEXT[item.status] || item.status;
+const reset = () => {
+  releasePreview();
+  file.value = null;
+  title.value = "";
+  description.value = "";
+};
+
+// 每次打开都是一个干净的表单，不会带上一次的内容
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) reset();
+  },
+);
+
+onBeforeUnmount(releasePreview);
+
+const EXTENSION_KIND = {
+  mp4: "video", webm: "video", avi: "video", mov: "video", mkv: "video",
+  gif: "image", jpg: "image", jpeg: "image", png: "image", webp: "image", bmp: "image",
+  mp3: "audio", wav: "audio", flac: "audio", aac: "audio", ogg: "audio",
+};
+
+const kind = computed(() => {
+  const name = file.value?.name ?? "";
+  const dot = name.lastIndexOf(".");
+  return EXTENSION_KIND[dot > 0 ? name.substring(dot + 1).toLowerCase() : ""] ?? "unknown";
+});
+
+const onPickFile = (event) => {
+  const picked = event.target.files?.[0];
+  event.target.value = "";
+  if (!picked) return;
+  releasePreview();
+  file.value = picked;
+  previewUrl.value = URL.createObjectURL(picked);
+  // 标题留空就由服务端用文件名兜底，这里不预填，用户想改自己写
+  title.value = "";
+  description.value = "";
+};
+
+const publish = () => {
+  if (!file.value) return;
+  emit("publish", {
+    file: file.value,
+    title: title.value.trim(),
+    description: description.value.trim(),
+  });
+  reset();
 };
 </script>
 
 <style scoped>
 .modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.96); backdrop-filter: blur(15px); }
 /* width 与 padding 同时存在，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
-.upload-modal { box-sizing: border-box; width: min(960px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
+.upload-modal { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
+.upload-modal h2 { margin-bottom: 20px; color: #ff69b4; font-size: 1.6rem; }
 .file-label { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
 .hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 /* 触摸目标不小于 44px */
 .select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 6px; }
 .limit-tip { margin-top: 10px; color: #ffaae6; font-size: 0.9rem; }
-.stage-tip { margin: 20px 0 0; color: #ffaae6; font-size: 0.92rem; }
 
-/* minmax 用 min(100%, 300px)，保证容器再窄也不会撑出横向滚动 */
-.preview-list { max-height: 60vh; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 25px; margin: 24px 0; padding: 10px; overflow-y: auto; }
-.preview-item { display: flex; flex-direction: column; gap: 12px; padding: 15px; background: rgba(0, 0, 0, 0.5); border-radius: 15px; box-shadow: 0 0 15px rgba(255, 105, 180, 0.3); }
-.preview-item.status-success { border: 1px solid #00ffff; }
-.preview-item.status-failed { border: 1px solid #ff69b4; }
-/* 预览区固定高度，不随文件尺寸变化 */
-.thumb-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; overflow: hidden; background: rgba(0, 0, 0, 0.6); border-radius: 10px; }
-.thumb { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-.thumb-placeholder { padding: 20px; color: #00ffff; text-align: center; word-break: break-all; }
-.title-input, .desc-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 12px; color: #00ffff; font-size: 1rem; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 10px; }
-.desc-input { min-height: 80px; resize: vertical; }
-.title-input:disabled, .desc-input:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 预览固定高度，不随文件尺寸变化 */
+.preview-box { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; margin: 20px 0; overflow: hidden; background: rgba(0, 0, 0, 0.6); border-radius: 10px; }
+.preview-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.preview-none { padding: 20px; color: #00ffff; text-align: center; word-break: break-all; }
 
-.item-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.status-text { color: #cceeff; font-size: 0.9rem; }
-.item-btn { min-height: 32px; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.15); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
-.error-text { color: #ff69b4; font-size: 0.88rem; line-height: 1.5; word-break: break-word; }
+.edit-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; text-align: left; }
+.field-label { color: #ffaae6; font-size: 1rem; }
 
 .modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
 /* 两个按钮尺寸完全一致，只靠颜色区分主次 */
 .modal-actions > * { flex: 0 0 auto; min-width: 180px; margin: 0; }
 
-/* ==== 窄屏适配 ====
-   <=768px：弹窗改为底部面板，占满宽度、贴着屏幕下沿；
-   <=480px：预览列表改单列，按钮纵向铺满。
-*/
+/* ==== 窄屏适配 ==== */
 @media (max-width: 768px) {
   .modal-overlay { align-items: flex-end; padding: 0; }
   .upload-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
-  .preview-list { gap: 16px; margin: 20px 0; padding: 0; }
-  .thumb-wrapper { height: 160px; }
+  .preview-box { height: 160px; }
 }
 
 @media (max-width: 480px) {
   .upload-modal { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
-  .upload-modal h2 { font-size: 1.2rem; margin-bottom: 12px; }
-  .preview-list { grid-template-columns: 1fr; gap: 14px; }
-  .thumb-wrapper { height: 140px; }
-  .preview-item { padding: 12px; }
+  .upload-modal h2 { font-size: 1.2rem; }
+  .preview-box { height: 140px; }
   .modal-actions { flex-direction: column; }
   .modal-actions > * { width: 100%; min-width: 0; }
 }
