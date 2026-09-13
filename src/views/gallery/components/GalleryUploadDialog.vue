@@ -25,7 +25,7 @@
             <div v-else class="thumb-placeholder">{{ file.name }}</div>
           </div>
           <input v-model="file.title" placeholder="标题（默认文件名）" class="title-input" />
-          <textarea v-model="file.description" placeholder="写点描述吧～" class="desc-input"></textarea>
+          <textarea v-model="file.description" placeholder="写点描述" class="desc-input"></textarea>
         </div>
       </div>
 
@@ -51,16 +51,42 @@ defineEmits(["close", "select-files", "upload"]);
 
 <style scoped>
 .modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.96); backdrop-filter: blur(15px); }
-.upload-modal { width: min(960px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
+/* width 与 padding 同时存在，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
+.upload-modal { box-sizing: border-box; width: min(960px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
 .file-label { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
 .hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.select-btn { width: fit-content; padding: 10px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 6px; }
-.preview-list { max-height: 60vh; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin: 30px 0; padding: 10px; overflow-y: auto; }
+/* 触摸目标不小于 44px */
+.select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 6px; }
+/* minmax 用 min(100%, 300px)，保证容器再窄也不会撑出横向滚动 */
+.preview-list { max-height: 60vh; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 25px; margin: 30px 0; padding: 10px; overflow-y: auto; }
 .preview-item { display: flex; flex-direction: column; gap: 12px; padding: 15px; background: rgba(0, 0, 0, 0.5); border-radius: 15px; box-shadow: 0 0 15px rgba(255, 105, 180, 0.3); }
+/* 预览区固定高度，不随文件尺寸变化 */
 .thumb-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; overflow: hidden; background: rgba(0, 0, 0, 0.6); border-radius: 10px; }
 .thumb { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-.thumb-placeholder { padding: 20px; color: #00ffff; text-align: center; }
-.title-input, .desc-input { box-sizing: border-box; width: 100%; padding: 12px; color: #00ffff; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 10px; }
+.thumb-placeholder { padding: 20px; color: #00ffff; text-align: center; word-break: break-all; }
+.title-input, .desc-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 12px; color: #00ffff; font-size: 1rem; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 10px; }
 .desc-input { min-height: 80px; resize: vertical; }
-.modal-actions { display: flex; justify-content: center; gap: 15px; }
+.modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+.modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; }
+
+/* ==== 窄屏适配 ====
+   <=768px：弹窗改为底部面板，占满宽度、贴着屏幕下沿；
+   <=480px：预览列表改单列，按钮纵向铺满。
+*/
+@media (max-width: 768px) {
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .upload-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
+  .preview-list { gap: 16px; margin: 20px 0; padding: 0; }
+  .thumb-wrapper { height: 160px; }
+}
+
+@media (max-width: 480px) {
+  .upload-modal { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .upload-modal h2 { font-size: 1.2rem; margin-bottom: 12px; }
+  .preview-list { grid-template-columns: 1fr; gap: 14px; }
+  .thumb-wrapper { height: 140px; }
+  .preview-item { padding: 12px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions button { width: 100%; }
+}
 </style>

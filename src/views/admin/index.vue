@@ -4,7 +4,7 @@
       <div class="crt-scanlines"></div>
       <main class="crt-content">
         <h2 class="crt-title">✦ 最高指挥中心 ✦</h2>
-        <p class="admin-welcome">欢迎回来，最特别的V1rtual～❤️</p>
+        <p class="admin-welcome">欢迎回来，V1rtual</p>
 
         <AdminQuickActions
           :syncing="syncing"
@@ -88,5 +88,33 @@ const {
 .back-btn {
   margin: 40px auto 0;
   display: block;
+}
+
+/* ==== 窄屏适配 ====
+   <=768px：标题与欢迎语允许换行，返回按钮铺满宽度并保证触摸尺寸。
+   页面各区块的窄屏规则分别写在对应子组件内。
+*/
+@media (max-width: 768px) {
+  .crt-admin-wrapper,
+  .crt-screen {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .crt-title {
+    font-size: 1.5rem;
+    word-break: break-word;
+  }
+
+  .admin-welcome {
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .back-btn {
+    width: 100%;
+    min-height: 44px;
+    margin: 24px auto 0;
+  }
 }
 </style>

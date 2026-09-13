@@ -4,7 +4,7 @@
     <!-- 大展示容器（加动态 padding-bottom） -->
     <div
       class="main-showcase"
-      :class="{ 'show-info': showInfo }"
+      :class="{ 'show-info': infoVisible }"
       @mouseenter="showInfo = true"
       @mouseleave="showInfo = false"
     >
@@ -29,9 +29,9 @@
         </div>
       </transition>
 
-      <!-- 底部弹出栏：左上传信息 + 右标题描述 -->
+      <!-- 底部弹出栏：左上传信息 + 右标题描述。触屏设备没有 hover，改为常显 -->
       <transition name="slide-down">
-        <div v-if="showInfo && mainItem" class="showcase-info-bottom">
+        <div v-if="infoVisible && mainItem" class="showcase-info-bottom">
           <div class="info-container">
             <!-- 左半边：上传人信息 -->
             <div class="uploader-left">
@@ -53,7 +53,7 @@
                   @click="changeRandom"
                   class="change-btn"
                 >
-                  换一个 ✧
+                  换一个
                 </button>
               </div>
             </div>
@@ -79,8 +79,9 @@
         v-for="(item, index) in galleryItems"
         :key="index"
         class="masonry-item"
-        @mouseenter="item.showInfo = true"
-        @mouseleave="item.showInfo = false"
+        @mouseenter="onItemEnter(item)"
+        @mouseleave="onItemLeave(item)"
+        @click="onItemToggle(item)"
       >
         <!-- 媒体 -->
         <video
@@ -130,15 +131,34 @@
       </div>
 
       <div v-if="galleryItems.length === 0" class="empty-masonry">
-        暂无Gallery✨
+        暂无Gallery
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { useHomeContent } from "@/modules/home/composables/useHomeContent";
+import { computed } from "vue";
 
-const { mainItem, galleryItems, latestBlogs, pinnedBlog, showInfo, availableFiles, formatShortDate, changeRandom } = useHomeContent();
+import { useHomeContent } from "@/modules/home/composables/useHomeContent";
+import { supportsHover } from "@/utils/responsive";
+
+const { mainItem, galleryItems, latestBlogs, pinnedBlog, showInfo, formatShortDate, changeRandom } = useHomeContent();
+
+// 触屏设备没有 hover：主展示信息栏常显，拼图区块改为点击切换
+const hoverCapable = supportsHover();
+const infoVisible = computed(() => showInfo.value || !hoverCapable);
+
+const onItemEnter = (item) => {
+  if (hoverCapable) item.showInfo = true;
+};
+
+const onItemLeave = (item) => {
+  if (hoverCapable) item.showInfo = false;
+};
+
+const onItemToggle = (item) => {
+  if (!hoverCapable) item.showInfo = !item.showInfo;
+};
 </script>
 <style src="./index.css" scoped></style>

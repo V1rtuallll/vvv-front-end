@@ -1,6 +1,6 @@
 <template>
   <section class="admin-section resource-browser">
-    <h3 class="section-title">媒体资源浏览器 ✨（共 {{ total }} 条）</h3>
+    <h3 class="section-title">媒体资源浏览器（共 {{ total }} 条）</h3>
 
     <div class="filter-bar">
       <label>类型：</label>
@@ -116,4 +116,63 @@ const pageSize = computed({
 .pagination.top { display: flex; align-items: center; gap: 20px; font-size: 1.1rem; color: #ff69b4; }
 .page-info { min-width: 160px; text-align: center; font-style: italic; }
 .page-size-selector { display: flex; align-items: center; gap: 10px; color: #00ffff; font-size: 1rem; }
+
+/* ==== 窄屏适配 ====
+   <=1024px 平板 / <=768px 竖屏平板与手机 / <=480px 小屏手机。
+   资源行与筛选栏在窄屏改为纵向排列，取消各列的固定最小宽度，避免横向滚动。
+*/
+@media (max-width: 1024px) {
+  .resource-row { gap: 16px; }
+  .preview-col { flex: 0 0 180px; }
+  .info-col { min-width: 0; }
+  .src-input { min-width: 0; }
+}
+
+@media (max-width: 768px) {
+  .admin-section { padding: 18px 14px; }
+
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .top-controls { margin: 12px 0 20px; padding: 12px; gap: 12px; }
+
+  .pagination.top {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  .page-info { min-width: 0; flex: 1 1 100%; }
+
+  /* 触摸目标不小于 44px */
+  .filter-bar button,
+  .filter-bar select,
+  .page-size-selector select {
+    min-height: 44px;
+  }
+
+  .resource-row { padding: 14px; gap: 12px; }
+  .preview-col { flex: 1 1 100%; }
+  .preview-img { max-width: 100%; max-height: 200px; }
+  .preview-media { max-width: 100%; max-height: 160px; }
+  .info-col { min-width: 0; }
+  .src-row { flex-direction: column; align-items: stretch; }
+  .src-input { min-width: 0; width: 100%; box-sizing: border-box; }
+  .copy-btn, .edit-btn { min-height: 44px; }
+  .action-col { width: 100%; padding-top: 0; }
+  .edit-btn { width: 100%; }
+  .empty-tip { padding: 40px 12px; }
+}
+
+@media (max-width: 480px) {
+  .admin-section { padding: 14px 10px; }
+  .resource-browser { margin: 30px 0; }
+  .header-info { font-size: 0.85rem; gap: 8px; }
+  .details p { font-size: 0.9rem; word-break: break-word; }
+  .page-size-selector { flex-wrap: wrap; }
+}
 </style>

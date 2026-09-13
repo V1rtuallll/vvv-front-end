@@ -111,7 +111,7 @@
   color: #ff69b4;
   font-weight: bold;
   font-size: 1.2rem;
-  text-shadow: 0 0 8px #ff1493, 0 0 15px #ff69b4; /* 双层粉光，温柔又醒目～ */
+  text-shadow: 0 0 8px #ff1493, 0 0 15px #ff69b4; /* 双层粉色光晕 */
 }
 
 .upload-time {
@@ -128,7 +128,7 @@
 .showcase-title {
   font-size: 1.6rem;
   margin: 0 0 8px 0;
-  text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff69b4, 0 0 30px #ff1493; /* 三层渐变光晕，超梦幻但不刺眼～ */
+  text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff69b4, 0 0 30px #ff1493; /* 三层渐变光晕 */
   line-height: 1.4;
   max-height: 4.8rem; /* 限制3行高度，超长淡出 */
   overflow: hidden;
@@ -337,4 +337,168 @@
   font-size: 1.3rem;
   padding: 100px 0;
   opacity: 0.8;
+}
+
+/* ==== 窄屏适配 ====
+   <=1024px 平板 / <=768px 竖屏平板与手机 / <=480px 小屏手机。
+   主展示信息栏在窄屏改为常规流式布局，不再依赖绝对定位和底部 padding。
+*/
+@media (max-width: 1024px) {
+  .main-showcase {
+    border-radius: 24px;
+  }
+
+  .gallery-masonry {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 70px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ht1,
+  .ht2 {
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+  }
+
+  .main-showcase {
+    border-radius: 18px;
+    margin-bottom: 36px;
+  }
+
+  .main-showcase.show-info {
+    padding-bottom: 0;
+  }
+
+  .showcase-media {
+    max-height: 60vh;
+  }
+
+  /* 信息栏由绝对定位改为常规流式，跟随媒体下方排列 */
+  .showcase-info-bottom {
+    position: static;
+    height: auto;
+    padding: 12px 16px;
+  }
+
+  .info-container {
+    max-width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .uploader-left {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .uploader-avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .content-right {
+    text-align: left;
+  }
+
+  .showcase-title {
+    font-size: 1.35rem;
+    max-height: 4rem;
+  }
+
+  .showcase-desc {
+    font-size: 1rem;
+    max-height: 5rem;
+  }
+
+  .gallery-masonry {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 48px;
+  }
+
+  .gallery-info-bottom {
+    height: auto;
+    padding: 10px 12px;
+  }
+
+  .gallery-info-bottom .showcase-title {
+    font-size: 1.05rem;
+  }
+
+  .gallery-info-bottom .showcase-desc {
+    font-size: 0.9rem;
+    max-height: 4em;
+  }
+
+  .empty-masonry {
+    font-size: 1.1rem;
+    padding: 60px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-wrapper {
+    padding: 0 12px;
+  }
+
+  .ht1,
+  .ht2 {
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+  }
+
+  .main-showcase {
+    border-radius: 14px;
+    margin-bottom: 24px;
+  }
+
+  .showcase-info-bottom {
+    padding: 10px 12px;
+  }
+
+  .uploader-avatar {
+    width: 56px;
+    height: 56px;
+    border-width: 2px;
+  }
+
+  .uploader-name {
+    font-size: 1rem;
+  }
+
+  .upload-time {
+    font-size: 0.8rem;
+  }
+
+  /* 触摸目标不小于 44px */
+  .change-btn {
+    min-height: 44px;
+    padding: 10px 18px;
+  }
+
+  .gallery-masonry {
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .gallery-info-bottom .uploader-avatar.small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gallery-info-bottom .uploader-name {
+    font-size: 0.95rem;
+  }
+
+  .gallery-info-bottom .showcase-title {
+    font-size: 0.95rem;
+  }
+
+  /* 两列拼图时卡片很窄，面板内只保留标题与上传者，避免面板高度超过卡片被裁切 */
+  .gallery-info-bottom .showcase-desc {
+    display: none;
+  }
 }

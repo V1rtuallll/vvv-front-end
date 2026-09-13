@@ -26,7 +26,33 @@ defineEmits(["save", "cancel"]);
 </script>
 
 <style scoped>
-.edit-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 999; }
-.edit-modal { width: 90%; max-width: 700px; background: rgba(0, 0, 20, 0.9); padding: 35px; border-radius: 15px; border: 2px solid #00ffff; box-shadow: 0 0 30px #00ffff88; }
-.modal-actions { margin-top: 25px; display: flex; gap: 15px; justify-content: center; }
+.edit-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; box-sizing: border-box; }
+/* width 与 padding 并存，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
+.edit-modal { box-sizing: border-box; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; background: rgba(0, 0, 20, 0.9); padding: 35px; border-radius: 15px; border: 2px solid #00ffff; box-shadow: 0 0 30px #00ffff88; }
+.modal-actions { margin-top: 25px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+.modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; }
+
+/* ==== 窄屏适配 ====
+   <=768px：弹窗接近全屏，输入控件铺满宽度并保证触摸尺寸；
+   <=480px：按钮纵向铺满，避免并排时超出视口。
+*/
+@media (max-width: 768px) {
+  .edit-modal-overlay { padding: 12px; }
+  .edit-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px; }
+  .edit-modal h3 { font-size: 1.1rem; word-break: break-word; }
+  .edit-modal input,
+  .edit-modal textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-modal-overlay { padding: 0; }
+  .edit-modal { max-height: 100vh; max-height: 100dvh; border-radius: 0; padding: 18px 12px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions button { width: 100%; }
+}
 </style>

@@ -71,7 +71,7 @@
   max-width: 800px;
   background: #000;
   overflow: hidden;
-  /* 删除了外层 box-shadow，让背景完全融合 */
+  /* 不设外层 box-shadow，与背景融合 */
 }
 
 .crt-scanlines {
@@ -97,7 +97,7 @@
   animation: crt-flicker 8s infinite;
 }
 
-/* 其余样式保持不变（头像、按钮、预览等都超级梦幻） */
+/* 头像、按钮与预览 */
 .crt-title {
   font-weight: 900;
   font-size: 2.8rem;
@@ -149,6 +149,8 @@
   border-radius: 8px;
   font-size: 1.4rem;
   box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
+  /* width: 100% 配合 padding 和 border 需要 border-box，否则窄屏溢出 */
+  box-sizing: border-box;
 }
 .crt-textarea {
   height: 120px;
@@ -194,28 +196,25 @@
 .crt-preview-modal {
   position: fixed;
   inset: 0;
-  background: rgba(
-    0,
-    0,
-    0,
-    0.7
-  ); /* 从0.95改成0.7，轻轻遮一层，能看到后面的星星～ */
+  background: rgba(0, 0, 0, 0.7); /* 半透明遮罩，保留背景可见 */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  backdrop-filter: blur(
-    4px
-  ); /* 新增：轻轻模糊背景，像蒙了一层月光薄雾，超梦幻～ */
+  backdrop-filter: blur(4px); /* 背景模糊 */
 }
 .crt-preview-content {
   position: relative;
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: 50px;
   background: #000;
   border-radius: 15px;
   text-align: center;
+  /* width: 90% 配合 padding 需要 border-box，否则窄屏超出视口 */
+  box-sizing: border-box;
   box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.15),
     0 0 20px rgba(0, 255, 255, 0.2);
 }
@@ -293,7 +292,7 @@
   margin-top: 20px;
   padding: 12px 30px;
   background: transparent;
-  border: 2px solid #ff00ff; /* 粉色边框，超级特别～ */
+  border: 2px solid #ff00ff; /* 粉色边框 */
   color: #ff00ff;
   box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
   animation: crt-glow-pulse 3s infinite alternate;
@@ -301,4 +300,127 @@
 .admin-secret-btn:hover {
   box-shadow: 0 0 40px rgba(255, 0, 255, 0.9);
   transform: scale(1.05);
+}
+
+/* ==== 窄屏适配 ====
+   <=1024px 平板 / <=768px 竖屏平板与手机 / <=480px 小屏手机。
+   表单与预览弹窗在窄屏收紧内边距，输入框保持不小于 16px 字号避免移动端自动缩放。
+*/
+@media (max-width: 1024px) {
+  .crt-content {
+    padding: 40px 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .crt-profile-wrapper {
+    padding: 20px 14px;
+  }
+
+  .crt-content {
+    padding: 28px 18px;
+  }
+
+  .crt-title {
+    font-size: 2rem;
+    margin-bottom: 24px;
+  }
+
+  .avatar-section {
+    margin: 24px 0;
+  }
+
+  .crt-avatar {
+    width: 96px;
+    height: 96px;
+  }
+
+  .field-group {
+    margin: 22px 0;
+  }
+
+  .field-group label {
+    font-size: 1.15rem;
+  }
+
+  .crt-btn {
+    width: 100%;
+    margin: 28px 0;
+  }
+
+  .crt-mini-btn,
+  .crt-preview-btn {
+    /* 触摸目标不小于 44px */
+    min-height: 44px;
+  }
+
+  .crt-preview-content {
+    padding: 28px 20px;
+  }
+
+  .crt-preview-title {
+    font-size: 1.6rem;
+    margin-bottom: 20px;
+  }
+
+  .preview-avatar-img {
+    width: 120px;
+    height: 120px;
+  }
+
+  .preview-username,
+  .preview-info {
+    font-size: 1.1rem;
+    margin: 14px 0;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 480px) {
+  .crt-profile-wrapper {
+    padding: 12px 10px;
+  }
+
+  .crt-content {
+    padding: 20px 12px;
+  }
+
+  .crt-title {
+    font-size: 1.6rem;
+  }
+
+  .crt-avatar {
+    width: 84px;
+    height: 84px;
+  }
+
+  .crt-input,
+  .crt-textarea {
+    padding: 12px;
+    font-size: 1.05rem;
+  }
+
+  .crt-textarea {
+    height: 96px;
+  }
+
+  .crt-preview-content {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 20px 12px;
+  }
+
+  .preview-avatar-img {
+    width: 96px;
+    height: 96px;
+  }
+
+  .crt-preview-title {
+    font-size: 1.4rem;
+  }
+
+  .btn-text {
+    font-size: 1.3rem;
+  }
 }

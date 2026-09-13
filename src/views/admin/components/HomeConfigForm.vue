@@ -37,7 +37,7 @@
 
     <div class="field-group">
       <label>大展示 Alt（无障碍描述）</label>
-      <input v-model="config.main.alt" class="crt-input" placeholder="月光温柔洒落～" />
+      <input v-model="config.main.alt" class="crt-input" placeholder="月光洒落" />
     </div>
 
     <div v-if="config.main.random" class="field-group">
@@ -69,5 +69,46 @@ defineEmits(["save", "set-main"]);
   background: rgba(5, 5, 20, 0.6);
   border: 1px solid #00ffff44;
   border-radius: 12px;
+}
+
+/* ==== 窄屏适配 ====
+   窄屏收紧内边距，输入控件铺满宽度并保证触摸尺寸；
+   可用文件列表中的 OSS 链接过长时换行，避免撑出横向滚动。
+*/
+@media (max-width: 768px) {
+  .admin-section {
+    margin: 30px 0;
+    padding: 18px 14px;
+  }
+
+  .admin-section input,
+  .admin-section select,
+  .admin-section textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .file-list {
+    padding-left: 18px;
+  }
+
+  .file-list li {
+    margin-bottom: 12px;
+    word-break: break-all;
+  }
+
+  .file-list .crt-mini-btn,
+  .file-list button {
+    min-height: 44px;
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-section {
+    padding: 14px 10px;
+  }
 }
 </style>

@@ -1,4 +1,4 @@
-/* 先引入一个更emo的字体～可选，但超级配你的风格！（加到<style>最上面） */
+/* 引入 Orbitron / Rajdhani / Monoton 字体 */
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900|Rajdhani:wght@700|Monoton&display=swap");
 /* 全局无白边保持不变 */
 :global(body),
@@ -10,10 +10,10 @@
   width: 100%;
   background: #000;
 }
-/* 新版高级霓虹glitch标题～ */
+/* 霓虹 glitch 标题 */
 .glitch-title {
-  font-size: 6rem; /* 稍大一点，更霸气～可调 */
-  font-family: "Monoton", "Orbitron", cursive; /* 推荐Monoton！超级vaporwave neon感～或者换Orbitron更cyber */
+  font-size: 6rem; /* 大屏标题字号，可按需调整 */
+  font-family: "Monoton", "Orbitron", cursive; /* Monoton 优先，Orbitron 作为回退 */
   font-weight: 900;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -24,11 +24,11 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 
-  /* 核心：多层深glow，像真灯管层层发光～ */
+  /* 多层外发光，模拟灯管效果 */
   text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00ff, 0 0 40px #ff00ff,
     0 0 60px #ff00ff, 0 0 80px #ff00ff, 0 0 100px #00ffff, 0 0 120px #00ffff;
 
-  /* 高级glitch：用伪元素做粉青分离层～ */
+  /* glitch：用伪元素做粉青分离层 */
   animation: glitch-main 3s infinite ease-in-out,
     neon-flicker 4s infinite ease-in-out;
 }
@@ -214,7 +214,7 @@
   text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff,
     0 0 5px #00ffff, 0 0 15px #00ffff;
 
-  /* 让文字偶尔轻微闪烁，像老霓虹灯一样可爱～ */
+  /* 文字轻微闪烁 */
   animation: neon-flicker 3s infinite ease-in-out, subtle-glitch 8s infinite;
 }
 
@@ -237,7 +237,7 @@
     transform: translate(2px, -2px);
   }
 }
-/* 新增霓虹微微闪烁动画（温柔不刺眼～） */
+/* 霓虹闪烁动画关键帧 */
 @keyframes neon-flicker {
   0%,
   100% {
@@ -251,7 +251,7 @@
   }
 }
 
-/* 原glitch动画稍改，让它更乱更emo～ */
+/* glitch 动画关键帧 */
 @keyframes glitch {
   0% {
     text-shadow: 0.05em 0 0 #ff00ff, -0.05em -0.025em 0 #00ffff;
@@ -270,9 +270,7 @@
     transform: translate(0);
   }
 }
-/* ✨ 核心：你自定义的背景图片层 ✨ 
-   把 /jpgs/your-header-bg.jpg 换成你想用的任何图片路径！
-   支持本地、线上URL、GIF都行～ */
+/* 头部背景层。替换 url() 中的路径即可更换图片，支持本地路径、线上 URL 和 GIF。 */
 .header-background-custom {
   position: absolute;
   top: 0;
@@ -280,7 +278,7 @@
   right: 0;
   bottom: 0;
   background: url("/stickers/loop6.gif") repeat top left / auto;
-  /* 自动平铺！不管图片多大多小，都会重复填充～最稳了 */
+  /* repeat 平铺，任意尺寸的图片都能填满 */
   opacity: 1; /* 可调透明度，0.6~1.0 都好看 */
   z-index: 1;
 }
@@ -299,7 +297,7 @@
   );
   z-index: 2;
 } */
-/* 内容层在最上面，文字不被盖住～ */
+/* 内容层置于背景之上 */
 .header-content {
   position: relative;
   z-index: 3;
@@ -312,7 +310,7 @@
   font-family: "Courier New", monospace;
   position: relative; /* 让背景层相对它 */
 }
-/* 新布局：直接在根元素加背景，无论什么图片都自动平铺～最稳最通用！ */
+/* 根元素背景：平铺图案加纯黑兜底 */
 .vf-layout {
   min-height: 100vh;
   height: 100vh;
@@ -415,26 +413,26 @@
 /* ==== 左右边栏大升级：霓虹高级版 ==== */
 /* 先给两个sidebar统一的基础美化 */
 .sidebar {
-  background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明，更有深度感～ */
+  background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明背景 */
   border-radius: 20px; /* 圆角更大一点，柔软又未来 */
   padding: 25px;
   position: relative;
-  overflow: hidden; /* 重要！让内部glow不溢出 */
+  overflow: hidden; /* 裁掉溢出的内部光晕 */
 
-  /* 多层霓虹外发光，像真正的灯管环绕～ */
+  /* 多层霓虹外发光 */
   box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
     0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
     inset 0 0 20px rgba(255, 0, 255, 0.15); /* 内glow，让里面也亮起来 */
 
-  /* 呼吸动画：超级温柔的心跳光晕～ */
+  /* 呼吸动画 */
   animation: sidebar-glow-breath 10s infinite ease-in-out;
 
-  /* 轻微glitch抖动，只有偶尔一瞬，像老电视在撒娇～ */
+  /* 偶发的轻微 glitch 抖动 */
   animation: sidebar-glow-breath 10s infinite ease-in-out,
     subtle-sidebar-glitch 8s infinite ease-in-out;
 }
 
-/* 让左右边栏的标题（h3）也霓虹起来～ */
+/* 侧栏标题 */
 .sidebar h3 {
   font-family: "Orbitron", "Rajdhani", sans-serif;
   font-size: 1.6rem;
@@ -454,7 +452,7 @@
   animation: neon-flicker 4s infinite ease-in-out;
 }
 
-/* 导航链接更炫～ */
+/* 导航链接 */
 .left .nav-link {
   display: block;
   padding: 12px 15px;
@@ -479,7 +477,7 @@
   text-shadow: 0 0 15px #00ffff;
 }
 
-/* 右侧Top列表也美化一下～ */
+/* 右侧榜单列表 */
 .right .top-list {
   list-style: none;
   padding: 0;
@@ -502,7 +500,7 @@
   transform: translateX(8px);
 }
 
-/* Stamps & Stickers 网格更可爱～ */
+/* 贴纸网格 */
 .friends-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -526,7 +524,7 @@
 }
 
 /* ==== 新增动画钥匙 ==== */
-/* 边栏呼吸光（超级温柔～） */
+/* 侧栏呼吸光 */
 @keyframes sidebar-glow-breath {
   0%,
   100% {
@@ -541,7 +539,7 @@
   }
 }
 
-/* 超级轻的边栏glitch，只有偶尔闪一下～ */
+/* 偶发的轻微侧栏 glitch */
 @keyframes subtle-sidebar-glitch {
   0%,
   90%,
@@ -559,7 +557,7 @@
   }
 }
 /* ==== 中间内容区大升级：统一霓虹家族风 ==== */
-/* 主内容区 - 和sidebar同款高级感～ */
+/* 主内容区：与侧栏同款发光 */
 .vf-main {
   background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明，统一深度 */
   border-radius: 20px; /* 和sidebar一样大圆角，更柔软 */
@@ -577,7 +575,7 @@
   /* subtle-sidebar-glitch 8s infinite ease-in-out; */
 }
 
-/* Featured网格里的小盒子也升级～ */
+/* Featured 网格方块 */
 .featured-box {
   background: rgba(20, 0, 40, 0.7); /* 稍深一点，层次感 */
   border: 2px dashed rgba(255, 105, 180, 0.6);
@@ -605,12 +603,12 @@
 /* 子页面内容：完美居中、自适应、继承一点温柔辉光 */
 .page-content {
   width: 100%;
-  max-width: 900px; /* 可选：限制最大宽度，更优雅阅读～删掉就满幅 */
+  max-width: 900px; /* 限制最大宽度便于阅读，删除则满幅 */
   margin: 0 auto;
   color: #fff;
   font-family: "Courier New", monospace;
   line-height: 1.8;
-  /* 可选：让子页面文字也沾点霓虹味～ */
+  /* 子页面文字阴影 */
   text-shadow: 0 0 5px rgba(255, 105, 180, 0.3);
 }
 /* ==== 复用动画（如果你之前没加过sidebar的动画，这里补上） ==== */
@@ -687,7 +685,7 @@
   text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff,
     0 0 5px #00ffff, 0 0 15px #00ffff;
   animation: neon-flicker 3s infinite ease-in-out, subtle-glitch 8s infinite,
-    footer-marquee-scroll 40s linear infinite; /* 40s一圈，更慢更深情～ */
+    footer-marquee-scroll 40s linear infinite; /* 40s 一轮 */
 }
 
 .filing-footer {
@@ -1060,10 +1058,10 @@
 .music-player::before {
   content: "";
   position: absolute;
-  inset: 0; /* 不外扩，避免任何边框光晕～ */
+  inset: 0; /* 不外扩，避免边框光晕 */
   background: transparent;
-  border: none; /* 完全去掉双线边框发光～ */
-  box-shadow: none; /* 去掉所有边框glow，让它与黑融为一体～ */
+  border: none; /* 去掉边框发光 */
+  box-shadow: none; /* 去掉边框 glow，与背景融合 */
   clip-path: none;
   z-index: -2;
 }
@@ -1093,7 +1091,7 @@
   animation: gothic-thorn 20s linear infinite;
 }
 
-/* 标题：彻底与黑色融为一体，只剩纯净冷白发光文字～像黑暗中自然浮现的祷词 */
+/* 标题：冷白发光文字 */
 .music-player h3 {
   color: #fff;
   font-size: 1.5rem;
@@ -1102,12 +1100,12 @@
   margin: 0 0 28px 0;
   text-transform: uppercase;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.9),
-    /* 最柔内层光晕～ */ 0 0 10px rgba(255, 255, 255, 0.7),
-    0 0 16px rgba(255, 255, 255, 0.5), 0 0 24px rgba(255, 255, 255, 0.3); /* 渐弱外层，无任何边框痕迹～ */
+    /* 内层光晕 */ 0 0 10px rgba(255, 255, 255, 0.7),
+    0 0 16px rgba(255, 255, 255, 0.5), 0 0 24px rgba(255, 255, 255, 0.3); /* 渐弱外层光晕 */
   animation: white-halo 16s infinite ease-in-out;
 }
 
-/* 歌曲名：回到“之前那种”～只靠发光边缘自然形成隐形“边框感”，无实体框、无黑底～ */
+/* 歌曲名：仅靠发光边缘形成边界感，无实体边框和底色 */
 .track-name {
   color: #fff;
   font-size: 1.2rem;
@@ -1118,15 +1116,15 @@
   padding: 8px 12px;
   line-height: 2.5;
   text-shadow: 0 0 6px rgba(255, 255, 255, 1),
-    /* 内层最亮，形成“隐形边框”核心～ */ 0 0 12px rgba(255, 255, 255, 0.8),
-    0 0 20px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 255, 255, 0.4); /* 外层渐弱光晕，自然形成柔和边缘～ */
+    /* 内层最亮 */ 0 0 12px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 255, 255, 0.4); /* 外层渐弱光晕 */
   animation: white-halo 16s infinite ease-in-out;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 进度条：冷白纯粹光束～ */
+/* 进度条：冷白光束 */
 progress {
   width: 100%;
   height: 10px;
@@ -1146,7 +1144,7 @@ progress::-moz-progress-bar {
   box-shadow: 0 0 12px #fff;
 }
 
-/* 按钮区：三个按钮同一行 + 大小彻底统一（补偿◄◄原始窄问题）～ */
+/* 按钮区：统一尺寸 */
 .player-controls {
   display: flex;
   flex-direction: column;
@@ -1167,10 +1165,10 @@ progress::-moz-progress-bar {
   background: transparent;
   border: none !important;
   color: #fff;
-  width: 60px; /* 统一宽度～ */
-  height: 60px; /* 统一高度～ */
+  width: 60px; /* 统一宽度 */
+  height: 60px; /* 统一高度 */
   border-radius: 50%;
-  font-size: 1.8rem; /* 统一字体大小～ */
+  font-size: 1.8rem; /* 统一字号 */
   font-weight: 900;
   display: flex;
   align-items: center;
@@ -1181,14 +1179,14 @@ progress::-moz-progress-bar {
   transition: all 0.4s ease;
 }
 
-/* hover效果～ */
+/* hover 效果 */
 .player-controls button:hover {
   transform: scale(1.2) translateY(-4px);
   text-shadow: 0 0 24px #fff, 0 0 48px #fff, 0 0 72px #fff;
   animation: symbol-glow 1.8s infinite;
 }
 
-/* 音量区：和进度条完全一样～外观、发光、thumb全同步～超级稳定无bug～ */
+/* 音量区：外观与发光同进度条保持一致 */
 .volume-control {
   display: flex;
   flex-direction: column;
@@ -1201,15 +1199,15 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 10px; /* 和进度条高度完全一致～ */
-  background: #111; /* 轨道底色一致～ */
+  height: 10px; /* 与进度条高度一致 */
+  background: #111; /* 与进度条轨道底色一致 */
   border: none;
-  box-shadow: inset 0 0 12px #000, 0 0 10px rgba(255, 255, 255, 0.2); /* 外glow完全一致～ */
+  box-shadow: inset 0 0 12px #000, 0 0 10px rgba(255, 255, 255, 0.2); /* 外发光与进度条一致 */
   outline: none;
-  margin: 20px 0 0 0; /* 间距也参考进度条～ */
+  margin: 20px 0 0 0; /* 间距与进度条一致 */
 }
 
-/* thumb：和进度条价值部分发光完全一致～纯白渐变圆润～ */
+/* 滑块：纯白渐变，发光与进度条一致 */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 24px;
@@ -1230,7 +1228,7 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 12px #fff, 0 0 30px rgba(255, 255, 255, 0.6);
 }
 
-/* 填充轨道（WebKit）：已填满部分和进度条价值一致～ */
+/* 填充轨道（WebKit） */
 input[type="range"]::-webkit-slider-runnable-track {
   background: #111;
   box-shadow: inset 0 0 12px #000;
@@ -1277,3 +1275,159 @@ input[type="range"]::-webkit-slider-runnable-track {
   }
 }
 /* ==== 极致音乐播放器结束 ==== */
+
+/* ==== 窄屏适配 ====
+   三档布局策略，桌面样式作为大屏变体，不另建页面：
+   - <=1024px：收窄左右侧栏与间距，仍保持三栏
+   - <=768px：改为单栏纵向排列，主内容在侧栏之前
+   - <=480px：进一步收紧内边距与字号
+*/
+@media (max-width: 1024px) {
+  .vf-container {
+    grid-template-columns: 210px 1fr 240px;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .vf-header {
+    height: 260px;
+  }
+
+  .glitch-title {
+    font-size: 4rem;
+    letter-spacing: 0.14em;
+  }
+
+  .neon-welcome {
+    font-size: 1.6rem;
+  }
+
+  .vf-main {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .vf-layout {
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    /* 移动端固定背景影响滚动性能，改为随内容滚动 */
+    background-attachment: scroll;
+  }
+
+  .vf-header {
+    height: auto;
+    padding: 24px 16px;
+  }
+
+  .glitch-title {
+    font-size: 2.6rem;
+    letter-spacing: 0.1em;
+  }
+
+  .neon-freak {
+    font-size: 1.1rem;
+    margin: 12px 0;
+  }
+
+  .neon-welcome {
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+  }
+
+  .neon-marquee {
+    padding: 10px 0;
+  }
+
+  .marquee-text {
+    font-size: 1rem;
+  }
+
+  /* 单栏纵向排列：主内容排在左右侧栏之前 */
+  .vf-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .vf-main {
+    order: 1;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .sidebar.left {
+    order: 2;
+  }
+
+  .sidebar.right {
+    order: 3;
+  }
+
+  /* 导航改为横向排列，避免长时间纵向占位 */
+  .left .vf-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .left .nav-link {
+    flex: 1 1 96px;
+    margin: 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .music-player {
+    margin-bottom: 20px;
+  }
+
+  .neon-footer {
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vf-container {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .vf-main {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .glitch-title {
+    font-size: 1.9rem;
+    letter-spacing: 0.06em;
+  }
+
+  .neon-freak {
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+  }
+
+  .neon-welcome {
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+  }
+
+  .sidebar {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .sidebar h3 {
+    font-size: 1.2rem;
+    margin-bottom: 14px;
+  }
+
+  .page-content {
+    max-width: 100%;
+  }
+}

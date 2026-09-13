@@ -58,7 +58,7 @@
             <textarea
               v-model="editDescription"
               class="crt-textarea"
-              placeholder="说点什么关于你自己～"
+              placeholder="说点什么关于你自己"
             ></textarea>
             <button @click="updateDescription" class="crt-mini-btn">
               Submit
@@ -137,7 +137,6 @@
           >
             关闭
           </button>
-          <p class="preview-tip">❤️</p>
         </div>
       </div>
     </transition>
