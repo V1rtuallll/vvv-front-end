@@ -31,11 +31,7 @@
             <div class="meta-text"><span class="uploader">@{{ item.uploaderUsername || "神秘人" }}</span><span class="time">{{ formatShortDate(item.createdAt) }}</span></div>
           </div>
           <div class="interactions"><span class="like-count">❤️ {{ item.likes }}</span><span class="comment-count">💬 {{ item.commentCount || 0 }}</span></div>
-          <!-- 入口只在作者本人或管理员可见。隐藏只是显示逻辑，越权请求由接口拒绝 -->
-          <div v-if="canManageItem(item)" class="card-actions" @click.stop>
-            <button class="crt-mini-btn" @click="openEditModal(item)">编辑</button>
-            <button class="crt-mini-btn" @click="requestDeleteItem(item)">删除</button>
-          </div>
+          <!-- 编辑与删除只在详情弹窗里提供，列表页不再放置入口 -->
         </div>
       </article>
 
