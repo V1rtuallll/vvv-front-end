@@ -1,5 +1,5 @@
 <template>
-  <header v-if="hasIdentity" class="about-identity">
+  <header class="about-identity">
     <img
       v-if="content.avatarSrc"
       :src="content.avatarSrc"
@@ -12,20 +12,24 @@
     </div>
   </header>
 
-  <SafeHtml v-if="content.bioHtml" class="about-bio" :html="content.bioHtml" />
+  <p v-if="isEmpty" class="about-empty">这里还没有内容</p>
 
-  <ul v-if="content.tags.length" class="about-tags">
-    <li v-for="tag in content.tags" :key="tag" class="about-tag">{{ tag }}</li>
-  </ul>
+  <template v-else>
+    <SafeHtml v-if="content.bioHtml" class="about-bio" :html="content.bioHtml" />
 
-  <ul v-if="content.links.length" class="about-links">
-    <li v-for="link in content.links" :key="link.url || link.name">
-      <a class="about-link" :href="link.url" target="_blank" rel="noopener noreferrer">
-        <img v-if="link.icon" class="about-link-icon" :src="link.icon" alt="" />
-        » {{ link.name }} ↗
-      </a>
-    </li>
-  </ul>
+    <ul v-if="content.tags.length" class="about-tags">
+      <li v-for="tag in content.tags" :key="tag" class="about-tag">{{ tag }}</li>
+    </ul>
+
+    <ul v-if="content.links.length" class="about-links">
+      <li v-for="link in content.links" :key="link.url || link.name">
+        <a class="about-link" :href="link.url" target="_blank" rel="noopener noreferrer">
+          <img v-if="link.icon" class="about-link-icon" :src="link.icon" alt="" />
+          » {{ link.name }} ↗
+        </a>
+      </li>
+    </ul>
+  </template>
 </template>
 
 <script setup>
@@ -42,8 +46,13 @@ const props = defineProps({
   content: { type: Object, required: true },
 });
 
-const hasIdentity = computed(() =>
-  Boolean(props.content.avatarSrc || props.content.displayName || props.content.tagline));
+// 身份区来自站点账号，任何情况下都渲染，不参与空态判定；
+// 占位只替换正文、标签、链接这三块，页面自己填的内容一个都没有时才出现。
+const isEmpty = computed(() =>
+  !props.content.bioHtml
+  && props.content.tags.length === 0
+  && props.content.links.length === 0
+  && !props.content.tagline);
 </script>
 
 <style scoped>
@@ -96,6 +105,13 @@ const hasIdentity = computed(() =>
   color: #ff69b4;
 }
 
+.about-empty {
+  margin: 40px 0;
+  color: #8a8aa0;
+  font-family: "Rajdhani", "Courier New", monospace;
+  text-align: center;
+}
+
 .about-tags {
   display: flex;
   flex-wrap: wrap;
@@ -134,6 +150,7 @@ const hasIdentity = computed(() =>
 .about-link-icon {
   width: 18px;
   height: 18px;
+  margin-right: 6px;
   vertical-align: middle;
   object-fit: contain;
 }

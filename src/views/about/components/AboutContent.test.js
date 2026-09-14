@@ -91,4 +91,26 @@ describe("AboutContent 组件", () => {
     expect(wrapper.find(".about-tags").exists()).toBe(false);
     expect(wrapper.find(".about-links").exists()).toBe(false);
   });
+
+  it("只填了签名时身份区照常渲染，不显示占位", () => {
+    const wrapper = mountContent({ tagline: "在代码与幻想之间游荡" });
+
+    expect(wrapper.find(".about-identity").exists()).toBe(true);
+    expect(wrapper.find(".about-tagline").text()).toBe("在代码与幻想之间游荡");
+    expect(wrapper.find(".about-empty").exists()).toBe(false);
+  });
+
+  it("正文、标签、链接都为空时显示占位，身份区仍在", () => {
+    const wrapper = mountContent({ displayName: "V1rtual" });
+
+    expect(wrapper.find(".about-empty").text()).toBe("这里还没有内容");
+    expect(wrapper.find(".about-identity").exists()).toBe(true);
+    expect(wrapper.find(".about-name").text()).toBe("V1rtual");
+  });
+
+  it("有正文时不显示占位", () => {
+    const wrapper = mountContent({ bioHtml: "<p>正文</p>" });
+
+    expect(wrapper.find(".about-empty").exists()).toBe(false);
+  });
 });
