@@ -47,7 +47,8 @@ const props = defineProps({
 });
 
 // 身份区来自站点账号，任何情况下都渲染，不参与空态判定；
-// 占位只替换正文、标签、链接这三块，页面自己填的内容一个都没有时才出现。
+// 占位替换的是正文、标签、链接这三块，但判定看四个字段 —— 签名也算内容：
+// 签名在身份区里，非空时页面已经有可看的内容，此时不出现占位。
 const isEmpty = computed(() =>
   !props.content.bioHtml
   && props.content.tags.length === 0

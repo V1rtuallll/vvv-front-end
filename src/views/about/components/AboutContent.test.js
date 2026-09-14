@@ -100,6 +100,22 @@ describe("AboutContent 组件", () => {
     expect(wrapper.find(".about-empty").exists()).toBe(false);
   });
 
+  it("只填了标签时不显示占位，标签照常渲染", () => {
+    const wrapper = mountContent({ tags: ["Vue"] });
+
+    expect(wrapper.find(".about-empty").exists()).toBe(false);
+    expect(wrapper.findAll(".about-tag").map((tag) => tag.text())).toEqual(["Vue"]);
+  });
+
+  it("只填了链接时不显示占位，链接照常渲染", () => {
+    const wrapper = mountContent({ links: [{ name: "GitHub", url: "https://x" }] });
+
+    expect(wrapper.find(".about-empty").exists()).toBe(false);
+    const link = wrapper.find(".about-link");
+    expect(link.text()).toContain("GitHub");
+    expect(link.attributes("href")).toBe("https://x");
+  });
+
   it("正文、标签、链接都为空时显示占位，身份区仍在", () => {
     const wrapper = mountContent({ displayName: "V1rtual" });
 

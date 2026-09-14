@@ -140,6 +140,15 @@ describe("AboutConfigForm", () => {
     expect(saveAdminAbout.mock.calls[0][0].links).toEqual([{ name: "GitHub", url: "/gh", icon: "" }]);
   });
 
+  it("预览不渲染保存时会被丢掉的空链接行", async () => {
+    const wrapper = await mountForm({ links: [{ name: "A", url: "/a" }] });
+
+    await wrapper.find(".about-link-add").trigger("click");
+
+    expect(wrapper.findAll(".link-item")).toHaveLength(2);
+    expect(wrapper.findAll(".bio-preview .about-link")).toHaveLength(1);
+  });
+
   it("链接行可以填图标 URL，并随保存提交", async () => {
     const wrapper = await mountForm({ links: [{ name: "GitHub", url: "/gh" }] });
 

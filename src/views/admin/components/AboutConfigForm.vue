@@ -76,6 +76,14 @@ watch(
   { immediate: true },
 );
 
+// 保存与预览共用同一条链接整理规则：库里的旧条目可能缺字段，先补成空串再 trim，
+// 否则 trim 会抛错；名称和地址都为空的条目丢掉，避免往库里塞一堆空行。
+// 预览因此与保存结果一致，不会显示保存时会被丢掉的行。
+const normalizedLinks = (links) => links
+  .map((link) => ({ name: link.name || "", url: link.url || "", icon: link.icon || "" }))
+  .filter((link) => link.name.trim() || link.url.trim())
+  .map((link) => ({ name: link.name.trim(), url: link.url.trim(), icon: link.icon.trim() }));
+
 // 预览用与 About 页面同一个组件，作者看到的就是访客看到的。
 // 正文、签名、链接与标签取表单里的当前值，身份两项取加载回来的值。
 const previewContent = computed(() => ({
@@ -83,7 +91,7 @@ const previewContent = computed(() => ({
   displayName: content.value.displayName,
   tagline: form.tagline,
   bioHtml: form.bioHtml,
-  links: form.links,
+  links: normalizedLinks(form.links),
   tags: form.tags,
 }));
 
@@ -109,12 +117,7 @@ const submit = () => {
   save({
     tagline: form.tagline.trim(),
     bioHtml: form.bioHtml,
-    // 名称和地址都为空的条目直接丢掉，避免往库里塞一堆空行；
-    // 库里的旧条目可能缺字段，先补成空串再 trim，否则 trim 会抛错
-    links: form.links
-      .map((link) => ({ name: link.name || "", url: link.url || "", icon: link.icon || "" }))
-      .filter((link) => link.name.trim() || link.url.trim())
-      .map((link) => ({ name: link.name.trim(), url: link.url.trim(), icon: link.icon.trim() })),
+    links: normalizedLinks(form.links),
     tags: form.tags,
   });
 };
