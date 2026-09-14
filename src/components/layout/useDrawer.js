@@ -1,0 +1,39 @@
+import { onBeforeUnmount, ref, watch } from "vue";
+
+/**
+ * 移动端抽屉的开合状态。
+ *
+ * 抽屉只在 <=768px 存在：宽屏下两个触发按钮被 CSS 隐藏，状态不会被打开。
+ * 单值设计让同一时刻最多只有一个抽屉展开。
+ *
+ * 显隐由 CSS transform 完成，元素始终留在 DOM 中 —— 播放器在 onMounted 里
+ * 直接对 refs 取属性，元素一旦被 v-if 摘除，播放器会在所有分辨率下失效。
+ *
+ * 设计依据见 components/layout/doc/设计说明.md。
+ */
+
+const resolveWindow = () => (typeof window === "undefined" ? null : window);
+
+export function useDrawer(win = resolveWindow()) {
+  const openDrawer = ref(null);
+
+  const closeDrawer = () => {
+    openDrawer.value = null;
+  };
+
+  const toggleDrawer = (name) => {
+    openDrawer.value = openDrawer.value === name ? null : name;
+  };
+
+  watch(openDrawer, (value) => {
+    const body = win?.document?.body;
+    if (body) body.style.overflow = value ? "hidden" : "";
+  });
+
+  onBeforeUnmount(() => {
+    const body = win?.document?.body;
+    if (body) body.style.overflow = "";
+  });
+
+  return { openDrawer, closeDrawer, toggleDrawer };
+}
