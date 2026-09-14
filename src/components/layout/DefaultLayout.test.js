@@ -1,6 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/modules/user/api/userApi", () => ({
   getUserCount: vi.fn().mockResolvedValue({ data: 1 }),
@@ -25,14 +25,23 @@ const routes = [
 ];
 
 let router;
+let wrapper;
 
 async function mountLayout() {
   router = createRouter({ history: createMemoryHistory(), routes });
   await router.push("/home");
   await router.isReady();
 
-  return mount(DefaultLayout, { global: { plugins: [router], stubs } });
+  wrapper = mount(DefaultLayout, { global: { plugins: [router], stubs } });
+  return wrapper;
 }
+
+// 卸载必须逐用例做：jsdom 环境在整个文件内共享，挂载过的组件会把
+// useDrawer 注册的 keydown/resize 监听与 body 滚动锁留给下一个用例
+afterEach(() => {
+  wrapper?.unmount();
+  wrapper = undefined;
+});
 
 // 去掉路由切换带来的异步：watch 默认在 pre 阶段刷新
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -56,8 +65,6 @@ describe("左侧导航", () => {
 });
 
 describe("抽屉", () => {
-  let wrapper;
-
   beforeEach(async () => {
     wrapper = await mountLayout();
   });
@@ -101,6 +108,7 @@ describe("抽屉", () => {
 
   it("点遮罩关闭", async () => {
     await wrapper.find(".drawer-toggle.nav").trigger("click");
+    expect(wrapper.find(".sidebar.left").classes()).toContain("is-open");
 
     await wrapper.find(".drawer-backdrop").trigger("click");
 
