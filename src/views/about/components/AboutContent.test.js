@@ -82,6 +82,33 @@ describe("AboutContent 组件", () => {
       .toEqual(["» GitHub ↗", "» Blog ↗"]);
   });
 
+  it("没填图标时按链接地址匹配品牌图标", () => {
+    const wrapper = mountContent({
+      links: [{ name: "GitHub", url: "https://www.github.com/V1rtual" }],
+    });
+
+    const icon = wrapper.find(".about-link-icon");
+    expect(icon.exists()).toBe(true);
+    expect(icon.attributes("src")).toBe("/icons/github.svg");
+  });
+
+  it("填了图标时以填写的为准，不覆盖成品牌图标", () => {
+    const wrapper = mountContent({
+      links: [{ name: "GitHub", url: "https://github.com/V1rtual", icon: "/stickers/cat.gif" }],
+    });
+
+    expect(wrapper.find(".about-link-icon").attributes("src")).toBe("/stickers/cat.gif");
+  });
+
+  it("地址匹配不到品牌图标时只渲染文字", () => {
+    const wrapper = mountContent({
+      links: [{ name: "博客", url: "https://example.com" }],
+    });
+
+    expect(wrapper.findAll(".about-link-icon")).toHaveLength(0);
+    expect(wrapper.find(".about-link").text()).toBe("» 博客 ↗");
+  });
+
   it("没填的区块整块不渲染，不留空标题", () => {
     const wrapper = mountContent({ displayName: "V1rtual" });
 

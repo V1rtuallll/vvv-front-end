@@ -7,7 +7,7 @@
       class="about-avatar"
     />
     <div class="about-identity-text">
-      <h1 v-if="content.displayName" class="about-name">{{ content.displayName }}</h1>
+      <h1 v-if="content.displayName" class="about-name crt-title">{{ content.displayName }}</h1>
       <p v-if="content.tagline" class="about-tagline">{{ content.tagline }}</p>
     </div>
   </header>
@@ -24,7 +24,7 @@
     <ul v-if="content.links.length" class="about-links">
       <li v-for="link in content.links" :key="link.url || link.name">
         <a class="about-link" :href="link.url" target="_blank" rel="noopener noreferrer">
-          <img v-if="link.icon" class="about-link-icon" :src="link.icon" alt="" />
+          <img v-if="iconSrcFor(link)" class="about-link-icon" :src="iconSrcFor(link)" alt="" />
           » {{ link.name }} ↗
         </a>
       </li>
@@ -36,6 +36,7 @@
 import { computed } from "vue";
 
 import SafeHtml from "@/components/SafeHtml.vue";
+import { brandIconFor } from "@/views/about/brandIcons";
 
 // 正文的样式不放在 scoped 块里：scoped 的样式靠 data 属性生效，
 // 而 SafeHtml 注入的正文拿不到那个属性，规则对它完全无效。
@@ -54,6 +55,10 @@ const isEmpty = computed(() =>
   && props.content.tags.length === 0
   && props.content.links.length === 0
   && !props.content.tagline);
+
+// 显式填写的图标优先，没填时按链接地址匹配品牌图标；
+// 两者都没有则返回空串，链接只渲染文字。
+const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 </script>
 
 <style scoped>
@@ -81,16 +86,10 @@ const isEmpty = computed(() =>
   min-width: 0;
 }
 
+/* 昵称的字体、颜色、字重全部来自全局的 .crt-title（与 Profile 页的昵称一致），
+   这里只保留身份区自己的排版间距。 */
 .about-name {
   margin: 0 0 10px;
-  font-family: "Monoton", "Orbitron", cursive;
-  font-size: 2.2rem;
-  font-weight: normal;
-  letter-spacing: 2px;
-  background: linear-gradient(90deg, #ff00ff, #00ffff, #ff69b4, #ff00ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .about-tagline {
