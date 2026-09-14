@@ -8,11 +8,16 @@ import { emptyAboutContent, normalizeAboutContent } from "@/modules/about/conten
 export function useAboutConfig() {
   const content = ref(emptyAboutContent());
   const saving = ref(false);
+  // 只在成功读到载荷后才置 true。加载失败时表单里的空形状与「库里本来就没内容」
+  // 长得一样，此时保存会用空值覆盖掉库里的内容，所以要有这个标记来挡住保存。
+  const loaded = ref(false);
 
   const load = async () => {
+    loaded.value = false;
     try {
       const res = await getAbout();
       content.value = normalizeAboutContent(res.data);
+      loaded.value = true;
     } catch {
       // 提示由 request.js 负责
     }
@@ -34,5 +39,5 @@ export function useAboutConfig() {
   // 挂载即读取，表单不必自己再拉一次 —— 与 useAboutPage 的做法一致
   onMounted(load);
 
-  return { content, saving, load, save };
+  return { content, saving, loaded, load, save };
 }

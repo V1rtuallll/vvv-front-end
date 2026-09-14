@@ -126,4 +126,41 @@ describe("AboutConfigForm", () => {
     expect(hint).toContain("blockquote");
     expect(hint).toContain("table");
   });
+
+  it("加载成功时保存按钮可用", async () => {
+    const wrapper = await mountForm();
+
+    expect(wrapper.find(".about-save").attributes("disabled")).toBeUndefined();
+  });
+
+  it("加载失败时保存按钮不可用，避免用空值覆盖库里内容", async () => {
+    getAbout.mockRejectedValue(new Error("boom"));
+
+    const wrapper = mount(AboutConfigForm);
+    await flushPromises();
+
+    expect(wrapper.find(".about-save").attributes("disabled")).toBeDefined();
+
+    await wrapper.find(".about-save").trigger("click");
+    expect(saveAdminAbout).not.toHaveBeenCalled();
+  });
+
+  it("链接条目缺字段时也能提交，不会在点击处理里抛错", async () => {
+    const wrapper = await mountForm({ links: [{ url: "https://x" }] });
+
+    await wrapper.find(".about-save").trigger("click");
+    await flushPromises();
+
+    expect(saveAdminAbout).toHaveBeenCalledWith(
+      expect.objectContaining({ links: [{ name: "", url: "https://x" }] }),
+    );
+  });
+
+  it("三个单行输入按后端列宽限制长度", async () => {
+    const wrapper = await mountForm();
+
+    expect(wrapper.find(".about-avatar-input").attributes("maxlength")).toBe("512");
+    expect(wrapper.find(".about-name-input").attributes("maxlength")).toBe("100");
+    expect(wrapper.find(".about-tagline-input").attributes("maxlength")).toBe("255");
+  });
 });

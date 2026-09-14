@@ -5,19 +5,24 @@
     <div class="field-group">
       <label>头像 URL</label>
       <div class="avatar-row">
-        <input v-model="form.avatarSrc" class="crt-input about-avatar-input" placeholder="/stickers/xxx.gif 或 https://..." />
+        <input
+          v-model="form.avatarSrc"
+          class="crt-input about-avatar-input"
+          maxlength="512"
+          placeholder="/stickers/xxx.gif 或 https://..."
+        />
         <img v-if="form.avatarSrc" :src="form.avatarSrc" alt="" class="avatar-preview" />
       </div>
     </div>
 
     <div class="field-group">
       <label>昵称</label>
-      <input v-model="form.displayName" class="crt-input about-name-input" />
+      <input v-model="form.displayName" class="crt-input about-name-input" maxlength="100" />
     </div>
 
     <div class="field-group">
       <label>一句话签名</label>
-      <input v-model="form.tagline" class="crt-input about-tagline-input" />
+      <input v-model="form.tagline" class="crt-input about-tagline-input" maxlength="255" />
     </div>
 
     <div class="field-group">
@@ -54,7 +59,7 @@
       <input v-model="tagsText" class="crt-input about-tags-input" placeholder="Vue, Java, 摄影" />
     </div>
 
-    <button class="crt-btn about-save" :disabled="saving" @click="submit">保存</button>
+    <button class="crt-btn about-save" :disabled="saving || !loaded" @click="submit">保存</button>
   </section>
 </template>
 
@@ -70,7 +75,7 @@ import { ALLOWED_TAGS } from "@/utils/sanitizeHtml";
 import "@/views/about/about-bio.css";
 
 // 读取由 useAboutConfig 自己负责，这里只消费结果
-const { content, saving, save } = useAboutConfig();
+const { content, saving, loaded, save } = useAboutConfig();
 
 // 表单改的是本地副本，提交时才把结果交出去
 const form = reactive({
@@ -119,8 +124,10 @@ const submit = () => {
     displayName: form.displayName.trim(),
     tagline: form.tagline.trim(),
     bioHtml: form.bioHtml,
-    // 名称和地址都为空的条目直接丢掉，避免往库里塞一堆空行
+    // 名称和地址都为空的条目直接丢掉，避免往库里塞一堆空行；
+    // 库里的旧条目可能缺字段，先补成空串再 trim，否则 trim 会抛错
     links: form.links
+      .map((link) => ({ name: link.name || "", url: link.url || "" }))
       .filter((link) => link.name.trim() || link.url.trim())
       .map((link) => ({ name: link.name.trim(), url: link.url.trim() })),
     tags: form.tags,

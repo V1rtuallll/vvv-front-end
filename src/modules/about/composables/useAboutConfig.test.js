@@ -67,4 +67,18 @@ describe("useAboutConfig", () => {
 
     expect(vm.saving).toBe(false);
   });
+
+  it("读取成功后 loaded 为 true", async () => {
+    const { loaded } = await mountConfig();
+
+    expect(loaded).toBe(true);
+  });
+
+  it("读取失败时 loaded 保持 false", async () => {
+    getAbout.mockRejectedValue(new Error("boom"));
+
+    const { loaded } = await mountConfig();
+
+    expect(loaded).toBe(false);
+  });
 });
