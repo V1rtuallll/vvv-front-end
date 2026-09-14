@@ -3,24 +3,6 @@
     <h3 class="section-title">About 页面配置</h3>
 
     <div class="field-group">
-      <label>头像 URL</label>
-      <div class="avatar-row">
-        <input
-          v-model="form.avatarSrc"
-          class="crt-input about-avatar-input"
-          maxlength="512"
-          placeholder="/stickers/xxx.gif 或 https://..."
-        />
-        <img v-if="form.avatarSrc" :src="form.avatarSrc" alt="" class="avatar-preview" />
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>昵称</label>
-      <input v-model="form.displayName" class="crt-input about-name-input" maxlength="100" />
-    </div>
-
-    <div class="field-group">
       <label>一句话签名</label>
       <input v-model="form.tagline" class="crt-input about-tagline-input" maxlength="255" />
     </div>
@@ -29,8 +11,8 @@
       <label>正文</label>
       <div class="bio-row">
         <textarea v-model="form.bioHtml" class="crt-textarea about-bio-input"></textarea>
-        <div class="bio-preview">
-          <SafeHtml class="about-bio" :html="form.bioHtml" />
+        <div class="bio-preview preview-frame">
+          <AboutContent :content="previewContent" />
         </div>
       </div>
       <p class="field-hint">放行的标签：{{ allowedTagList }}</p>
@@ -41,6 +23,7 @@
       <ul class="link-list">
         <li v-for="(link, index) in form.links" :key="index" class="link-item">
           <input v-model="link.name" class="crt-input link-name" placeholder="名称" />
+          <input v-model="link.icon" class="crt-input link-icon about-link-icon-input" placeholder="图标 URL（可选）" />
           <input v-model="link.url" class="crt-input link-url" placeholder="https://..." />
           <button class="crt-mini-btn about-link-up" :disabled="index === 0" @click="moveLink(index, -1)">↑</button>
           <button
@@ -66,21 +49,16 @@
 <script setup>
 import { computed, reactive, watch } from "vue";
 
-import SafeHtml from "@/components/SafeHtml.vue";
 import { useAboutConfig } from "@/modules/about/composables/useAboutConfig";
 import { ALLOWED_TAGS } from "@/utils/sanitizeHtml";
-
-// 正文的渲染样式与 About 页面共用同一份非 scoped 的 about-bio.css，
-// 这样预览与访客看到的完全一致。
-import "@/views/about/about-bio.css";
+import AboutContent from "@/views/about/components/AboutContent.vue";
 
 // 读取由 useAboutConfig 自己负责，这里只消费结果
 const { content, saving, loaded, save } = useAboutConfig();
 
-// 表单改的是本地副本，提交时才把结果交出去
+// 表单改的是本地副本，提交时才把结果交出去。
+// 头像与昵称不在这里 —— 它们来自站点账号，表单不编辑，只在预览里显示。
 const form = reactive({
-  avatarSrc: "",
-  displayName: "",
   tagline: "",
   bioHtml: "",
   links: [],
@@ -90,8 +68,6 @@ const form = reactive({
 watch(
   () => content.value,
   (value) => {
-    form.avatarSrc = value.avatarSrc || "";
-    form.displayName = value.displayName || "";
     form.tagline = value.tagline || "";
     form.bioHtml = value.bioHtml || "";
     form.links = (value.links || []).map((link) => ({ ...link }));
@@ -99,6 +75,17 @@ watch(
   },
   { immediate: true },
 );
+
+// 预览用与 About 页面同一个组件，作者看到的就是访客看到的。
+// 正文、签名、链接与标签取表单里的当前值，身份两项取加载回来的值。
+const previewContent = computed(() => ({
+  avatarSrc: content.value.avatarSrc,
+  displayName: content.value.displayName,
+  tagline: form.tagline,
+  bioHtml: form.bioHtml,
+  links: form.links,
+  tags: form.tags,
+}));
 
 // 提示与实际白名单同源，不会各写一份然后对不上
 const allowedTagList = computed(() => [...ALLOWED_TAGS].join(" "));
@@ -120,16 +107,14 @@ const moveLink = (index, offset) => {
 
 const submit = () => {
   save({
-    avatarSrc: form.avatarSrc.trim(),
-    displayName: form.displayName.trim(),
     tagline: form.tagline.trim(),
     bioHtml: form.bioHtml,
     // 名称和地址都为空的条目直接丢掉，避免往库里塞一堆空行；
     // 库里的旧条目可能缺字段，先补成空串再 trim，否则 trim 会抛错
     links: form.links
-      .map((link) => ({ name: link.name || "", url: link.url || "" }))
+      .map((link) => ({ name: link.name || "", url: link.url || "", icon: link.icon || "" }))
       .filter((link) => link.name.trim() || link.url.trim())
-      .map((link) => ({ name: link.name.trim(), url: link.url.trim() })),
+      .map((link) => ({ name: link.name.trim(), url: link.url.trim(), icon: link.icon.trim() })),
     tags: form.tags,
   });
 };
@@ -142,21 +127,6 @@ const submit = () => {
   background: rgba(5, 5, 20, 0.6);
   border: 1px solid #00ffff44;
   border-radius: 12px;
-}
-
-.avatar-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.avatar-preview {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 1px solid #00ffff66;
-  flex-shrink: 0;
 }
 
 .bio-row {
@@ -173,12 +143,15 @@ const submit = () => {
 .bio-preview {
   flex: 1;
   min-height: 220px;
-  max-height: 320px;
+}
+
+/* 预览面板模仿站点的 .vf-main，让作者看到的面板与访客看到的一致 */
+.preview-frame {
+  background: rgba(10, 0, 20, 0.85);
+  border-radius: 20px;
+  padding: 24px;
+  max-height: 420px;
   overflow-y: auto;
-  padding: 10px 14px;
-  background: rgba(10, 0, 20, 0.6);
-  border: 1px solid #00ffff33;
-  border-radius: 8px;
 }
 
 .field-hint {
@@ -208,6 +181,10 @@ const submit = () => {
   flex: 0 0 140px;
 }
 
+.link-icon {
+  flex: 0 0 160px;
+}
+
 .link-url {
   flex: 1;
   min-width: 0;
@@ -223,8 +200,8 @@ const submit = () => {
     flex-direction: column;
   }
 
-  .bio-preview {
-    max-height: 200px;
+  .preview-frame {
+    padding: 16px;
   }
 
   .link-item {
@@ -232,6 +209,7 @@ const submit = () => {
   }
 
   .link-name,
+  .link-icon,
   .link-url {
     flex: 1 1 100%;
   }

@@ -35,12 +35,25 @@ describe("AboutConfigForm", () => {
     saveAdminAbout.mockResolvedValue({ code: 200 });
   });
 
-  it("回显已有内容", async () => {
+  it("回显已有内容，且不再渲染头像与昵称输入", async () => {
     const wrapper = await mountForm({ displayName: "V1rtual", tagline: "签名", bioHtml: "<p>正文</p>" });
 
-    expect(wrapper.find(".about-name-input").element.value).toBe("V1rtual");
+    // 身份来自站点账号，表单不再让作者编辑这两项
+    expect(wrapper.find(".about-avatar-input").exists()).toBe(false);
+    expect(wrapper.find(".about-name-input").exists()).toBe(false);
     expect(wrapper.find(".about-tagline-input").element.value).toBe("签名");
     expect(wrapper.find(".about-bio-input").element.value).toBe("<p>正文</p>");
+  });
+
+  it("保存载荷不再带身份字段", async () => {
+    const wrapper = await mountForm({ avatarSrc: "/avatar.gif", displayName: "V1rtual" });
+
+    await wrapper.find(".about-save").trigger("click");
+    await flushPromises();
+
+    const sent = saveAdminAbout.mock.calls[0][0];
+    expect(sent).not.toHaveProperty("avatarSrc");
+    expect(sent).not.toHaveProperty("displayName");
   });
 
   it("正文预览实时反映输入", async () => {
@@ -49,6 +62,26 @@ describe("AboutConfigForm", () => {
     await wrapper.find(".about-bio-input").setValue("<p>新的正文</p>");
 
     expect(wrapper.find(".bio-preview .about-bio p").text()).toBe("新的正文");
+  });
+
+  it("预览是整页，身份区出现在预览里", async () => {
+    const wrapper = await mountForm({ avatarSrc: "/avatar.gif", displayName: "V1rtual" });
+
+    expect(wrapper.find(".bio-preview .about-identity").exists()).toBe(true);
+    expect(wrapper.find(".bio-preview .about-avatar").attributes("src")).toBe("/avatar.gif");
+    expect(wrapper.find(".bio-preview .about-name").text()).toBe("V1rtual");
+  });
+
+  it("预览里的签名、标签与链接跟着表单实时变化", async () => {
+    const wrapper = await mountForm({ links: [{ name: "GitHub", url: "/gh" }] });
+
+    await wrapper.find(".about-tagline-input").setValue("新的签名");
+    await wrapper.find(".about-tags-input").setValue("Vue, Java");
+    await wrapper.find(".link-name").setValue("GitLab");
+
+    expect(wrapper.find(".bio-preview .about-tagline").text()).toBe("新的签名");
+    expect(wrapper.findAll(".bio-preview .about-tag").map((tag) => tag.text())).toEqual(["Vue", "Java"]);
+    expect(wrapper.find(".bio-preview .about-link").text()).toContain("GitLab");
   });
 
   it("预览也走过滤，脚本渲染不出来", async () => {
@@ -95,7 +128,7 @@ describe("AboutConfigForm", () => {
     await wrapper.find(".about-save").trigger("click");
     await flushPromises();
 
-    expect(saveAdminAbout.mock.calls[0][0].links).toEqual([{ name: "A", url: "/a" }]);
+    expect(saveAdminAbout.mock.calls[0][0].links).toEqual([{ name: "A", url: "/a", icon: "" }]);
   });
 
   it("保存时丢掉名称和地址都为空的条目", async () => {
@@ -104,7 +137,21 @@ describe("AboutConfigForm", () => {
     await wrapper.find(".about-save").trigger("click");
     await flushPromises();
 
-    expect(saveAdminAbout.mock.calls[0][0].links).toEqual([{ name: "GitHub", url: "/gh" }]);
+    expect(saveAdminAbout.mock.calls[0][0].links).toEqual([{ name: "GitHub", url: "/gh", icon: "" }]);
+  });
+
+  it("链接行可以填图标 URL，并随保存提交", async () => {
+    const wrapper = await mountForm({ links: [{ name: "GitHub", url: "/gh" }] });
+
+    expect(wrapper.find(".about-link-icon-input").exists()).toBe(true);
+
+    await wrapper.find(".about-link-icon-input").setValue("/icons/gh.gif");
+    await wrapper.find(".about-save").trigger("click");
+    await flushPromises();
+
+    expect(saveAdminAbout.mock.calls[0][0].links).toEqual([
+      { name: "GitHub", url: "/gh", icon: "/icons/gh.gif" },
+    ]);
   });
 
   it("首项的上升按钮与末项的下降按钮不可用", async () => {
@@ -152,15 +199,13 @@ describe("AboutConfigForm", () => {
     await flushPromises();
 
     expect(saveAdminAbout).toHaveBeenCalledWith(
-      expect.objectContaining({ links: [{ name: "", url: "https://x" }] }),
+      expect.objectContaining({ links: [{ name: "", url: "https://x", icon: "" }] }),
     );
   });
 
-  it("三个单行输入按后端列宽限制长度", async () => {
+  it("签名输入按后端列宽限制长度", async () => {
     const wrapper = await mountForm();
 
-    expect(wrapper.find(".about-avatar-input").attributes("maxlength")).toBe("512");
-    expect(wrapper.find(".about-name-input").attributes("maxlength")).toBe("100");
     expect(wrapper.find(".about-tagline-input").attributes("maxlength")).toBe("255");
   });
 });
