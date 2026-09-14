@@ -1276,6 +1276,53 @@ input[type="range"]::-webkit-slider-runnable-track {
 }
 /* ==== 极致音乐播放器结束 ==== */
 
+/* ==== 移动端抽屉 ====
+   两个侧栏在 <=768px 变成从两侧滑入的固定面板，桌面端完全不受影响：
+   下面这些规则里 .drawer-toggle 默认 display: none，.drawer-backdrop 在
+   宽屏被显式隐藏，.sidebar 的定位只在 media query 内被覆盖。
+*/
+.drawer-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  z-index: 940;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #00ffff;
+  background: rgba(10, 0, 20, 0.9);
+  border: 1px solid #00ffff88;
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.drawer-toggle.nav {
+  left: 12px;
+}
+
+.drawer-toggle.player {
+  right: 12px;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+/* 宽屏下抽屉本不该被打开，这里再隐藏一次是冗余保险：
+   万一开合状态因异常残留，桌面上也不会留下遮罩 */
+@media (min-width: 769px) {
+  .drawer-backdrop {
+    display: none;
+  }
+}
+
 /* ==== 窄屏适配 ====
    三档布局策略，桌面样式作为大屏变体，不另建页面：
    - <=1024px：收窄左右侧栏与间距，仍保持三栏
@@ -1344,7 +1391,8 @@ input[type="range"]::-webkit-slider-runnable-track {
     font-size: 1rem;
   }
 
-  /* 单栏纵向排列：主内容排在左右侧栏之前 */
+  /* 单栏纵向排列。两个侧栏已改为 fixed 抽屉、脱离文档流，
+     这里只剩 .vf-main 参与排布，不再需要 order 排序。 */
   .vf-container {
     display: flex;
     flex-direction: column;
@@ -1353,33 +1401,53 @@ input[type="range"]::-webkit-slider-runnable-track {
   }
 
   .vf-main {
-    order: 1;
     padding: 16px;
     border-radius: 14px;
   }
 
+  /* 抽屉本体。收起用 transform 位移而不是 v-if —— useAudioPlayer 在
+     onMounted 里直接对 refs 取属性，元素一旦不在 DOM 中，播放器会在
+     所有分辨率下失效。收起态额外加 visibility: hidden，把仍停在视口外
+     的整棵子树移出 Tab 顺序；visibility 是可过渡的离散属性，收起时在
+     滑出动画结束后才生效，展开时立即显示。 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: min(320px, 84vw);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* 为刘海屏与底部指示条留白 */
+    padding-bottom: calc(25px + env(safe-area-inset-bottom));
+    z-index: 920;
+    visibility: hidden;
+    transition: transform 0.28s ease, visibility 0.28s ease;
+    /* 这一行必须保留：.sidebar 原本还挂着 subtle-sidebar-glitch 动画，
+       而那个动画写的是 transform。CSS 动画的优先级高于普通声明，
+       会把抽屉的 translateX 整段盖掉，导致抽屉永远关不上。
+       只保留动 box-shadow 的 sidebar-glow-breath，同时省掉满屏面板上
+       的发光动画开销。 */
+    animation: sidebar-glow-breath 10s infinite ease-in-out;
+  }
+
   .sidebar.left {
-    order: 2;
+    left: 0;
+    transform: translateX(-100%);
   }
 
   .sidebar.right {
-    order: 3;
+    right: 0;
+    transform: translateX(100%);
   }
 
-  /* 导航改为横向排列，避免长时间纵向占位 */
-  .left .vf-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+  .sidebar.is-open {
+    transform: translateX(0);
+    visibility: visible;
   }
 
-  .left .nav-link {
-    flex: 1 1 96px;
-    margin: 0;
-    min-height: 44px;
+  .drawer-toggle {
     display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .music-player {
