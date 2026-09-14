@@ -25,8 +25,28 @@
       </div>
     </header>
 
+    <button
+      class="drawer-toggle nav"
+      type="button"
+      aria-label="打开导航"
+      :aria-expanded="openDrawer === 'nav'"
+      @click="toggleDrawer('nav')"
+    >
+      ☰
+    </button>
+
+    <button
+      class="drawer-toggle player"
+      type="button"
+      aria-label="打开音乐播放器"
+      :aria-expanded="openDrawer === 'player'"
+      @click="toggleDrawer('player')"
+    >
+      ♪
+    </button>
+
     <div class="vf-container">
-      <aside class="sidebar left">
+      <aside class="sidebar left" :class="{ 'is-open': openDrawer === 'nav' }">
         <nav class="vf-nav">
           <router-link to="/home" class="nav-link">Home</router-link>
           <router-link to="/profile" class="nav-link">Profile</router-link>
@@ -42,7 +62,7 @@
         <router-view class="page-content" />
       </main>
 
-      <aside class="sidebar right">
+      <aside class="sidebar right" :class="{ 'is-open': openDrawer === 'player' }">
         <div class="music-player">
           <h3>Now Playing</h3>
           <span ref="trackName" class="track-name">Loading...</span>
@@ -89,6 +109,8 @@
       </aside>
     </div>
 
+    <div v-show="openDrawer" class="drawer-backdrop" @click="closeDrawer"></div>
+
     <footer class="neon-footer">
       <div class="footer-marquee-container">
         <div class="footer-marquee-text">
@@ -113,12 +135,20 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+
+import { useDrawer } from "@/components/layout/useDrawer";
 import { useAudioPlayer } from "@/modules/player/composables/useAudioPlayer";
 import { getUserCount } from "@/modules/user/api/userApi";
 
 const userCountEl = ref(null);
+const route = useRoute();
+const { openDrawer, closeDrawer, toggleDrawer } = useDrawer();
 const { audioEl, playPauseBtn, prevBtn, nextBtn, progressBar, volumeSlider, trackName, volumeDisplay } = useAudioPlayer();
+
+// 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上
+watch(() => route.fullPath, closeDrawer);
 
 onMounted(async () => {
   try {
