@@ -1,0 +1,109 @@
+/* 正文的渲染样式。
+   这个文件刻意不加 scoped：Vue 的 scoped 样式靠 data 属性生效，
+   而 v-html 生成的内容拿不到那个属性，scoped 规则对它完全无效。
+   限定作用域的办法是每个选择器都以 .about-bio 打头。 */
+
+.about-bio {
+  margin: 32px 0;
+  color: #c9c9dd;
+  font-family: "Rajdhani", "Courier New", monospace;
+  font-size: 1rem;
+  line-height: 1.9;
+  word-break: break-word;
+}
+
+.about-bio p {
+  margin: 0 0 1em;
+}
+
+.about-bio h1,
+.about-bio h2,
+.about-bio h3,
+.about-bio h4,
+.about-bio h5,
+.about-bio h6 {
+  margin: 1.4em 0 0.6em;
+  color: #00ffff;
+  font-family: "Monoton", "Orbitron", cursive;
+  font-weight: normal;
+  letter-spacing: 1px;
+}
+
+.about-bio a {
+  color: #00ffff;
+  text-decoration: none;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.35);
+}
+
+.about-bio a:hover {
+  color: #ff69b4;
+  text-shadow: 0 0 8px rgba(255, 105, 180, 0.7);
+  border-bottom-color: rgba(255, 105, 180, 0.5);
+}
+
+.about-bio img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.about-bio ul,
+.about-bio ol {
+  margin: 0 0 1em;
+  padding-left: 1.4em;
+}
+
+.about-bio li {
+  margin: 0.3em 0;
+}
+
+.about-bio blockquote {
+  margin: 1em 0;
+  padding: 0.4em 0 0.4em 1em;
+  border-left: 3px solid #00ffff;
+  background: rgba(0, 255, 255, 0.05);
+  color: #a8a8c0;
+}
+
+.about-bio code {
+  padding: 0.1em 0.4em;
+  color: #ff69b4;
+  background: rgba(255, 105, 180, 0.1);
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+}
+
+.about-bio pre {
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 255, 255, 0.25);
+  border-radius: 10px;
+}
+
+.about-bio pre code {
+  padding: 0;
+  color: #c9c9dd;
+  background: none;
+}
+
+.about-bio table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+}
+
+.about-bio th,
+.about-bio td {
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 255, 255, 0.25);
+  text-align: left;
+}
+
+.about-bio hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid rgba(0, 255, 255, 0.25);
+}
