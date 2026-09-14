@@ -3,33 +3,63 @@ import { describe, expect, it } from "vitest";
 import { sanitizeHtml } from "@/utils/sanitizeHtml";
 
 describe("sanitizeHtml 的危险内容处理", () => {
-  it("删除 script 标签连同它的内容", () => {
-    const out = sanitizeHtml("<script>alert(1)</script><p>正文</p>");
+  it("删除正文里的 script 标签连同它的内容", () => {
+    // script 必须写在正文元素之后。写在片段开头的 <script> 会被解析器提升进 <head>，
+    // 而 head 根本不进输出 —— 那样这条用例即使删掉整个 DROPPED_TAGS 也照样通过。
+    const out = sanitizeHtml("<p>正文</p><script>alert(1)</script>");
 
     expect(out).toBe("<p>正文</p>");
     expect(out).not.toContain("alert");
   });
 
-  it("script 写在正文后面也被删掉", () => {
-    const out = sanitizeHtml("<p>正文</p><script>alert(1)</script>");
+  it("删除嵌在白名单标签里的 script 连同它的内容", () => {
+    const out = sanitizeHtml("<div><p>正文</p><script>alert(1)</script></div>");
 
-    expect(out).toContain("<p>正文</p>");
+    expect(out).toBe("<div><p>正文</p></div>");
     expect(out).not.toContain("alert");
   });
 
-  it("删除 style 标签连同它的内容，避免贴的样式串到整站", () => {
-    const out = sanitizeHtml("<style>.vf-nav{display:none}</style><p>正文</p>");
+  it("删除正文里的 style 标签连同它的内容，避免贴的样式串到整站", () => {
+    // 与 script 同理：写在片段开头的 <style> 会被提升进 <head>，测不到删除逻辑
+    const out = sanitizeHtml("<p>正文</p><style>.vf-nav{display:none}</style>");
 
     expect(out).toBe("<p>正文</p>");
     expect(out).not.toContain("vf-nav");
   });
 
+  it("删除 svg 外来内容，连它内部的样式与文字一起", () => {
+    // svg 若只是「展开」而不是删除，内部的 style 与文字会落进正文
+    const out = sanitizeHtml("<p>正文</p><svg><style>body{display:none}</style>留下</svg>");
+
+    expect(out).toBe("<p>正文</p>");
+    expect(out).not.toContain("display:none");
+    expect(out).not.toContain("留下");
+  });
+
+  it("删除 math 外来内容，连它内部的文字一起", () => {
+    expect(sanitizeHtml("<p>正文</p><math><mi>x</mi>公式</math>")).toBe("<p>正文</p>");
+  });
+
+  it("删除 iframe，它内部的原文不会变成正文", () => {
+    // iframe 的内容按 raw text 解析，里面的 <p> 不会被当成标签。
+    // 若只是展开 iframe，这段原文会以文字形式落进正文。
+    const out = sanitizeHtml('<p>正文</p><iframe src="https://evil.test"><p>内层</p></iframe>');
+
+    expect(out).toBe("<p>正文</p>");
+  });
+
+  it("删除 form，它内部的内容不会变成正文", () => {
+    const out = sanitizeHtml('<p>正文</p><form action="/x"><input name="p"><p>在表单里</p></form>');
+
+    expect(out).toBe("<p>正文</p>");
+  });
+
   it("删除内联事件属性", () => {
     const out = sanitizeHtml('<img src="/a.png" onerror="window.__pwned=1">');
 
+    // 断言输出内容本身：只留下允许的属性
+    expect(out).toBe('<img src="/a.png">');
     expect(out).not.toContain("onerror");
-    expect(out).toContain("/a.png");
-    expect(window.__pwned).toBeUndefined();
   });
 
   it("删除 a 上的内联事件属性", () => {
@@ -37,12 +67,6 @@ describe("sanitizeHtml 的危险内容处理", () => {
 
     expect(out).not.toContain("onclick");
     expect(out).toContain("链接");
-  });
-
-  it("删除 iframe / form / svg 这类不在白名单里的结构", () => {
-    expect(sanitizeHtml('<iframe src="https://evil.test"></iframe>')).not.toContain("iframe");
-    expect(sanitizeHtml('<form action="/x"><input name="p"></form>')).not.toContain("input");
-    expect(sanitizeHtml("<svg><circle /></svg>")).not.toContain("svg");
   });
 
   it("删除 style 属性，避免覆盖整站布局", () => {
@@ -102,11 +126,40 @@ describe("sanitizeHtml 的链接处理", () => {
     expect(sanitizeHtml('<a href="/gallery">Gallery</a>')).not.toContain("target=");
   });
 
+  it("锚点不强制新窗口", () => {
+    expect(sanitizeHtml('<a href="#top">顶部</a>')).not.toContain("target=");
+  });
+
   it("用户自己写的 target 会被覆盖掉", () => {
     const out = sanitizeHtml('<a href="https://github.com/x" target="_self">x</a>');
 
     expect(out).toContain('target="_blank"');
     expect(out).not.toContain("_self");
+  });
+
+  it("双斜杠开头的协议相对地址按外链处理", () => {
+    // //host/x 会被浏览器补上当前页面的 scheme，指向的是外部主机，不是站内路径
+    const out = sanitizeHtml('<a href="//evil.test/x">链接</a>');
+
+    expect(out).toContain("evil.test");
+    expect(out).toContain('target="_blank"');
+    expect(out).toContain('rel="noopener noreferrer"');
+  });
+
+  it("反斜杠开头的协议相对地址同样按外链处理", () => {
+    // /\host/x 里的反斜杠会被浏览器当成路径分隔符，等价于 //host/x
+    const out = sanitizeHtml('<a href="/\\evil.test/x">链接</a>');
+
+    expect(out).toContain("evil.test");
+    expect(out).toContain('target="_blank"');
+    expect(out).toContain('rel="noopener noreferrer"');
+  });
+
+  it("带前导空白的协议相对地址也按外链处理", () => {
+    const out = sanitizeHtml('<a href="  //evil.test/x">链接</a>');
+
+    expect(out).toContain('target="_blank"');
+    expect(out).toContain('rel="noopener noreferrer"');
   });
 });
 
@@ -154,5 +207,56 @@ describe("sanitizeHtml 的输入处理", () => {
 
   it("丢弃注释", () => {
     expect(sanitizeHtml("<p>正文</p><!-- 注释 -->")).toBe("<p>正文</p>");
+  });
+});
+
+describe("sanitizeHtml 的健壮性", () => {
+  it("嵌套超过深度上限时删除子树，不抛异常", () => {
+    // 500 层本身能正常解析，内容消失只可能是深度上限把它删掉了
+    const html = `${"<div>".repeat(500)}深层内容${"</div>".repeat(500)}`;
+
+    let out;
+    expect(() => {
+      out = sanitizeHtml(html);
+    }).not.toThrow();
+    expect(out).not.toContain("深层内容");
+  });
+
+  it("极端深度的嵌套既不抛异常也不漏内容", () => {
+    const html = `${"<div>".repeat(5000)}深层内容${"</div>".repeat(5000)}`;
+
+    let out;
+    expect(() => {
+      out = sanitizeHtml(html);
+    }).not.toThrow();
+    expect(out).not.toContain("深层内容");
+  });
+
+  it("正常深度的嵌套不受深度上限影响", () => {
+    const html = "<div><p><strong>正文</strong></p></div>";
+
+    expect(sanitizeHtml(html)).toBe(html);
+  });
+
+  it("解析环节出错时返回空串，不抛异常也不返回原文", () => {
+    // 只有让解析器抛异常才能覆盖兜底分支：安全边界一旦把异常抛给调用方，
+    // try/catch 回退到原文的调用方就会把它变成 XSS
+    const original = globalThis.DOMParser;
+
+    globalThis.DOMParser = class {
+      parseFromString() {
+        throw new Error("parse failed");
+      }
+    };
+
+    try {
+      let out;
+      expect(() => {
+        out = sanitizeHtml("<p>正文</p>");
+      }).not.toThrow();
+      expect(out).toBe("");
+    } finally {
+      globalThis.DOMParser = original;
+    }
   });
 });

@@ -37,6 +37,10 @@ const ALLOWED_ATTRS = {
 const SAFE_LINK_PROTOCOLS = ["http:", "https:", "mailto:"];
 const SAFE_IMAGE_PROTOCOLS = ["http:", "https:"];
 
+// 嵌套深度上限。真实粘贴的正文远达不到这个深度；超过上限的子树整个删除，
+// 这样递归深度有界，深到能把调用栈撑爆的输入不再让本函数抛异常。
+const MAX_DEPTH = 100;
+
 /**
  * 去掉全部空白与控制字符再转小写。
  * `java\tscript:alert(1)` 是真实存在的绕过手法，只做前缀匹配挡不住。
@@ -47,13 +51,29 @@ function normalizeUrl(value) {
   return String(value).replace(/[\u0000-\u0020\u007f]/g, "").toLowerCase();
 }
 
-function hasSafeProtocol(rawUrl, protocols) {
+/**
+ * 判断一个 url 属于哪一类，只在这里判断一次：
+ *
+ * - "blocked"：协议不在白名单里，属性整个去掉
+ * - "local"：站内绝对路径或锚点，保持原样
+ * - "external"：站外地址。链接要强制新窗口并切断 opener，图片正常保留
+ *
+ * 「保不保留 href」和「要不要补 target」原本是两处各判一次，结果就是协议相对地址
+ * 在第一处被当成站内放行、在第二处也被当成站内而跳过外链规则。两类判断必须一致。
+ */
+function classifyUrl(rawUrl, protocols) {
   const url = normalizeUrl(rawUrl);
 
-  // 站内绝对路径与锚点没有协议，直接放行
-  if (url.startsWith("/") || url.startsWith("#")) return true;
+  // 锚点没有协议
+  if (url.startsWith("#")) return "local";
 
-  return protocols.some((protocol) => url.startsWith(protocol));
+  if (url.startsWith("/")) {
+    // 只有单个 `/` 是站内绝对路径。`//host/x` 与 `/\host/x` 是协议相对地址，
+    // 浏览器会用当前页面的 scheme 补全成 http(s) 并指向外部主机，因此按外链处理。
+    return url[1] === "/" || url[1] === "\\" ? "external" : "local";
+  }
+
+  return protocols.some((protocol) => url.startsWith(protocol)) ? "external" : "blocked";
 }
 
 /** 去掉属性后按白名单补回；协议不合法就剔除该属性，而不是删掉整个元素 */
@@ -74,14 +94,15 @@ function applyLinkRules(a) {
   const href = a.getAttribute("href");
   if (href === null) return;
 
-  if (!hasSafeProtocol(href, SAFE_LINK_PROTOCOLS)) {
+  const kind = classifyUrl(href, SAFE_LINK_PROTOCOLS);
+
+  if (kind === "blocked") {
     a.removeAttribute("href");
     return;
   }
 
   // 站内路径与锚点保持原样；外链强制新窗口，并切断 opener 引用
-  const url = normalizeUrl(href);
-  if (url.startsWith("/") || url.startsWith("#")) return;
+  if (kind === "local") return;
 
   a.setAttribute("target", "_blank");
   a.setAttribute("rel", "noopener noreferrer");
@@ -89,7 +110,7 @@ function applyLinkRules(a) {
 
 function applyImageRules(img) {
   const src = img.getAttribute("src");
-  if (src !== null && !hasSafeProtocol(src, SAFE_IMAGE_PROTOCOLS)) {
+  if (src !== null && classifyUrl(src, SAFE_IMAGE_PROTOCOLS) === "blocked") {
     img.removeAttribute("src");
   }
 }
@@ -97,11 +118,20 @@ function applyImageRules(img) {
 /**
  * 递归处理节点。白名单外的元素**展开**（unwrap）—— 删掉标签本身、保留子节点，
  * 这样用户贴的 <section> 之类语义标签不会让里面的文字跟着消失。
+ *
+ * depth 是 node 自身的嵌套层数，用来给递归封顶：超过 MAX_DEPTH 的子树整棵删除。
+ * 封顶必须删干净 —— 上限只允许让内容消失，不允许让内容漏进输出。
  */
-function cleanNode(node) {
+function cleanNode(node, depth) {
   // 从后往前遍历：删除节点会让 childNodes 这个 live 集合的索引错位
   for (let i = node.childNodes.length - 1; i >= 0; i--) {
     const child = node.childNodes[i];
+
+    // 到上限就把子节点整个删掉，不再往下递归
+    if (depth >= MAX_DEPTH) {
+      child.remove();
+      continue;
+    }
 
     if (child.nodeType === Node.TEXT_NODE) continue;
 
@@ -118,14 +148,14 @@ function cleanNode(node) {
     }
 
     if (!ALLOWED_TAGS.has(tag)) {
-      cleanNode(child);
+      cleanNode(child, depth + 1);
       while (child.firstChild) node.insertBefore(child.firstChild, child);
       child.remove();
       continue;
     }
 
     cleanAttributes(child, tag);
-    cleanNode(child);
+    cleanNode(child, depth + 1);
   }
 }
 
@@ -136,12 +166,18 @@ function cleanNode(node) {
 export function sanitizeHtml(html) {
   if (!html || typeof html !== "string") return "";
 
-  const doc = new DOMParser().parseFromString(html, "text/html");
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
 
-  // 只输出 body 的内容：<style> / <script> 写在片段开头时会被解析器提升到 head，
-  // 而 head 根本不进入输出。落在 body 里的那些由 cleanNode 处理。
-  cleanNode(doc.body);
-  return doc.body.innerHTML;
+    // 只输出 body 的内容：<style> / <script> 写在片段开头时会被解析器提升到 head，
+    // 而 head 根本不进入输出。落在 body 里的那些由 cleanNode 处理。
+    cleanNode(doc.body, 0);
+    return doc.body.innerHTML;
+  } catch {
+    // 安全边界不能抛异常：调用方一旦 try/catch 后回退到原文，异常就变成 XSS。
+    // 出任何意外都返回空串 —— 空串永远是安全的输出，原文不是。
+    return "";
+  }
 }
 
 export { ALLOWED_TAGS };
