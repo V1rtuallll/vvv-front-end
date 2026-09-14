@@ -304,6 +304,10 @@
 }
 /* 新布局 */
 .vf-layout {
+  /* 抽屉触发按钮的尺寸与它到视口边缘的间距。只在这里定义：
+     .drawer-toggle 的定位与窄屏下 .sidebar 的 padding-top 都从这两个值推导 */
+  --drawer-toggle-size: 44px;
+  --drawer-toggle-gap: 12px;
   min-height: 100vh;
   background: #000; /* 底保纯黑 */
   color: #fff;
@@ -1284,10 +1288,10 @@ input[type="range"]::-webkit-slider-runnable-track {
 .drawer-toggle {
   display: none;
   position: fixed;
-  top: 12px;
+  top: var(--drawer-toggle-gap);
   z-index: 940;
-  width: 44px;
-  height: 44px;
+  width: var(--drawer-toggle-size);
+  height: var(--drawer-toggle-size);
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
@@ -1300,11 +1304,11 @@ input[type="range"]::-webkit-slider-runnable-track {
 }
 
 .drawer-toggle.nav {
-  left: 12px;
+  left: var(--drawer-toggle-gap);
 }
 
 .drawer-toggle.player {
-  right: 12px;
+  right: var(--drawer-toggle-gap);
 }
 
 .drawer-backdrop {
@@ -1421,7 +1425,11 @@ input[type="range"]::-webkit-slider-runnable-track {
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    /* 为刘海屏与底部指示条留白 */
+    /* 顶部给固定在视口左上/右上的触发按钮让位：按钮高 --drawer-toggle-size，
+       上下各留 --drawer-toggle-gap，否则按钮会压住抽屉的第一个导航项 */
+    padding-top: calc(var(--drawer-toggle-size) + 2 * var(--drawer-toggle-gap));
+    /* 底部留白。safe-area-inset-bottom 只在页面声明 viewport-fit=cover 时才非零，
+       index.html 目前没有声明，因此这条在当前生效的值就是 25px */
     padding-bottom: calc(25px + env(safe-area-inset-bottom));
     z-index: 920;
     visibility: hidden;
@@ -1490,7 +1498,8 @@ input[type="range"]::-webkit-slider-runnable-track {
 
   .sidebar {
     padding: 16px;
-    /* 简写会重置四边，上面 <=768px 块的底部留白需要在这里补回 */
+    /* 简写会重置四边，上面 <=768px 块补的顶部与底部留白都要在这里补回 */
+    padding-top: calc(var(--drawer-toggle-size) + 2 * var(--drawer-toggle-gap));
     padding-bottom: calc(25px + env(safe-area-inset-bottom));
     border-radius: 14px;
   }

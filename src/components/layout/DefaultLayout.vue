@@ -47,7 +47,7 @@
 
     <div class="vf-container">
       <aside class="sidebar left" :class="{ 'is-open': openDrawer === 'nav' }">
-        <nav class="vf-nav">
+        <nav class="vf-nav" @click="closeDrawer">
           <router-link to="/home" class="nav-link">Home</router-link>
           <router-link to="/profile" class="nav-link">Profile</router-link>
           <!-- <router-link to="/blog" class="nav-link">Blogs</router-link> -->
@@ -147,7 +147,8 @@ const route = useRoute();
 const { openDrawer, closeDrawer, toggleDrawer } = useDrawer();
 const { audioEl, playPauseBtn, prevBtn, nextBtn, progressBar, volumeSlider, trackName, volumeDisplay } = useAudioPlayer();
 
-// 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上
+// 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上。
+// 点击当前路由的链接不会改变 fullPath，watch 不触发，因此收起同时挂在 .vf-nav 的 click 上
 watch(() => route.fullPath, closeDrawer);
 
 onMounted(async () => {
