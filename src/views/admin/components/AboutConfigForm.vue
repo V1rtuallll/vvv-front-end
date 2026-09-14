@@ -23,7 +23,7 @@
       <ul class="link-list">
         <li v-for="(link, index) in form.links" :key="index" class="link-item">
           <input v-model="link.name" class="crt-input link-name" placeholder="名称" />
-          <input v-model="link.icon" class="crt-input link-icon about-link-icon-input" placeholder="图标 URL（可选）" />
+          <input v-model="link.icon" class="crt-input link-icon about-link-icon-input" placeholder="图标 URL（留空自动匹配品牌图标）" />
           <input v-model="link.url" class="crt-input link-url" placeholder="https://..." />
           <button class="crt-mini-btn about-link-up" :disabled="index === 0" @click="moveLink(index, -1)">↑</button>
           <button
