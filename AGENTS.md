@@ -119,11 +119,13 @@ pnpm test:coverage  # 带覆盖率报告
 
 ## 已知陷阱
 
-- **移动端拦截有两处**：后端 `MobileBlockFilter`，以及 `index.html` 里的**内联脚本**
-  （用 `ontouchstart` + `innerWidth` 判定，命中会删掉 `#app` 再 `throw`）。
-  只处理一处，手机端照样白屏。
-- `home/index.vue` 等页面的悬浮信息栏用 `@mouseenter` / `@mouseleave` 控制，
-  **移动端没有 hover，内容永远看不到**。
+- **移动端拦截已在 2026-09-13 移除**（commit `504ad91`）：后端 `MobileBlockFilter`、
+  `config/WebConfig.java` 与 `index.html` 里的内联脚本都不在了，手机端可正常访问。
+  残留的化石不影响功能：`SecurityConfig` 白名单里还留着 `"/mobile-blocked.html"`，
+  `ApiErrorController` 的 javadoc 还提到 `MobileBlockFilter`。
+- `home/index.vue` 的悬浮信息栏是全项目唯一用 `@mouseenter` / `@mouseleave` 的地方，
+  且已处理触屏：`supportsHover()` 为假时信息栏常显
+  （`infoVisible` 的 `|| !hoverCapable`），拼图区块改走点击切换。
 - `modules/home/composables/useHomeContent.js` 读取的 `latestBlogs` / `pinnedBlog`
   后端从未返回，永远是空值。
 
