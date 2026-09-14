@@ -1415,6 +1415,9 @@ input[type="range"]::-webkit-slider-runnable-track {
     top: 0;
     bottom: 0;
     width: min(320px, 84vw);
+    /* 项目没有全局 border-box 重置，不声明会按 content-box 计算，
+       内边距与边框会加在 84vw 之外，375px 视口下抽屉实测占满 95% 屏宽 */
+    box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -1487,6 +1490,8 @@ input[type="range"]::-webkit-slider-runnable-track {
 
   .sidebar {
     padding: 16px;
+    /* 简写会重置四边，上面 <=768px 块的底部留白需要在这里补回 */
+    padding-bottom: calc(25px + env(safe-area-inset-bottom));
     border-radius: 14px;
   }
 
