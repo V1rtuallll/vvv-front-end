@@ -11,3 +11,4 @@ export const uploadAdminResource = (formData, onUploadProgress, signal) => reque
 });
 export const getAdminResources = (params) => request.get("/admin/resources", { params });
 export const updateAdminResource = (payload) => request.post("/admin/resource/update", payload);
+export const saveAdminAbout = (payload) => request.post("/admin/about", payload);

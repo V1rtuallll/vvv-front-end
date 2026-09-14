@@ -35,6 +35,8 @@
           @set-main="setAsMain"
         />
 
+        <AboutConfigForm />
+
         <ResourceBrowser
           :filter="resourceFilter"
           :resources="resourceList"
@@ -61,6 +63,7 @@
 <script setup>
 import AdminQuickActions from "./components/AdminQuickActions.vue";
 import HomeConfigForm from "./components/HomeConfigForm.vue";
+import AboutConfigForm from "./components/AboutConfigForm.vue";
 import ResourceBrowser from "./components/ResourceBrowser.vue";
 import ResourceEditorDialog from "./components/ResourceEditorDialog.vue";
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
