@@ -5,10 +5,12 @@
       <div class="editor-actions">
         <BlogMediaPicker label="插入图片 / 视频" @picked="insertMedia" />
         <BlogMediaPicker label="上传封面" accept="image/*" @picked="onCoverPicked" />
-        <button class="crt-mini-btn editor-draft" :disabled="saving" @click="submit(0)">存草稿</button>
-        <button class="crt-btn editor-publish" :disabled="saving" @click="submit(1)">发布</button>
+        <button class="crt-mini-btn editor-draft" :disabled="saving || loadFailed" @click="submit(0)">存草稿</button>
+        <button class="crt-btn editor-publish" :disabled="saving || loadFailed" @click="submit(1)">发布</button>
       </div>
     </header>
+
+    <p v-if="loadFailed" class="editor-load-error">文章加载失败，无法编辑。</p>
 
     <div class="editor-row">
       <div class="editor-pane">
@@ -54,7 +56,7 @@ const router = useRouter();
 
 // 编辑复用同一个页面：/blog/editor?id=<id>
 const id = computed(() => route.query.id ?? "");
-const { form, saving, isEdit, load, save, setCover } = useBlogEditor(id);
+const { form, saving, loadFailed, isEdit, load, save, setCover } = useBlogEditor(id);
 
 onMounted(load);
 

@@ -31,6 +31,7 @@ describe("useBlogEditor", () => {
     const api = useBlogEditor(ref(""));
 
     expect(api.isEdit.value).toBe(false);
+    expect(api.loadFailed.value).toBe(false);
     expect(getBlogDetail).not.toHaveBeenCalled();
     expect(api.form.status).toBe(0);
   });
@@ -46,6 +47,60 @@ describe("useBlogEditor", () => {
     expect(api.form.content).toBe("旧正文");
     expect(api.form.coverImage).toBe("/cover.png");
     expect(api.form.status).toBe(0);
+  });
+
+  it("成功加载后 loadFailed 为假", async () => {
+    const api = useBlogEditor(ref("100"));
+
+    await api.load();
+
+    expect(api.loadFailed.value).toBe(false);
+  });
+
+  it("编辑态加载失败时 loadFailed 为真", async () => {
+    getBlogDetail.mockRejectedValue(new Error("boom"));
+    const api = useBlogEditor(ref("100"));
+
+    await api.load();
+
+    expect(api.loadFailed.value).toBe(true);
+  });
+
+  it("编辑态拿不到详情（res.data 为空）同样算加载失败", async () => {
+    getBlogDetail.mockResolvedValue({ data: null });
+    const api = useBlogEditor(ref("100"));
+
+    await api.load();
+
+    expect(api.loadFailed.value).toBe(true);
+  });
+
+  it("加载失败后 save 不发出任何写请求", async () => {
+    getBlogDetail.mockRejectedValue(new Error("boom"));
+    const api = useBlogEditor(ref("100"));
+    await api.load();
+    // 失败后表单是空的，用户照着页面提示填完再点保存
+    api.form.title = "标题";
+    api.form.content = "正文";
+
+    const res = await api.save(1);
+
+    expect(res).toEqual({ ok: false, id: null });
+    expect(createBlog).not.toHaveBeenCalled();
+    expect(updateBlog).not.toHaveBeenCalled();
+    expect(window.$vmessage.success).not.toHaveBeenCalled();
+  });
+
+  it("加载失败后重试成功，loadFailed 回到假", async () => {
+    getBlogDetail.mockRejectedValueOnce(new Error("boom"));
+    const api = useBlogEditor(ref("100"));
+    await api.load();
+    expect(api.loadFailed.value).toBe(true);
+
+    await api.load();
+
+    expect(api.loadFailed.value).toBe(false);
+    expect(api.isEdit.value).toBe(true);
   });
 
   it("标题为空时本地拦下，不发请求", async () => {

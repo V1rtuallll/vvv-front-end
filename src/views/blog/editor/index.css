@@ -28,6 +28,13 @@
   gap: 12px;
 }
 
+/* 与注册页的 .pure-black-error 同一个错误色 */
+.editor-load-error {
+  margin: 18px 0 0;
+  font-family: "Rajdhani", "Courier New", monospace;
+  color: #ff5577;
+}
+
 /* 左编辑右预览，与后台 About 配置表单同一套布局思路 */
 .editor-row {
   display: flex;

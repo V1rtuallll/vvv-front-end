@@ -97,6 +97,16 @@ describe("Blog 编辑器", () => {
     expect(updateBlog).toHaveBeenCalledWith(100, expect.objectContaining({ title: "旧标题", status: 1 }));
   });
 
+  it("加载失败时显示错误文案并禁用两个保存按钮", async () => {
+    getBlogDetail.mockRejectedValue(new Error("boom"));
+
+    const page = await mountEditor("?id=100");
+
+    expect(page.find(".editor-load-error").text()).toBe("文章加载失败，无法编辑。");
+    expect(page.find(".editor-draft").attributes("disabled")).toBeDefined();
+    expect(page.find(".editor-publish").attributes("disabled")).toBeDefined();
+  });
+
   it("插入图片把 Markdown 片段插到光标处", async () => {
     const page = await mountEditor();
     const textarea = page.find(".editor-content-input");

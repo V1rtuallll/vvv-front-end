@@ -27,23 +27,31 @@ export function useBlogEditor(idRef) {
   const form = reactive({ id: null, title: "", content: "", coverImage: "", status: 0 });
   const loading = ref(false);
   const saving = ref(false);
+  // 用户本意是编辑、却拿不到这篇文章：文章已删、别人的草稿（403）、网络抖动都算。
+  // 此时 form.id 仍是 null，isEdit 为假，save() 会落到新建那一支 —— 所以必须有这个标记。
+  const loadFailed = ref(false);
 
   const isEdit = computed(() => form.id != null);
 
   // 失败时不提交状态：半截数据（有标题没正文）比空表单更难排查
   const load = async () => {
     if (!idRef.value) return;
+    loadFailed.value = false;
     loading.value = true;
     try {
       const res = await getBlogDetail(idRef.value);
       const data = res.data;
-      if (!data) return;
+      if (!data) {
+        loadFailed.value = true;
+        return;
+      }
       form.id = data.id;
       form.title = data.title || "";
       form.content = data.content || "";
       form.coverImage = data.coverImage || "";
       form.status = data.status ?? 0;
     } catch {
+      loadFailed.value = true;
       // 提示由 request.js 负责（草稿对非作者不可见时后端返回 403 文案）
     } finally {
       loading.value = false;
@@ -60,6 +68,10 @@ export function useBlogEditor(idRef) {
    * @returns {Promise<{ ok: boolean, id: number|null }>} 页面据此决定跳不跳详情页
    */
   const save = async (status) => {
+    // 编辑态加载失败时表单是空的，用户填完点保存会新建出一篇文章。
+    // 守卫放在这里而不是只靠模板禁用按钮：create / update 的决策点就是这一行。
+    if (loadFailed.value) return { ok: false, id: null };
+
     if (!form.title.trim()) {
       window.$vmessage.warning("标题不能为空");
       return { ok: false, id: null };
@@ -90,5 +102,5 @@ export function useBlogEditor(idRef) {
     }
   };
 
-  return { authStore, form, loading, saving, isEdit, load, save, setCover };
+  return { authStore, form, loading, saving, loadFailed, isEdit, load, save, setCover };
 }
