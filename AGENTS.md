@@ -126,8 +126,6 @@ pnpm test:coverage  # 带覆盖率报告
 - `home/index.vue` 的悬浮信息栏是全项目唯一用 `@mouseenter` / `@mouseleave` 的地方，
   且已处理触屏：`supportsHover()` 为假时信息栏常显
   （`infoVisible` 的 `|| !hoverCapable`），拼图区块改走点击切换。
-- `modules/home/composables/useHomeContent.js` 读取的 `latestBlogs` / `pinnedBlog`
-  后端从未返回，永远是空值。
 
 ## 不许做的事
 
