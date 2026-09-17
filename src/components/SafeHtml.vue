@@ -5,6 +5,7 @@
 <script setup>
 import { computed } from "vue";
 
+import { renderMarkdown } from "@/utils/markdown";
 import { sanitizeHtml } from "@/utils/sanitizeHtml";
 
 // 全仓库唯一允许出现 v-html 的地方，有守卫测试盯着（components/safeHtmlGuard.test.js）。
@@ -16,7 +17,10 @@ import { sanitizeHtml } from "@/utils/sanitizeHtml";
 // 详见 views/about/doc/设计说明.md。
 const props = defineProps({
   html: { type: String, default: "" },
+  // 正文是 Markdown（博客）时置真。Markdown 先渲染成 HTML，然后和别的输入一样
+  // 走同一个 sanitizeHtml —— 消毒点仍然只有这一个。
+  markdown: { type: Boolean, default: false },
 });
 
-const safe = computed(() => sanitizeHtml(props.html));
+const safe = computed(() => sanitizeHtml(props.markdown ? renderMarkdown(props.html) : props.html));
 </script>
