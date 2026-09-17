@@ -24,6 +24,15 @@ describe("renderMarkdown", () => {
     expect(out).toContain("&lt;video");
   });
 
+  it("单个换行渲染成 <br>，不需要空一行", () => {
+    // breaks: true（markdown-it 默认是 false，单换行会被当成空格接在一起）
+    expect(renderMarkdown("第一行\n第二行")).toBe("<p>第一行<br>\n第二行</p>\n");
+  });
+
+  it("空行分段仍然成立", () => {
+    expect(renderMarkdown("第一段\n\n第二段")).toBe("<p>第一段</p>\n<p>第二段</p>\n");
+  });
+
   it("空值返回空串", () => {
     expect(renderMarkdown("")).toBe("");
     expect(renderMarkdown(null)).toBe("");

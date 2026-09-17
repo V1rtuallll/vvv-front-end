@@ -11,9 +11,9 @@
  */
 import MarkdownIt from "markdown-it";
 
-// 只改 html 一项。linkify / typographer / breaks 都保持默认关闭：
-// 打开 typographer 会把引号与省略号换成排版字符，写代码的人不需要。
-const md = new MarkdownIt({ html: true });
+// 除 html 外只开了 breaks 一项：正文里的单个换行渲染成 <br>，不必空一行才分段。
+// linkify / typographer 保持默认关闭：它们会把裸链接、引号与省略号改写成别的形式。
+const md = new MarkdownIt({ html: true, breaks: true });
 
 /**
  * @param {string} source Markdown 原文
