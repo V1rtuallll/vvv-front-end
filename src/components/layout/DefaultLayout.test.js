@@ -6,10 +6,15 @@ vi.mock("@/modules/user/api/userApi", () => ({
   getUserCount: vi.fn().mockResolvedValue({ data: 1 }),
 }));
 
+vi.mock("@/modules/blog/api/blogApi", () => ({
+  getLatestBlogs: vi.fn().mockResolvedValue({ data: [] }),
+}));
+
 // 刻意不 mock useAudioPlayer。原文件把它整体换成了空 ref，那恰好会掩盖
 // 「给侧栏加 v-if 导致播放器全端失效」这个回归 —— 空 ref 让播放器的
 // onMounted 逻辑永远不会真正执行。已实测：真实 composable 在 jsdom 里
 // 挂载正常，不会抛异常，因此这里直接用真的，守卫用例才有意义。
+import { getLatestBlogs } from "@/modules/blog/api/blogApi";
 import DefaultLayout from "@/components/layout/DefaultLayout.vue";
 
 const stubs = {
@@ -55,12 +60,20 @@ describe("左侧导航", () => {
     expect(links).toContainEqual(["About", "/about"]);
   });
 
-  it("原有的三个入口顺序不变", async () => {
+  it("左栏五个入口的顺序固定", async () => {
     const wrapper = await mountLayout();
 
     const labels = wrapper.findAll(".vf-nav a").map((a) => a.text());
 
-    expect(labels.slice(0, 3)).toEqual(["Home", "Profile", "Gallery"]);
+    expect(labels).toEqual(["Home", "Profile", "Blogs", "Gallery", "About"]);
+  });
+
+  it("有 Blog 入口，指向 /blog", async () => {
+    const wrapper = await mountLayout();
+
+    const links = wrapper.findAll(".vf-nav a").map((a) => [a.text(), a.attributes("href")]);
+
+    expect(links).toContainEqual(["Blogs", "/blog"]);
   });
 });
 
@@ -123,6 +136,47 @@ describe("抽屉", () => {
     await flush();
 
     expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
+  });
+});
+
+describe("右侧榜单", () => {
+  beforeEach(() => {
+    getLatestBlogs.mockResolvedValue({
+      data: [
+        { id: 1, title: "第一篇", summary: "摘要一", createdAt: "2026-09-17T10:00:00" },
+        { id: 2, title: "第二篇", summary: "摘要二", createdAt: "2026-09-16T10:00:00" },
+        { id: 3, title: "第三篇", summary: "摘要三", createdAt: "2026-09-15T10:00:00" },
+        { id: 4, title: "第四篇", summary: "摘要四", createdAt: "2026-09-14T10:00:00" },
+        { id: 5, title: "第五篇", summary: "摘要五", createdAt: "2026-09-13T10:00:00" },
+      ],
+    });
+  });
+
+  it("按 5 条请求最新博客", async () => {
+    await mountLayout();
+    await flush();
+
+    expect(getLatestBlogs).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  it("渲染 5 条，标题链接指向详情页并带上摘要", async () => {
+    const wrapper = await mountLayout();
+    await flush();
+
+    const items = wrapper.findAll(".right .top-list li");
+    expect(items).toHaveLength(5);
+    expect(items[0].find("a").text()).toBe("第一篇");
+    expect(items[0].find("a").attributes("href")).toBe("/blog/detail/1");
+    expect(items[0].text()).toContain("摘要一");
+  });
+
+  it("右栏区块有标题 Blogs，且没有硬编码的假数据", async () => {
+    const wrapper = await mountLayout();
+    await flush();
+
+    expect(wrapper.findAll(".right h3").map((h) => h.text())).toContain("Blogs");
+    expect(wrapper.find(".right .top-list").text()).not.toContain("DarkAngel");
+    expect(wrapper.find(".right .top-list").text()).not.toContain("BloodRose");
   });
 });
 

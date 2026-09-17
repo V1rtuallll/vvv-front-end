@@ -50,7 +50,7 @@
         <nav class="vf-nav" @click="closeDrawer">
           <router-link to="/home" class="nav-link">Home</router-link>
           <router-link to="/profile" class="nav-link">Profile</router-link>
-          <!-- <router-link to="/blog" class="nav-link">Blogs</router-link> -->
+          <router-link to="/blog" class="nav-link">Blogs</router-link>
           <router-link to="/gallery" class="nav-link">Gallery</router-link>
           <router-link to="/about" class="nav-link">About</router-link>
           <!-- <router-link to="/tool" class="nav-link">Tools</router-link> -->
@@ -93,11 +93,13 @@
           <audio ref="audioEl" preload="auto"></audio>
         </div>
 
-        <!-- <h3>Blogs</h3>
+        <h3>Blogs</h3>
         <ul class="top-list">
-          <li>1. DarkAngel</li>
-          <li>2. BloodRose</li>
-        </ul> -->
+          <li v-for="blog in latestBlogs" :key="blog.id">
+            <router-link :to="`/blog/detail/${blog.id}`" class="top-link">{{ blog.title }}</router-link>
+            <span class="top-summary">{{ blog.summary }}</span>
+          </li>
+        </ul>
         <h3>Imgs</h3>
         <div class="friends-grid">
           <img src="/stickers/skull1.gif" alt="sticker" />
@@ -139,12 +141,14 @@ import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { useDrawer } from "@/components/layout/useDrawer";
+import { useLatestBlogs } from "@/modules/blog/composables/useLatestBlogs";
 import { useAudioPlayer } from "@/modules/player/composables/useAudioPlayer";
 import { getUserCount } from "@/modules/user/api/userApi";
 
 const userCountEl = ref(null);
 const route = useRoute();
 const { openDrawer, closeDrawer, toggleDrawer } = useDrawer();
+const { blogs: latestBlogs } = useLatestBlogs();
 const { audioEl, playPauseBtn, prevBtn, nextBtn, progressBar, volumeSlider, trackName, volumeDisplay } = useAudioPlayer();
 
 // 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上。

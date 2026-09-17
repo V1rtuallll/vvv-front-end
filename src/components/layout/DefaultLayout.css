@@ -504,6 +504,21 @@
   transform: translateX(8px);
 }
 
+.right .top-list .top-link {
+  display: block;
+  color: #00ffff;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.right .top-list .top-summary {
+  display: block;
+  margin-top: 4px;
+  color: #8a8aa0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 /* 贴纸网格 */
 .friends-grid {
   display: grid;
