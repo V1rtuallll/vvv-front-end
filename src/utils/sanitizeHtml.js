@@ -12,6 +12,7 @@
 const ALLOWED_TAGS = new Set([
   "p", "br", "hr", "strong", "b", "em", "i", "u", "s", "del", "ins",
   "a", "img",
+  "video", "source",
   "ul", "ol", "li",
   "h1", "h2", "h3", "h4", "h5", "h6",
   "blockquote", "code", "pre",
@@ -32,10 +33,15 @@ const DROPPED_TAGS = new Set([
 const ALLOWED_ATTRS = {
   a: ["href", "title"],
   img: ["src", "alt", "title"],
+  video: ["src", "poster", "controls", "preload", "loop", "muted", "playsinline", "width", "height"],
+  source: ["src", "type"],
 };
 
 const SAFE_LINK_PROTOCOLS = ["http:", "https:", "mailto:"];
-const SAFE_IMAGE_PROTOCOLS = ["http:", "https:"];
+// 媒体地址（img 的 src、video 的 src 与 poster）共用这一条规则：只放行 http / https。
+// 常量从 SAFE_IMAGE_PROTOCOLS 更名而来 —— 它早就不只管图片了。
+// 该常量没有导出，更名不影响任何外部引用。
+const SAFE_MEDIA_PROTOCOLS = ["http:", "https:"];
 
 // 嵌套深度上限。真实粘贴的正文远达不到这个深度；超过上限的子树整个删除，
 // 这样递归深度有界，深到能把调用栈撑爆的输入不再让本函数抛异常。
@@ -87,7 +93,8 @@ function cleanAttributes(el, tag) {
   }
 
   if (tag === "a") applyLinkRules(el);
-  if (tag === "img") applyImageRules(el);
+  if (tag === "img") applyMediaRules(el, ["src"]);
+  if (tag === "video") applyMediaRules(el, ["src", "poster"]);
 }
 
 function applyLinkRules(a) {
@@ -108,10 +115,19 @@ function applyLinkRules(a) {
   a.setAttribute("rel", "noopener noreferrer");
 }
 
-function applyImageRules(img) {
-  const src = img.getAttribute("src");
-  if (src !== null && classifyUrl(src, SAFE_IMAGE_PROTOCOLS) === "blocked") {
-    img.removeAttribute("src");
+/**
+ * 媒体地址规则：只放行 http / https，其余把属性整个摘掉（标签与内容留在原地）。
+ *
+ * img 的 src、video 的 src 与 poster 走同一条规则 —— 三者都是「让访客浏览器去取一个
+ * 资源」，风险等级相同；分成两套规则只会让它们渐渐长歪。
+ * poster 本质就是一张图片的地址，因此与 src 同等对待。
+ */
+function applyMediaRules(el, attrs) {
+  for (const name of attrs) {
+    const value = el.getAttribute(name);
+    if (value !== null && classifyUrl(value, SAFE_MEDIA_PROTOCOLS) === "blocked") {
+      el.removeAttribute(name);
+    }
   }
 }
 

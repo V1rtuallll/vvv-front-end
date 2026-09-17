@@ -260,3 +260,50 @@ describe("sanitizeHtml 的健壮性", () => {
     }
   });
 });
+
+describe("sanitizeHtml 的媒体白名单", () => {
+  it("保留 video 的地址与控制属性", () => {
+    const out = sanitizeHtml('<video src="/a.mp4" controls loop muted playsinline></video>');
+
+    expect(out).toBe('<video src="/a.mp4" controls="" loop="" muted="" playsinline=""></video>');
+  });
+
+  it("保留 video 的 poster、preload 与尺寸", () => {
+    expect(sanitizeHtml('<video poster="/p.png" preload="metadata" width="640" height="360"></video>'))
+      .toBe('<video poster="/p.png" preload="metadata" width="640" height="360"></video>');
+  });
+
+  it("保留 source 的 src 与 type", () => {
+    expect(sanitizeHtml('<video><source src="/a.mp4" type="video/mp4"></video>'))
+      .toBe('<video><source src="/a.mp4" type="video/mp4"></video>');
+  });
+
+  it("剥掉 video 上的内联事件属性，保留它的地址", () => {
+    const out = sanitizeHtml('<video src="/a.mp4" onerror="window.__pwned=1"></video>');
+
+    expect(out).toBe('<video src="/a.mp4"></video>');
+    expect(out).not.toContain("onerror");
+  });
+
+  it("剥掉 source 上的内联事件属性", () => {
+    const out = sanitizeHtml('<video><source src="/a.mp4" type="video/mp4" onerror="alert(1)"></video>');
+
+    expect(out).not.toContain("onerror");
+    expect(out).toContain('src="/a.mp4"');
+  });
+
+  it("video 的地址与图片同一条协议规则，非法协议被摘掉", () => {
+    expect(sanitizeHtml('<video src="javascript:alert(1)"></video>')).toBe("<video></video>");
+  });
+
+  it("poster 同样受协议规则约束", () => {
+    expect(sanitizeHtml('<video src="/a.mp4" poster="data:text/html;base64,PHNjcmlwdD4="></video>'))
+      .toBe('<video src="/a.mp4"></video>');
+  });
+
+  it("放行 video 没有让 DROPPED_TAGS 松动", () => {
+    const out = sanitizeHtml('<p>正文</p><object data="/x"></object><embed src="/y"><iframe src="/z"></iframe>');
+
+    expect(out).toBe("<p>正文</p>");
+  });
+});
