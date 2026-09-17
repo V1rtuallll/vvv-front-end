@@ -26,8 +26,6 @@ vi.mock("@/modules/home/composables/useHomeContent", async () => {
     useHomeContent: () => ({
       mainItem,
       galleryItems,
-      latestBlogs: ref([]),
-      pinnedBlog: ref(null),
       showInfo: ref(false),
       formatShortDate: () => "2026/9/12",
       changeRandom: vi.fn(),

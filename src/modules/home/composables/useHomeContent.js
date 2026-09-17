@@ -11,8 +11,6 @@ import {
 export function useHomeContent() {
   const mainItem = ref(null);
   const galleryItems = ref([]);
-  const latestBlogs = ref([]);
-  const pinnedBlog = ref(null);
   const showInfo = ref(false);
 
 
@@ -57,8 +55,6 @@ export function useHomeContent() {
         random: data.main.random,
       };
       galleryItems.value = data.galleryItems || [];
-      latestBlogs.value = data.latestBlogs || [];
-      pinnedBlog.value = data.pinnedBlog || null;
 
       const galleryRes = await getRandomGalleries();
       galleryItems.value = (galleryRes.data || []).map((item) => ({ ...item, showInfo: false }));
@@ -87,5 +83,5 @@ export function useHomeContent() {
 
   onMounted(loadHome);
 
-  return { mainItem, galleryItems, latestBlogs, pinnedBlog, showInfo, formatShortDate, changeRandom };
+  return { mainItem, galleryItems, showInfo, formatShortDate, changeRandom };
 }

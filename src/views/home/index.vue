@@ -143,7 +143,7 @@ import { computed } from "vue";
 import { useHomeContent } from "@/modules/home/composables/useHomeContent";
 import { supportsHover } from "@/utils/responsive";
 
-const { mainItem, galleryItems, latestBlogs, pinnedBlog, showInfo, formatShortDate, changeRandom } = useHomeContent();
+const { mainItem, galleryItems, showInfo, formatShortDate, changeRandom } = useHomeContent();
 
 // 触屏设备没有 hover：主展示信息栏常显，拼图区块改为点击切换
 const hoverCapable = supportsHover();
