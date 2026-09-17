@@ -301,6 +301,17 @@ describe("sanitizeHtml 的媒体白名单", () => {
       .toBe('<video src="/a.mp4"></video>');
   });
 
+  it("source 的地址与图片视频共用同一条协议规则，data: 被摘掉、type 保留", () => {
+    expect(sanitizeHtml('<video><source src="data:text/html;base64,PHNjcmlwdD4=" type="video/mp4"></video>'))
+      .toBe('<video><source type="video/mp4"></video>');
+  });
+
+  it("source 的 javascript: 地址被摘掉，站内绝对路径不受影响", () => {
+    expect(sanitizeHtml('<video><source src="javascript:alert(1)"></video>')).toBe("<video><source></video>");
+    expect(sanitizeHtml('<video><source src="/a.mp4" type="video/mp4"></video>'))
+      .toBe('<video><source src="/a.mp4" type="video/mp4"></video>');
+  });
+
   it("放行 video 没有让 DROPPED_TAGS 松动", () => {
     const out = sanitizeHtml('<p>正文</p><object data="/x"></object><embed src="/y"><iframe src="/z"></iframe>');
 

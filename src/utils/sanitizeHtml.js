@@ -95,6 +95,7 @@ function cleanAttributes(el, tag) {
   if (tag === "a") applyLinkRules(el);
   if (tag === "img") applyMediaRules(el, ["src"]);
   if (tag === "video") applyMediaRules(el, ["src", "poster"]);
+  if (tag === "source") applyMediaRules(el, ["src"]);
 }
 
 function applyLinkRules(a) {
