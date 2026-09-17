@@ -10,7 +10,7 @@ describe("renderMarkdown", () => {
 
   it("原生 HTML 能穿过渲染，video 不会被转义成文字", () => {
     // html: false（markdown-it 的默认值）时这段会被转义成 &lt;video ...&gt;，
-    // 视频就成了页面上一坨代码文本，G3 无法达成
+    // 视频会显示为代码文本，G3 无法达成
     const out = renderMarkdown('<video src="/a.mp4" controls></video>');
 
     expect(out).toContain('<video src="/a.mp4"');
@@ -32,8 +32,9 @@ describe("renderMarkdown", () => {
   });
 
   it("渲染结果必须先过消毒再交给渲染出口", () => {
-    // 这一条锁的是「渲染链」这个整体：markdown-it 之后一定还有 sanitizeHtml。
-    // 把 markdown.js 换成直通实现、或者把链尾那一步去掉，它就会变红。
+    // 这一条锁的是两个 helper 的组合兼容性：markdown-it 直通输出的原生 HTML，经过
+    // sanitizeHtml 之后媒体地址保留、内联事件被剥离。「全仓只有一个消毒出口」不在
+    // 本文件覆盖，由 SafeHtml.vue 及其测试（Task 3）负责。
     const out = sanitizeHtml(renderMarkdown('<video src="/a.mp4" onerror="window.__pwned=1"></video>'));
 
     expect(out).toContain('src="/a.mp4"');

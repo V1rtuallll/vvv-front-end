@@ -2,7 +2,7 @@
  * markdown-it 的唯一封装。
  *
  * html: true 是必需的，不是可选项：markdown-it 默认 false 时会把原生 HTML 转义成
- * 可见文字，正文里内嵌的 <video> 会原样显示成一坨代码文本，根本播不了。
+ * 可见文字，正文里内嵌的 <video> 会原样显示为代码文本，无法播放。
  * 开启之后，正文里的 HTML 会原样穿过这里 —— 安全性因此**完全由 sanitizeHtml 兜底**。
  *
  * 所以 renderMarkdown() 返回的是**未消毒**的 HTML，只允许作为 SafeHtml.vue 的输入。
