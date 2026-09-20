@@ -118,9 +118,15 @@ const { play: playBgm, stop: stopBgm } = useGalleryBgm();
 // 用 watch 而不是 onMounted：item 由父组件控制，同一次挂载里会反复变化，
 // onMounted 只在第一次打开时生效。immediate 把「父组件已经带着 item 挂上来」
 // 这条路径也一并覆盖 —— 弹窗是被 v-if 直接摘挂还是常驻，这里都不用管。
+//
+// 监听的是 (id, bgmSrc, bgmType) 这一组值，**不是 item 对象本身**：页面保存
+// 编辑时是就地改这一条（useGalleryPage 的 applyEditedFields 用 Object.assign），
+// 引用不变 —— 按对象比对就永远不触发，详情开着清空背景音乐时界面显示「未设置」
+// 而声音继续响到弹窗关闭。
 watch(
-  () => props.item,
-  (item) => {
+  () => [props.item?.id, props.item?.bgmSrc, props.item?.bgmType],
+  () => {
+    const item = props.item;
     // 只给「自己声明了 BGM」的项起隐藏元素。
     //
     // **音乐/视频项不能进这一支**：上面几行就是它们自己的可见播放器，

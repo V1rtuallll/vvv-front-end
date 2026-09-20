@@ -99,7 +99,14 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
    */
   const playSource = (source, id = source?.src ?? null) => {
     if (!source?.src) return stop();
-    if (activeId.value !== null && String(activeId.value) === String(id)) return;
+    // 去重要连地址一起比：详情弹窗按 (id, bgmSrc, bgmType) 监听，同一条项换了
+    // 曲子也会再叫一次 playSource。只比 id 的话那次换播会被当成重复跳过，
+    // 用户挑的新曲子不响，响的还是旧的那一首
+    if (
+      activeId.value !== null
+      && String(activeId.value) === String(id)
+      && activeBgm.value?.src === source.src
+    ) return;
 
     releaseElement();
     // 别的实例还在响就先把它停掉。**顺序是固定的一环**：它的 stop() 会先把

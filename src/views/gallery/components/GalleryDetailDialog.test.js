@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { nextTick, reactive } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.vue";
@@ -235,6 +236,34 @@ describe("GalleryDetailDialog 的背景音乐", () => {
     await wrapper.setProps({ item: null });
 
     expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
+  /**
+   * 页面保存编辑是**就地**改这一条（`useGalleryPage` 的 `applyEditedFields`
+   * 用 `Object.assign` 改列表与详情里的同一个对象），引用不变。监听如果按
+   * 对象比对就永远不触发：界面显示「未设置」，隐藏元素却继续播到弹窗关闭。
+   */
+  it("详情开着时清空背景音乐，声音立刻停", async () => {
+    const item = reactive({ ...WITH_BGM });
+    mountDialog({ item });
+    bgmSpies.stop.mockClear();
+
+    Object.assign(item, { bgmSrc: null, bgmType: null });
+    await nextTick();
+
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
+  /** 同一条项换了曲子也要重新交给播放：只比 id 的话这里会停在旧的那一首 */
+  it("详情开着时换一条曲子，会重新交给播放", async () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+    bgmSpies.play.mockClear();
+
+    await wrapper.setProps({
+      item: { ...WITH_BGM, bgmSrc: "https://cdn.example.test/music/b.mp3" },
+    });
+
+    expect(bgmSpies.play).toHaveBeenCalledTimes(1);
   });
 
   /** 父组件用 v-if 摘掉整个弹窗是常见做法，那时 props 不会再变 */

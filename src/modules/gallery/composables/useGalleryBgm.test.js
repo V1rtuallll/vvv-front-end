@@ -116,6 +116,28 @@ describe("useGalleryBgm 的播放", () => {
     expect(created).toHaveLength(1);
   });
 
+  /**
+   * **详情弹窗按 (id, bgmSrc, bgmType) 监听留下的坑。**
+   *
+   * 同一条项换了曲子，`playSource` 会带着同一个 id、另一个地址再来一次。
+   * 身份只比 id 的旧式去重会把它当成「同一条不重复起播」直接返回 ——
+   * 用户挑的新曲子不响，响的还是旧的那一首，而且界面已经显示成新的了。
+   */
+  it("同一条项换了曲子照样换播", () => {
+    const { bgm, created } = mountBgm();
+    const SWAPPED = { ...PHOTO_WITH_BGM, bgmSrc: "https://cdn.example.test/music/other.mp3" };
+
+    bgm.play(PHOTO_WITH_BGM);
+    bgm.play(SWAPPED);
+
+    expect(created[0].pause).toHaveBeenCalledTimes(1);
+    expect(created).toHaveLength(2);
+    expect(created[1].src).toBe("https://cdn.example.test/music/other.mp3");
+    expect(bgm.activeBgm.value).toEqual({
+      src: "https://cdn.example.test/music/other.mp3", type: "audio",
+    });
+  });
+
   it("换另一条项会停掉前一个元素", () => {
     const { bgm, created } = mountBgm();
     bgm.play(PHOTO_WITH_BGM);
