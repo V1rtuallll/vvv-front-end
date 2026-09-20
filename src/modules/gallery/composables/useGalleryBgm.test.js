@@ -162,9 +162,13 @@ describe("useGalleryBgm 的播放", () => {
   /** 没在播的时候调 stop 是空操作，不该把侧栏的让位状态冲掉 */
   it("没在播时停止是空操作，不碰侧栏", () => {
     const { bgm, player } = mountBgm({ playerPaused: false });
-    // 先真的让一次位，把模块级的 wasPlayingBeforeBgm 置为 true。
-    // 少了这一句，stop() 开头那道守卫被删掉也测不出来：resumeAfterBgm
-    // 会因为该标志是上一条用例遗留的 false 而提前返回，player.play 照样不被调用。
+    // 先真的让一次位，把模块级的 wasPlayingBeforeBgm 置为 true：少了这一句，
+    // 「没开过窗口就不解停侧栏」那道 openedWindow 守卫被删掉也测不出来
+    // （resumeAfterBgm 会因该标志为 false 提前返回，player.play 照样不被调用）。
+    //
+    // 它**测不出** stop() 开头那道早退守卫：本实例从没播过，openedWindow 本就是
+    // false，8650e5e 把「谁开的窗口谁关」交给 openedWindow 之后，去掉那道 return
+    // 也不改变这里的任何可观察行为。
     pauseForBgm();
 
     bgm.stop();
