@@ -20,6 +20,14 @@ vi.mock("@/modules/home/composables/useHomeContent", async () => {
       description: "拼图描述",
       showInfo: false,
     },
+    {
+      id: 2,
+      type: "video",
+      src: "/masonry-2.mp4",
+      title: "拼图标题二",
+      description: "拼图描述二",
+      showInfo: false,
+    },
   ]);
 
   return {
@@ -63,55 +71,41 @@ describe("Home 页面信息栏", () => {
     expect(wrapper.find(".uploader-name").text()).toContain("uploader");
   });
 
-  it("触屏设备上点击拼图项切换信息栏", async () => {
-    stubHover(false);
+  it("画廊渲染列表里的每一张卡，每张都带顶部条、信息栏和底部条", async () => {
+    stubHover(true);
 
     const wrapper = mount(HomePage);
-    const tile = wrapper.find(".masonry-item");
+    const cards = wrapper.findAll(".masonry-item");
 
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
-
-    await tile.trigger("click");
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(true);
-
-    await tile.trigger("click");
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
+    expect(cards).toHaveLength(2);
+    cards.forEach((card) => {
+      expect(card.find(".masonry-head").exists()).toBe(true);
+      expect(card.find(".masonry-foot").exists()).toBe(true);
+      expect(card.find(".gallery-info-bottom").exists()).toBe(true);
+    });
   });
 
-  it("触屏设备上合成的 mouseenter 不会把点击切换抵消掉", async () => {
+  it("画廊信息栏常显，不依赖悬浮也不依赖点击", async () => {
+    // 支持 hover 的设备
+    stubHover(true);
+    const hoverWrapper = mount(HomePage);
+    expect(hoverWrapper.find(".masonry-item .gallery-info-bottom").exists()).toBe(true);
+
+    // 触屏设备
     stubHover(false);
-
-    const wrapper = mount(HomePage);
-    const tile = wrapper.find(".masonry-item");
-
-    await tile.trigger("mouseenter");
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
-
-    await tile.trigger("click");
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(true);
+    const touchWrapper = mount(HomePage);
+    expect(touchWrapper.find(".masonry-item .gallery-info-bottom").exists()).toBe(true);
   });
 
-  it("支持 hover 的设备保持原有行为：信息栏初始隐藏，鼠标移入才显示", async () => {
+  it("支持 hover 的设备上主展示信息栏仍是悬浮才显示", async () => {
     stubHover(true);
 
     const wrapper = mount(HomePage);
 
     expect(wrapper.find(".showcase-info-bottom").exists()).toBe(false);
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
 
-    await wrapper.find(".masonry-item").trigger("mouseenter");
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(true);
-  });
-
-  it("支持 hover 的设备上点击拼图项不切换信息栏", async () => {
-    stubHover(true);
-
-    const wrapper = mount(HomePage);
-    const tile = wrapper.find(".masonry-item");
-
-    await tile.trigger("click");
-
-    expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
+    await wrapper.find(".main-showcase").trigger("mouseenter");
+    expect(wrapper.find(".showcase-info-bottom").exists()).toBe(true);
   });
 });
 

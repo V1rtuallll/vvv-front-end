@@ -85,10 +85,15 @@
         v-for="(item, index) in galleryItems"
         :key="index"
         class="masonry-item"
-        @mouseenter="onItemEnter(item)"
-        @mouseleave="onItemLeave(item)"
-        @click="onItemToggle(item)"
       >
+        <!-- 顶部条：左边标题、右边编号。版式取自 00 年代设计门户的卡片 -->
+        <div class="masonry-head">
+          <span class="masonry-head-title">{{ item.title || "未命名" }}</span>
+          <span class="masonry-head-id"
+            >ID #{{ String(index + 1).padStart(3, "0") }}</span
+          >
+        </div>
+
         <!-- 媒体 -->
         <video
           v-if="item.type === 'video'"
@@ -106,34 +111,37 @@
           class="masonry-media"
         />
 
-        <!-- 每项悬浮窗：和主展示一模一样风格，向内伸进一小节 -->
-        <transition name="slide-up">
-          <div v-if="item.showInfo" class="gallery-info-bottom">
-            <div class="info-container">
-              <div class="uploader-left">
-                <img
-                  :src="item.uploaderAvatar || '/default-avatar.gif'"
-                  alt="上传者头像"
-                  class="uploader-avatar small"
-                />
-                <div class="uploader-text">
-                  <span class="uploader-name"
-                    >@{{ item.uploaderUsername || "V1rtual" }}</span
-                  >
-                  <span class="upload-time">{{
-                    formatShortDate(item.createdAt)
-                  }}</span>
-                </div>
-              </div>
-              <div class="content-right">
-                <h2 class="showcase-title">{{ item.title || "未知" }}</h2>
-                <p class="showcase-desc">
-                  {{ item.description || "暂无描述" }}
-                </p>
+        <!-- 信息栏。以前是悬浮才出现，现在常显 -->
+        <div class="gallery-info-bottom">
+          <div class="info-container">
+            <div class="uploader-left">
+              <img
+                :src="item.uploaderAvatar || '/default-avatar.gif'"
+                alt="上传者头像"
+                class="uploader-avatar small"
+              />
+              <div class="uploader-text">
+                <span class="uploader-name"
+                  >@{{ item.uploaderUsername || "V1rtual" }}</span
+                >
+                <span class="upload-time">{{
+                  formatShortDate(item.createdAt)
+                }}</span>
               </div>
             </div>
+            <div class="content-right">
+              <h2 class="showcase-title">{{ item.title || "未知" }}</h2>
+              <p class="showcase-desc">
+                {{ item.description || "暂无描述" }}
+              </p>
+            </div>
           </div>
-        </transition>
+        </div>
+
+        <!-- 底部标签条 -->
+        <div class="masonry-foot">
+          {{ (item.type || "photo").toUpperCase() }}
+        </div>
       </div>
 
       <div v-if="galleryItems.length === 0" class="empty-masonry">
@@ -151,20 +159,8 @@ import { supportsHover } from "@/utils/responsive";
 
 const { mainItem, galleryItems, showInfo, formatShortDate, changeRandom } = useHomeContent();
 
-// 触屏设备没有 hover：主展示信息栏常显，拼图区块改为点击切换
+// 触屏设备没有 hover：主展示信息栏常显
 const hoverCapable = supportsHover();
 const infoVisible = computed(() => showInfo.value || !hoverCapable);
-
-const onItemEnter = (item) => {
-  if (hoverCapable) item.showInfo = true;
-};
-
-const onItemLeave = (item) => {
-  if (hoverCapable) item.showInfo = false;
-};
-
-const onItemToggle = (item) => {
-  if (!hoverCapable) item.showInfo = !item.showInfo;
-};
 </script>
 <style src="./index.css" scoped></style>

@@ -32,13 +32,11 @@
 .about-bio a {
   color: #00ffff;
   text-decoration: none;
-  text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
   border-bottom: 1px solid rgba(0, 255, 255, 0.35);
 }
 
 .about-bio a:hover {
   color: #ff69b4;
-  text-shadow: 0 0 8px rgba(255, 105, 180, 0.7);
   border-bottom-color: rgba(255, 105, 180, 0.5);
 }
 

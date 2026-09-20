@@ -71,19 +71,21 @@ afterEach(() => {
 // 去掉路由切换带来的异步：watch 默认在 pre 阶段刷新
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("左侧导航", () => {
+describe("顶部导航栏", () => {
   it("有 About 入口，指向 /about", async () => {
     const wrapper = await mountLayout();
 
-    const links = wrapper.findAll(".vf-nav a").map((a) => [a.text(), a.attributes("href")]);
+    const links = wrapper
+      .findAll(".vf-navbar-tabs a")
+      .map((a) => [a.text(), a.attributes("href")]);
 
     expect(links).toContainEqual(["About", "/about"]);
   });
 
-  it("左栏五个入口的顺序固定", async () => {
+  it("五个入口的顺序固定", async () => {
     const wrapper = await mountLayout();
 
-    const labels = wrapper.findAll(".vf-nav a").map((a) => a.text());
+    const labels = wrapper.findAll(".vf-navbar-tabs a").map((a) => a.text());
 
     expect(labels).toEqual(["Home", "Profile", "Blogs", "Gallery", "About"]);
   });
@@ -91,48 +93,39 @@ describe("左侧导航", () => {
   it("有 Blog 入口，指向 /blog", async () => {
     const wrapper = await mountLayout();
 
-    const links = wrapper.findAll(".vf-nav a").map((a) => [a.text(), a.attributes("href")]);
+    const links = wrapper
+      .findAll(".vf-navbar-tabs a")
+      .map((a) => [a.text(), a.attributes("href")]);
 
     expect(links).toContainEqual(["Blogs", "/blog"]);
   });
 });
 
-describe("抽屉", () => {
+describe("播放器抽屉", () => {
   beforeEach(async () => {
     wrapper = await mountLayout();
   });
 
-  it("初始全部收起，两个侧栏仍在 DOM 中", () => {
-    expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
+  it("初始收起，右侧栏仍在 DOM 中", () => {
     expect(wrapper.find(".sidebar.right").classes()).not.toContain("is-open");
-    expect(wrapper.find(".sidebar.left").exists()).toBe(true);
     expect(wrapper.find(".sidebar.right").exists()).toBe(true);
   });
 
-  it("点导航按钮展开导航抽屉", async () => {
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
-
-    expect(wrapper.find(".sidebar.left").classes()).toContain("is-open");
-    expect(wrapper.find(".sidebar.right").classes()).not.toContain("is-open");
-  });
-
-  it("点播放器按钮展开播放器抽屉，导航自动收起", async () => {
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
+  it("点播放器按钮展开抽屉", async () => {
     await wrapper.find(".drawer-toggle.player").trigger("click");
 
     expect(wrapper.find(".sidebar.right").classes()).toContain("is-open");
-    expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
   });
 
   it("再点同一个按钮收起", async () => {
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
+    await wrapper.find(".drawer-toggle.player").trigger("click");
+    await wrapper.find(".drawer-toggle.player").trigger("click");
 
-    expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
+    expect(wrapper.find(".sidebar.right").classes()).not.toContain("is-open");
   });
 
   it("按钮的 aria-expanded 随开合变化", async () => {
-    const toggle = wrapper.find(".drawer-toggle.nav");
+    const toggle = wrapper.find(".drawer-toggle.player");
     expect(toggle.attributes("aria-expanded")).toBe("false");
 
     await toggle.trigger("click");
@@ -140,22 +133,22 @@ describe("抽屉", () => {
   });
 
   it("点遮罩关闭", async () => {
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
-    expect(wrapper.find(".sidebar.left").classes()).toContain("is-open");
+    await wrapper.find(".drawer-toggle.player").trigger("click");
+    expect(wrapper.find(".sidebar.right").classes()).toContain("is-open");
 
     await wrapper.find(".drawer-backdrop").trigger("click");
 
-    expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
+    expect(wrapper.find(".sidebar.right").classes()).not.toContain("is-open");
   });
 
   it("路由变化时关闭", async () => {
-    await wrapper.find(".drawer-toggle.nav").trigger("click");
-    expect(wrapper.find(".sidebar.left").classes()).toContain("is-open");
+    await wrapper.find(".drawer-toggle.player").trigger("click");
+    expect(wrapper.find(".sidebar.right").classes()).toContain("is-open");
 
     await router.push("/gallery");
     await flush();
 
-    expect(wrapper.find(".sidebar.left").classes()).not.toContain("is-open");
+    expect(wrapper.find(".sidebar.right").classes()).not.toContain("is-open");
   });
 });
 
@@ -267,6 +260,7 @@ describe("播放器元素常驻", () => {
 
     expect(wrapper.find(".music-player audio").exists()).toBe(true);
     expect(wrapper.find(".music-player .player-controls").exists()).toBe(true);
-    expect(wrapper.find(".sidebar.left .vf-nav").exists()).toBe(true);
+    // 导航已从左栏抽屉移到顶部 tab 栏，同样必须常驻
+    expect(wrapper.find(".vf-navbar-tabs a").exists()).toBe(true);
   });
 });

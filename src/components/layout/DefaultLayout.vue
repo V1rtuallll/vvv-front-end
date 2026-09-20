@@ -52,15 +52,21 @@
       </div>
     </header>
 
-    <button
-      class="drawer-toggle nav"
-      type="button"
-      aria-label="打开导航"
-      :aria-expanded="openDrawer === 'nav'"
-      @click="toggleDrawer('nav')"
-    >
-      ☰
-    </button>
+    <!-- 头部与内容之间的导航条。做法取自 00 年代 Flash 站的技术面板：
+         细线组分隔 + 斜纹底 + 大写大字距 tab，纯 CSS 画，不用任何外部素材 -->
+    <div class="vf-navbar">
+      <div class="vf-navbar-head">
+        <span>▸ Global Navigator</span>
+        <span>▸ V1rtual / {{ currentSection }}</span>
+      </div>
+      <nav class="vf-navbar-tabs" @click="closeDrawer">
+        <router-link to="/home" class="vf-tab">Home</router-link>
+        <router-link to="/profile" class="vf-tab">Profile</router-link>
+        <router-link to="/blog" class="vf-tab">Blogs</router-link>
+        <router-link to="/gallery" class="vf-tab">Gallery</router-link>
+        <router-link to="/about" class="vf-tab">About</router-link>
+      </nav>
+    </div>
 
     <button
       class="drawer-toggle player"
@@ -73,48 +79,44 @@
     </button>
 
     <div class="vf-container">
-      <aside class="sidebar left" :class="{ 'is-open': openDrawer === 'nav' }">
-        <nav class="vf-nav" @click="closeDrawer">
-          <router-link to="/home" class="nav-link">Home</router-link>
-          <router-link to="/profile" class="nav-link">Profile</router-link>
-          <router-link to="/blog" class="nav-link">Blogs</router-link>
-          <router-link to="/gallery" class="nav-link">Gallery</router-link>
-          <router-link to="/about" class="nav-link">About</router-link>
-          <!-- <router-link to="/tool" class="nav-link">Tools</router-link> -->
-          <!-- <router-link to="/login" class="nav-link">Login</router-link> -->
-        </nav>
-      </aside>
-
       <main class="vf-main">
         <router-view class="page-content" />
       </main>
 
       <aside class="sidebar right" :class="{ 'is-open': openDrawer === 'player' }">
+        <!-- 音频模块。结构照 00 年代 Flash 站的音频面板：信息条 + 显示区 + 方块按钮排。
+             8 个 ref 一个都不能少，useAudioPlayer 在 onMounted 里直接取它们的属性 -->
         <div class="music-player">
-          <h3>Now Playing</h3>
-          <span ref="trackName" class="track-name">Loading...</span>
+          <div class="mp-head">
+            <span>▸ Audio</span>
+            <span>▸ Now Playing</span>
+          </div>
 
-          <progress ref="progressBar" value="0" max="100"></progress>
+          <div class="mp-display">
+            <span ref="trackName" class="track-name">Loading...</span>
+            <progress ref="progressBar" value="0" max="100"></progress>
+          </div>
+
+          <!-- 装饰波浪条：取自 stickers/loop1.gif 首帧，逆时针转 90° 后横向拉伸 -->
+          <div class="mp-wave" aria-hidden="true"></div>
 
           <div class="player-controls">
-            <button ref="playPauseBtn">▶</button>
+            <button ref="prevBtn" type="button" aria-label="上一首">◀◀</button>
+            <button ref="playPauseBtn" type="button" aria-label="播放或暂停">▶</button>
+            <button ref="nextBtn" type="button" aria-label="下一首">▶▶</button>
+          </div>
 
-            <div class="prev-next-controls">
-              <button ref="prevBtn">◀◀</button>
-              <button ref="nextBtn">▶▶</button>
-            </div>
-
-            <div class="volume-control">
-              <input
-                type="range"
-                ref="volumeSlider"
-                min="0"
-                max="100"
-                value="50"
-                step="1"
-              />
-              <div ref="volumeDisplay" class="volume-display">Volume: 50%</div>
-            </div>
+          <div class="volume-control">
+            <input
+              type="range"
+              ref="volumeSlider"
+              min="0"
+              max="100"
+              value="50"
+              step="1"
+              aria-label="音量"
+            />
+            <div ref="volumeDisplay" class="volume-display">Volume: 50%</div>
           </div>
 
           <audio ref="audioEl" preload="auto"></audio>
@@ -123,10 +125,20 @@
         <h3>Blogs</h3>
         <ul class="top-list">
           <li v-for="blog in latestBlogs" :key="blog.id">
-            <!-- 整行都是链接：只有标题那行字能点时，摘要看着像链接却点不动 -->
+            <!-- 整行都是链接：封面也放在链接内部，否则点封面不会跳转。
+                 没有封面的文章用点阵方块占位，保证每行左边对齐 -->
             <router-link :to="`/blog/detail/${blog.id}`" class="top-link">
-              {{ blog.title }}
-              <span class="top-summary">{{ blog.summary }}</span>
+              <img
+                v-if="blog.coverImage"
+                class="top-cover"
+                :src="blog.coverImage"
+                :alt="blog.title"
+              />
+              <span v-else class="top-cover top-cover-empty" aria-hidden="true"></span>
+              <span class="top-link-text">
+                {{ blog.title }}
+                <span class="top-summary">{{ blog.summary }}</span>
+              </span>
             </router-link>
           </li>
         </ul>
@@ -178,7 +190,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { useDrawer } from "@/components/layout/useDrawer";
@@ -189,6 +201,8 @@ import { getUserCount } from "@/modules/user/api/userApi";
 
 const userCountEl = ref(null);
 const route = useRoute();
+// 导航条右侧显示当前栏目名，取路径第一段（/gallery/detail/3 → gallery）
+const currentSection = computed(() => route.path.split("/")[1] || "home");
 const { openDrawer, closeDrawer, toggleDrawer } = useDrawer();
 const { blogs: latestBlogs } = useLatestBlogs();
 const { items: latestGallery } = useLatestGallery();

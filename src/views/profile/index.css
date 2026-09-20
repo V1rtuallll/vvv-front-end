@@ -20,8 +20,6 @@
   letter-spacing: 0.08em;
   font-size: 1.05em;
   color: #00ffff;
-  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff,
-    0 0 40px #00ffff;
 }
 
 .crt-input,
@@ -29,7 +27,6 @@
   font-family: "Orbitron", "LXGW WenKai Mono TC", monospace, "Segoe UI Emoji" !important;
   color: #00ffff;
   font-weight: 800 !important;
-  text-shadow: 0 0 10px #00ffff;
 }
 
 .crt-input:focus,
@@ -47,9 +44,6 @@
   font-weight: 800;
   line-height: 1.8;
   color: #00ffff;
-  text-shadow: 0 0 8px #00ffff, 0 0 16px #00ffff, 0 0 24px #00ffff,
-    0 0 32px #00ffff, -1px -1px 0 #00ffcc, 1px -1px 0 #00ffcc,
-    -1px 1px 0 #00ffcc, 1px 1px 0 #00ffcc;
   letter-spacing: 0.05em;
   animation: crt-flicker 8s infinite;
 }

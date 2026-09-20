@@ -21,7 +21,6 @@
 }
 .gallery-title {
   font-size: 3.2rem;
-  text-shadow: 0 0 30px #ff69b4;
   margin: 0 0 15px 0;
 }
 .gallery-subtitle {
@@ -108,7 +107,6 @@
   font-size: 3rem;
   color: #00ff00;
   background: rgba(0, 0, 0, 0.6);
-  text-shadow: 0 0 12px #00ff00;
 }
 .type-badge {
   position: absolute;
@@ -201,27 +199,19 @@
   font-size: 1.2rem;
   padding-top: 10px;
   border-top: 1px dashed rgba(0, 255, 255, 0.4);
-  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor,
-    0 0 30px currentColor;
 }
 .like-count {
   color: #ff69b4 !important;
-  text-shadow: 0 0 15px #ff69b4, 0 0 30px #ff1493, 0 0 45px #ff69b4;
   animation: pulse-glow 2s infinite alternate;
 }
 .comment-count {
   color: #00ffff !important;
-  text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff, 0 0 45px #00ffff;
   animation: pulse-glow 2s infinite alternate 0.5s;
 }
 @keyframes pulse-glow {
   from {
-    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor,
-      0 0 30px currentColor;
   }
   to {
-    text-shadow: 0 0 20px currentColor, 0 0 40px currentColor,
-      0 0 60px currentColor;
   }
 }
 
