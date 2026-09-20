@@ -1,5 +1,7 @@
-/* 引入 Orbitron / Rajdhani / Monoton 字体 */
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900|Rajdhani:wght@700|Monoton&display=swap");
+/* 引入 Libre Bodoni / Orbitron / Rajdhani / Monoton 字体。
+   多个字族必须用重复的 &family= 拼接，用竖线分隔会被 css2 接口拒绝（HTTP 400） */
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&family=Libre+Bodoni:wght@400..700&family=Michroma&family=Monoton&family=Orbitron:wght@900&family=Rajdhani:wght@700&display=swap");
+
 /* 全局无白边保持不变 */
 :global(body),
 :global(html),
@@ -10,15 +12,19 @@
   width: 100%;
   background: #000;
 }
+
 /* 霓虹 glitch 标题 */
 .glitch-title {
-  font-size: 6rem; /* 大屏标题字号，可按需调整 */
-  font-family: "Monoton", "Orbitron", cursive; /* Monoton 优先，Orbitron 作为回退 */
+  font-size: 6rem;
+  /* 大屏标题字号，可按需调整 */
+  /* Bodoni Moda 优先；macOS 自带的 Didot / Bodoni 72 作为本机回退 */
+  font-family: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
   font-weight: 900;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   position: relative;
-  color: #fff; /* 基础白，更清晰 */
+  color: #fff;
+  /* 基础白，更清晰 */
   background: linear-gradient(90deg, #ff00ff, #00ffff, #ff69b4, #ff00ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -32,6 +38,7 @@
   animation: glitch-main 3s infinite ease-in-out,
     neon-flicker 4s infinite ease-in-out;
 }
+
 .glitch-title::before,
 .glitch-title::after {
   content: "✞ V1rtual ✞";
@@ -60,23 +67,28 @@
 }
 
 @keyframes glitch-1 {
+
   0%,
   100% {
     clip: rect(0, 9999px, 0, 0);
     transform: translate(0);
   }
+
   20% {
     clip: rect(20px, 9999px, 80px, 0);
     transform: translate(-5px, 5px);
   }
+
   40% {
     clip: rect(60px, 9999px, 120px, 0);
     transform: translate(5px, -5px);
   }
+
   60% {
     clip: rect(100px, 9999px, 160px, 0);
     transform: translate(-5px, 0);
   }
+
   80% {
     clip: rect(40px, 9999px, 100px, 0);
     transform: translate(5px, 5px);
@@ -84,77 +96,87 @@
 }
 
 @keyframes glitch-2 {
+
   0%,
   100% {
     clip: rect(0, 9999px, 0, 0);
     transform: translate(0);
   }
+
   25% {
     clip: rect(50px, 9999px, 110px, 0);
     transform: translate(3px, -3px);
   }
+
   50% {
     clip: rect(90px, 9999px, 150px, 0);
     transform: translate(-3px, 3px);
   }
+
   75% {
     clip: rect(10px, 9999px, 70px, 0);
     transform: translate(3px, 0);
   }
 }
-.neon-freak {
-  font-size: 1.8rem;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  margin: 20px 0;
-  color: #ff69b4;
-  text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff,
-    0 0 30px #ff1493, 0 0 40px #ff69b4;
 
-  animation: neon-flicker 2s infinite ease-in-out, subtle-glitch 6s infinite;
+/* 人数统计：比小字再轻一档的说明文字 */
+.neon-freak {
+  position: relative;
+  z-index: 3;
+  margin: 10px 0 0;
+  font-family: "Michroma", "Eurostile", "Optima", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #cfe2ff;
 }
+
 .neon-freak img {
   filter: drop-shadow(0 0 10px #ff00ff);
   vertical-align: middle;
 }
 
+/* 标题正下方的一行小字：与标题同族的正文衬线，紧贴标题下沿 */
 .neon-welcome {
-  font-size: 2rem;
-  font-family: "Rajdhani", "Courier New", monospace;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  margin: 15px 0;
-  background: linear-gradient(90deg, #00ffff, #9370db, #ff69b4, #00ffff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-
-  text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff, 0 0 25px #9370db,
-    0 0 35px #9370db, 0 0 50px #ff69b4;
-
-  animation: neon-flicker 5s infinite ease-in-out;
+  position: relative;
+  z-index: 3;
+  margin: 2px 0 0;
+  font-family: "Michroma", "Eurostile", "Optima", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #e8f3ff;
 }
+
 @keyframes glitch-main {
   0% {
     transform: translate(0);
   }
+
   20% {
     transform: translate(-2px, 2px);
   }
+
   40% {
     transform: translate(-2px, -2px);
   }
+
   60% {
     transform: translate(2px, 2px);
   }
+
   80% {
     transform: translate(2px, -2px);
   }
+
   100% {
     transform: translate(0);
   }
 }
+
 .neon-marquee {
+  /* 标题卡是静态构图，滚动条先隐去；要恢复删掉这行即可 */
+  display: none;
   margin-top: -10px;
   padding: 16px 0;
   overflow: hidden;
@@ -172,6 +194,7 @@
 }
 
 @keyframes gentle-glow-breath {
+
   0%,
   100% {
     box-shadow: 0 0 6px rgba(255, 0, 255, 0.35), 0 0 12px rgba(255, 0, 255, 0.3),
@@ -180,6 +203,7 @@
       inset 0 0 20px rgba(0, 255, 255, 0.22),
       inset 0 0 30px rgba(147, 112, 219, 0.2);
   }
+
   50% {
     box-shadow: 0 0 9px rgba(255, 0, 255, 0.45), 0 0 16px rgba(255, 0, 255, 0.4),
       0 0 24px rgba(0, 255, 255, 0.35), 0 0 30px rgba(0, 255, 255, 0.3),
@@ -188,26 +212,27 @@
       inset 0 0 40px rgba(147, 112, 219, 0.3);
   }
 }
+
 @keyframes marquee-scroll {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
 }
+
 .marquee-text {
   font-size: 1.4rem;
   font-weight: bold;
   letter-spacing: 0.15em;
-  background: linear-gradient(
-    90deg,
-    #ff00ff,
-    #ff69b4,
-    #00ffff,
-    #ff00ff,
-    #ff69b4
-  );
+  background: linear-gradient(90deg,
+      #ff00ff,
+      #ff69b4,
+      #00ffff,
+      #ff00ff,
+      #ff69b4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -220,32 +245,41 @@
 
 /* 复用你已有的neon-flicker，再加一个超级轻的glitch */
 @keyframes subtle-glitch {
+
   0%,
   100% {
     transform: translate(0);
   }
+
   20% {
     transform: translate(-2px, 2px);
   }
+
   40% {
     transform: translate(-2px, -2px);
   }
+
   60% {
     transform: translate(2px, 2px);
   }
+
   80% {
     transform: translate(2px, -2px);
   }
 }
+
 /* 霓虹闪烁动画关键帧 */
 @keyframes neon-flicker {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.95;
   }
+
   80% {
     opacity: 0.98;
   }
@@ -257,51 +291,105 @@
     text-shadow: 0.05em 0 0 #ff00ff, -0.05em -0.025em 0 #00ffff;
     transform: translate(0);
   }
+
   15% {
     text-shadow: 0.05em 0.05em 0 #ff00ff, -0.05em -0.05em 0 #00ffff;
     transform: translate(-0.05em, -0.05em);
   }
+
   30% {
     text-shadow: -0.05em -0.05em 0 #ff00ff, 0.05em 0.05em 0 #00ffff;
     transform: translate(0.05em, 0.05em);
   }
+
   100% {
     text-shadow: 0.05em 0 0 #ff00ff, -0.05em -0.025em 0 #00ffff;
     transform: translate(0);
   }
 }
-/* 头部背景层。替换 url() 中的路径即可更换图片，支持本地路径、线上 URL 和 GIF。 */
+
+/* 头部背景层。替换 url() 中的路径即可更换图片，支持本地路径、线上 URL 和 GIF。
+   照片类图片用 no-repeat + cover 铺满；平铺图案改回 repeat top left / auto */
 .header-background-custom {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: url("/stickers/loop6.gif") repeat top left / auto;
-  /* repeat 平铺，任意尺寸的图片都能填满 */
-  opacity: 1; /* 可调透明度，0.6~1.0 都好看 */
+  background: url("/jpgs/sky2_deep_c.png?v=1") no-repeat center / cover;
+  /* 取自 stickers/sky2.gif 中间帧的中段（已按头部比例裁好，cover 不会再二次裁切），
+     并做过深蓝调色。素材 500×103，放大近 3 倍：不做模糊、不抖动，
+     靠 pixelated 做最近邻放大，让放大后的像素呈现为硬边方块。
+     再叠一层轻微模糊柔化方块边缘；scale 略放大是为了把模糊和扭曲产生的
+     柔边、透明边推到头部边界之外，否则四周会出现一圈半透明的虚边 */
+  image-rendering: pixelated;
+  filter: url("#header-warp") blur(2px);
+  transform: scale(1.06);
+  opacity: 1;
+  /* 可调透明度，0.6~1.0 都好看 */
   z-index: 1;
 }
-/* 柔光遮罩层，让文字更清晰（温柔的深色半透明） */
-/* .header-overlay {
+
+/* 滤镜定义本身不渲染，只是给 CSS 引用 */
+.header-warp-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 叠加层：本身透明，只用伪元素在左右两侧铺一条点阵带，从顶部延伸到最底。
+   调点的疏密改 background-size，调点的粗细改 radial-gradient 的 1.2px / 1.6px，
+   调虚化程度改 filter 的 blur */
+.header-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(10, 0, 20, 0.6) 50%,
-    rgba(0, 0, 0, 0.9) 100%
-  );
   z-index: 2;
-} */
+}
+
+.header-overlay::before,
+.header-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  pointer-events: none;
+  background-image: radial-gradient(circle,
+      rgba(255, 255, 255, 0.5) 1.2px,
+      transparent 1.6px);
+  background-size: 9px 9px;
+  filter: blur(0.8px);
+}
+
+.header-overlay::before {
+  left: 0;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, transparent 78%);
+  mask-image: linear-gradient(to right, #000 0%, transparent 78%);
+}
+
+.header-overlay::after {
+  right: 0;
+  -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 78%);
+  mask-image: linear-gradient(to left, #000 0%, transparent 78%);
+}
+
 /* 内容层置于背景之上 */
 .header-content {
   position: relative;
   z-index: 3;
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 4%;
+  /* 整块文字贴右对齐。这里用固定像素而不是百分比：
+     百分比相对本块自身高度，字号一变位移就跟着变，之前就是因此往下跑偏的 */
+  text-align: right;
+  transform: translateY(4px);
 }
+
 /* 新布局 */
 .vf-layout {
   /* 抽屉触发按钮的尺寸与它到视口边缘的间距。只在这里定义：
@@ -309,39 +397,87 @@
   --drawer-toggle-size: 44px;
   --drawer-toggle-gap: 12px;
   min-height: 100vh;
-  background: #000; /* 底保纯黑 */
+  background: #000;
+  /* 底保纯黑 */
   color: #fff;
   font-family: "Courier New", monospace;
-  position: relative; /* 让背景层相对它 */
+  position: relative;
+  /* 让背景层相对它 */
 }
+
 /* 根元素背景：平铺图案加纯黑兜底 */
 .vf-layout {
   min-height: 100vh;
   height: 100vh;
   width: 100vw;
   background: url("/stickers/loop7.gif") repeat fixed top left / auto,
-    /* 自动平铺，无论图片大小/是否无缝，都会重复填充 */ #000; /* 兜底纯黑，图片加载慢时不露白 */
-  background-size: auto; /* 保持原图案比例，自动重复 */
+    /* 自动平铺，无论图片大小/是否无缝，都会重复填充 */
+    #000;
+  /* 兜底纯黑，图片加载慢时不露白 */
+  background-size: auto;
+  /* 保持原图案比例，自动重复 */
   color: #fff;
   font-family: "Courier New", monospace;
   position: relative;
   overflow-x: hidden;
 }
+
 .vf-header {
   position: relative;
   height: 300px;
   overflow: hidden;
   text-align: center;
+  /* 标题卡是居中的构图：水印、标题、小字从中心往外排 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* 主标题：静态深色衬线，没有发光、渐变和动画 */
 .vf-title {
-  font-size: 5rem;
+  position: relative;
+  z-index: 3;
   margin: 0;
+  font-family: "Libre Bodoni", "Bodoni 72", "Didot", Georgia, serif;
+  font-size: 11rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: lining-nums;
+  text-transform: uppercase;
+  /* 描边加粗（方案 G）：沿字形轮廓均匀加粗，比 font-weight 伪粗体干净。
+     数值越大越粗；Libre Bodoni 细笔画多，超过 2px 会开始糊 */
+  -webkit-text-stroke: 1.4px currentColor;
+  /* 压窄成瘦长字；1 是不压，越小越窄。改字号时它会跟着等比变化 */
+  transform: scaleX(0.85);
+  color: #ffffff;
 }
+
+/* 背景水印：与标题同族、极细字重，字号约为标题的两倍，压在标题之后 */
+.header-watermark {
+  position: absolute;
+  top: 50%;
+  /* 右侧留白。数值越小越贴右边缘；同时它决定了水印与标题右端的关系 */
+  right: 1%;
+  transform: translate(0, -58%);
+  text-transform: uppercase;
+  font-family: "Libre Bodoni", "Bodoni 72", "Didot", Georgia, serif;
+  font-size: 15rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: rgba(235, 244, 255, 0.18);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
 .freak-count {
   font-size: 1.5rem;
   margin: 20px 0;
 }
+
 .freak-count img {
   vertical-align: middle;
 }
@@ -363,12 +499,15 @@
 }
 
 .vf-main {
-  background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明，和sidebar统一深度 */
+  background: rgba(10, 0, 20, 0.85);
+  /* 深紫黑半透明，和sidebar统一深度 */
   border-radius: 20px;
-  padding: 40px; /* 温柔内边距，让子页面有呼吸空间 */
+  padding: 40px;
+  /* 温柔内边距，让子页面有呼吸空间 */
   position: relative;
   overflow: hidden;
-  min-height: 60vh; /* 保证有足够高度，却不强制 */
+  min-height: 60vh;
+  /* 保证有足够高度，却不强制 */
 
   /* 多层粉青外辉 + 内辉，像月光轻轻环抱 */
   box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
@@ -384,6 +523,7 @@
 .neon-text {
   text-shadow: 0 0 10px currentColor;
 }
+
 .nav-link {
   display: block;
   padding: 10px;
@@ -417,16 +557,20 @@
 /* ==== 左右边栏大升级：霓虹高级版 ==== */
 /* 先给两个sidebar统一的基础美化 */
 .sidebar {
-  background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明背景 */
-  border-radius: 20px; /* 圆角更大一点，柔软又未来 */
+  background: rgba(10, 0, 20, 0.85);
+  /* 深紫黑半透明背景 */
+  border-radius: 20px;
+  /* 圆角更大一点，柔软又未来 */
   padding: 25px;
   position: relative;
-  overflow: hidden; /* 裁掉溢出的内部光晕 */
+  overflow: hidden;
+  /* 裁掉溢出的内部光晕 */
 
   /* 多层霓虹外发光 */
   box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
     0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
-    inset 0 0 20px rgba(255, 0, 255, 0.15); /* 内glow，让里面也亮起来 */
+    inset 0 0 20px rgba(255, 0, 255, 0.15);
+  /* 内glow，让里面也亮起来 */
 
   /* 呼吸动画 */
   animation: sidebar-glow-breath 10s infinite ease-in-out;
@@ -573,12 +717,14 @@
 /* ==== 新增动画钥匙 ==== */
 /* 侧栏呼吸光 */
 @keyframes sidebar-glow-breath {
+
   0%,
   100% {
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
       0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
       inset 0 0 20px rgba(255, 0, 255, 0.15);
   }
+
   50% {
     box-shadow: 0 0 15px rgba(255, 0, 255, 0.55),
       0 0 30px rgba(255, 0, 255, 0.45), 0 0 45px rgba(0, 255, 255, 0.4),
@@ -588,29 +734,37 @@
 
 /* 偶发的轻微侧栏 glitch */
 @keyframes subtle-sidebar-glitch {
+
   0%,
   90%,
   100% {
     transform: translate(0);
   }
+
   92% {
     transform: translate(-2px, 2px);
   }
+
   94% {
     transform: translate(2px, -2px);
   }
+
   96% {
     transform: translate(-1px, -1px);
   }
 }
+
 /* ==== 中间内容区大升级：统一霓虹家族风 ==== */
 /* 主内容区：与侧栏同款发光 */
 .vf-main {
-  background: rgba(10, 0, 20, 0.85); /* 深紫黑半透明，统一深度 */
-  border-radius: 20px; /* 和sidebar一样大圆角，更柔软 */
+  background: rgba(10, 0, 20, 0.85);
+  /* 深紫黑半透明，统一深度 */
+  border-radius: 20px;
+  /* 和sidebar一样大圆角，更柔软 */
   padding: 30px;
   position: relative;
-  overflow: hidden; /* 让glow不溢出 */
+  overflow: hidden;
+  /* 让glow不溢出 */
 
   /* 多层霓虹外辉 + 内辉，像被灯管温柔环抱 */
   box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
@@ -624,7 +778,8 @@
 
 /* Featured 网格方块 */
 .featured-box {
-  background: rgba(20, 0, 40, 0.7); /* 稍深一点，层次感 */
+  background: rgba(20, 0, 40, 0.7);
+  /* 稍深一点，层次感 */
   border: 2px dashed rgba(255, 105, 180, 0.6);
   border-radius: 15px;
   padding: 40px;
@@ -650,7 +805,8 @@
 /* 子页面内容：完美居中、自适应、继承一点温柔辉光 */
 .page-content {
   width: 100%;
-  max-width: 900px; /* 限制最大宽度便于阅读，删除则满幅 */
+  max-width: 900px;
+  /* 限制最大宽度便于阅读，删除则满幅 */
   margin: 0 auto;
   color: #fff;
   font-family: "Courier New", monospace;
@@ -658,14 +814,17 @@
   /* 子页面文字阴影 */
   text-shadow: 0 0 5px rgba(255, 105, 180, 0.3);
 }
+
 /* ==== 复用动画（如果你之前没加过sidebar的动画，这里补上） ==== */
 @keyframes sidebar-glow-breath {
+
   0%,
   100% {
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
       0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
       inset 0 0 20px rgba(255, 0, 255, 0.15);
   }
+
   50% {
     box-shadow: 0 0 15px rgba(255, 0, 255, 0.55),
       0 0 30px rgba(255, 0, 255, 0.45), 0 0 45px rgba(0, 255, 255, 0.4),
@@ -674,21 +833,26 @@
 }
 
 @keyframes subtle-sidebar-glitch {
+
   0%,
   90%,
   100% {
     transform: translate(0);
   }
+
   92% {
     transform: translate(-2px, 2px);
   }
+
   94% {
     transform: translate(2px, -2px);
   }
+
   96% {
     transform: translate(-1px, -1px);
   }
 }
+
 /* ==== 页脚：和header滚动条完全统一的粉青霓虹版 ==== */
 .neon-footer {
   background: #000;
@@ -718,21 +882,20 @@
   font-size: 1.4rem;
   font-weight: bold;
   letter-spacing: 0.15em;
-  background: linear-gradient(
-    90deg,
-    #ff00ff,
-    #ff69b4,
-    #00ffff,
-    #ff00ff,
-    #ff69b4
-  );
+  background: linear-gradient(90deg,
+      #ff00ff,
+      #ff69b4,
+      #00ffff,
+      #ff00ff,
+      #ff69b4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff,
     0 0 5px #00ffff, 0 0 15px #00ffff;
   animation: neon-flicker 3s infinite ease-in-out, subtle-glitch 8s infinite,
-    footer-marquee-scroll 40s linear infinite; /* 40s 一轮 */
+    footer-marquee-scroll 40s linear infinite;
+  /* 40s 一轮 */
 }
 
 .filing-footer {
@@ -787,6 +950,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -1105,10 +1269,13 @@
 .music-player::before {
   content: "";
   position: absolute;
-  inset: 0; /* 不外扩，避免边框光晕 */
+  inset: 0;
+  /* 不外扩，避免边框光晕 */
   background: transparent;
-  border: none; /* 去掉边框发光 */
-  box-shadow: none; /* 去掉边框 glow，与背景融合 */
+  border: none;
+  /* 去掉边框发光 */
+  box-shadow: none;
+  /* 去掉边框 glow，与背景融合 */
   clip-path: none;
   z-index: -2;
 }
@@ -1118,20 +1285,16 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-      45deg,
+  background: repeating-linear-gradient(45deg,
       transparent,
       transparent 10px,
       rgba(255, 255, 255, 0.04) 10px,
-      rgba(255, 255, 255, 0.04) 20px
-    ),
-    repeating-linear-gradient(
-      -45deg,
+      rgba(255, 255, 255, 0.04) 20px),
+    repeating-linear-gradient(-45deg,
       transparent,
       transparent 12px,
       rgba(255, 255, 255, 0.03) 12px,
-      rgba(255, 255, 255, 0.03) 24px
-    );
+      rgba(255, 255, 255, 0.03) 24px);
   opacity: 0.7;
   pointer-events: none;
   mix-blend-mode: overlay;
@@ -1147,8 +1310,10 @@
   margin: 0 0 28px 0;
   text-transform: uppercase;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.9),
-    /* 内层光晕 */ 0 0 10px rgba(255, 255, 255, 0.7),
-    0 0 16px rgba(255, 255, 255, 0.5), 0 0 24px rgba(255, 255, 255, 0.3); /* 渐弱外层光晕 */
+    /* 内层光晕 */
+    0 0 10px rgba(255, 255, 255, 0.7),
+    0 0 16px rgba(255, 255, 255, 0.5), 0 0 24px rgba(255, 255, 255, 0.3);
+  /* 渐弱外层光晕 */
   animation: white-halo 16s infinite ease-in-out;
 }
 
@@ -1163,14 +1328,17 @@
   padding: 8px 12px;
   line-height: 2.5;
   text-shadow: 0 0 6px rgba(255, 255, 255, 1),
-    /* 内层最亮 */ 0 0 12px rgba(255, 255, 255, 0.8),
-    0 0 20px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 255, 255, 0.4); /* 外层渐弱光晕 */
+    /* 内层最亮 */
+    0 0 12px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 255, 255, 0.4);
+  /* 外层渐弱光晕 */
   animation: white-halo 16s infinite ease-in-out;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
 /* 进度条：冷白光束 */
 progress {
   width: 100%;
@@ -1212,10 +1380,13 @@ progress::-moz-progress-bar {
   background: transparent;
   border: none !important;
   color: #fff;
-  width: 60px; /* 统一宽度 */
-  height: 60px; /* 统一高度 */
+  width: 60px;
+  /* 统一宽度 */
+  height: 60px;
+  /* 统一高度 */
   border-radius: 50%;
-  font-size: 1.8rem; /* 统一字号 */
+  font-size: 1.8rem;
+  /* 统一字号 */
   font-weight: 900;
   display: flex;
   align-items: center;
@@ -1246,12 +1417,16 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 10px; /* 与进度条高度一致 */
-  background: #111; /* 与进度条轨道底色一致 */
+  height: 10px;
+  /* 与进度条高度一致 */
+  background: #111;
+  /* 与进度条轨道底色一致 */
   border: none;
-  box-shadow: inset 0 0 12px #000, 0 0 10px rgba(255, 255, 255, 0.2); /* 外发光与进度条一致 */
+  box-shadow: inset 0 0 12px #000, 0 0 10px rgba(255, 255, 255, 0.2);
+  /* 外发光与进度条一致 */
   outline: none;
-  margin: 20px 0 0 0; /* 间距与进度条一致 */
+  margin: 20px 0 0 0;
+  /* 间距与进度条一致 */
 }
 
 /* 滑块：纯白渐变，发光与进度条一致 */
@@ -1288,24 +1463,29 @@ input[type="range"]::-webkit-slider-runnable-track {
   letter-spacing: 0.2em;
   text-shadow: 0 0 6px #fff;
 }
+
 /* ==== 纯粹发光动画 ==== */
 @keyframes symbol-glow {
+
   0%,
   100% {
     text-shadow: 0 0 24px #fff, 0 0 48px #fff, 0 0 72px #fff;
   }
+
   50% {
     text-shadow: 0 0 36px #fff, 0 0 72px #fff, 0 0 108px #fff;
   }
 }
 
 @keyframes white-halo {
+
   0%,
   100% {
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.9),
       0 0 10px rgba(255, 255, 255, 0.7), 0 0 16px rgba(255, 255, 255, 0.5),
       0 0 24px rgba(255, 255, 255, 0.3);
   }
+
   50% {
     text-shadow: 0 0 7px rgba(255, 255, 255, 1),
       0 0 14px rgba(255, 255, 255, 0.8), 0 0 22px rgba(255, 255, 255, 0.6),
@@ -1317,10 +1497,12 @@ input[type="range"]::-webkit-slider-runnable-track {
   0% {
     background-position: 0 0;
   }
+
   100% {
     background-position: 20px 20px;
   }
 }
+
 /* ==== 极致音乐播放器结束 ==== */
 
 /* ==== 移动端抽屉 ====

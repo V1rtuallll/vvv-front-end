@@ -1,16 +1,43 @@
 <template>
   <div class="vf-layout">
     <header class="vf-header">
+      <!-- 背景扭曲滤镜的定义，只声明不渲染，供 CSS 的 filter: url(#header-warp) 引用。
+           改 baseFrequency 调波纹疏密，改 scale 调扭曲幅度 -->
+      <svg class="header-warp-defs" aria-hidden="true" focusable="false">
+        <filter id="header-warp">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.028"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="16"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
+
       <div class="header-background-custom"></div>
       <div class="header-overlay"></div>
 
       <div class="header-content">
-        <h1 class="vf-title glitch-title">✞ V1rtual ✞</h1>
+        <!-- 背景水印：与标题同族、极细字重，纯装饰 -->
+        <span class="header-watermark" aria-hidden="true">Virtual</span>
+
+        <h1 class="vf-title">Virtual</h1>
+
+        <!-- 标题正下方的一行小字 -->
+        <p class="welcome-text neon-welcome">far in the blue sky...</p>
+
         <div class="freak-line neon-freak">
           人类数量:
           <span ref="userCountEl" class="counter-number">加载中... </span>
         </div>
-        <p class="welcome-text neon-welcome">🖤 Welcome to my imagination 🖤</p>
         <div class="neon-marquee">
           <marquee behavior="scroll" direction="left" scrollamount="12">
             <span class="marquee-text">
