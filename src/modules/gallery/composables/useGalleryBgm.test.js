@@ -219,15 +219,18 @@ describe("useGalleryBgm 与侧栏的协调", () => {
   /**
    * **谁开的窗口谁关。**
    *
-   * 侧栏已经被**另一个实例**让位时（详情弹窗在播），本实例（编辑弹窗里的
-   * 选择器试听）的让位是空转 —— 它没开过窗口，就无权去关。少了这一条，
-   * 关掉编辑弹窗会把侧栏解停，而详情弹窗的 BGM 还在播，**两路音频一起响**。
+   * 本实例没开过窗口，就无权解停侧栏 —— 否则用户没碰过的声音会被放出来。
+   *
+   * 这一段原来靠「详情弹窗在播、选择器再试听」来造状态。有了单实例仲裁之后
+   * 那个状态不再存在：选择器起播会先把详情弹窗停掉，详情弹窗的停止本身就会
+   * 解停侧栏。所以这里改用模块级的让位函数直接摆出「窗口已经被别人开着」——
+   * 侧栏被按了下去，而本实例从没开过窗口。
    *
    * 不用 `mountBgm`：那会再登记一个新侧栏元素。真实应用里两个实例
    * 共用同一个侧栏，所以这里只手写一个有状态的替身、只登记一次。
-   * `pause()` 必须真翻转 `paused`，否则模拟不出「侧栏已被别人按下去」。
+   * `pause()` 必须真翻转 `paused`，否则模拟不出「侧栏已被按下去」。
    */
-  it("侧栏已被别的实例让位时，本实例停止不解停侧栏", () => {
+  it("窗口已被别人开着时，本实例停止不解停侧栏", () => {
     const player = {
       paused: false,
       pause: vi.fn(() => {
@@ -240,21 +243,74 @@ describe("useGalleryBgm 与侧栏的协调", () => {
     };
     registerPlayerAudio(player);
 
-    const newBgm = () => useGalleryBgm((tag) => fakeElement(tag));
-
-    const dialog = newBgm();
-    dialog.play(PHOTO_WITH_BGM); // 详情弹窗接管侧栏
+    pauseForBgm(); // 别人开的窗口：侧栏原本在播，被按了下去
     expect(player.pause).toHaveBeenCalledTimes(1);
 
-    const picker = newBgm();
+    const picker = useGalleryBgm((tag) => fakeElement(tag));
     picker.playSource({ src: "https://cdn.example.test/music/new.mp3", type: "audio" });
     picker.stop(); // 关掉编辑弹窗 —— 不该解停侧栏
 
     expect(player.play).not.toHaveBeenCalled();
+  });
 
-    dialog.stop(); // 详情弹窗关闭 —— 这时才该恢复
+  /**
+   * **同一时刻只准一个实例出声。**
+   *
+   * 详情弹窗开着时从它里面打开编辑弹窗试听，是两个实例各建各的元素：
+   * 少了仲裁就是两路音频一起响，而且没有控件解释多出来的那一路。
+   *
+   * 顺序也是被测行为的一部分：后起播的那个先停掉对方（对方的 stop 会解停
+   * 侧栏），再让位 —— 这次才真的接管。所以侧栏在仲裁期间 pause 两次、
+   * play 一次，最后由后者一人持有窗口。
+   */
+  it("另一个实例起播时先停掉正在响的那一个", () => {
+    const player = {
+      paused: false,
+      pause: vi.fn(() => {
+        player.paused = true;
+      }),
+      play: vi.fn(() => {
+        player.paused = false;
+        return Promise.resolve();
+      }),
+    };
+    registerPlayerAudio(player);
 
+    // 两个实例共用同一个侧栏，各自记下自己建过的元素
+    const elements = [];
+    const newBgm = () => {
+      const made = [];
+      elements.push(made);
+      return useGalleryBgm((tag) => {
+        const el = fakeElement(tag);
+        made.push(el);
+        return el;
+      });
+    };
+
+    const dialog = newBgm();
+    dialog.play(PHOTO_WITH_BGM); // 详情弹窗接管侧栏
+
+    const picker = newBgm();
+    picker.playSource({ src: "https://cdn.example.test/music/new.mp3", type: "audio" });
+
+    // 详情弹窗那一首真的被按停，它自己的状态也清了 —— 否则它的 activeBgm
+    // 还挂着，选择器「选它」之类的判断会读到一条早就不在响的曲子
+    expect(elements[0][0].pause).toHaveBeenCalledTimes(1);
+    expect(dialog.activeBgm.value).toBe(null);
+    expect(dialog.activeId.value).toBe(null);
+    // 侧栏：详情弹窗解停一次、选择器再按下去一次，两路音频不会叠
+    expect(player.pause).toHaveBeenCalledTimes(2);
     expect(player.play).toHaveBeenCalledTimes(1);
+
+    picker.stop(); // 关掉编辑弹窗：这次该它还原侧栏
+
+    expect(elements[1][0].pause).toHaveBeenCalledTimes(1);
+    expect(player.play).toHaveBeenCalledTimes(2);
+
+    dialog.stop(); // 已经停过，不该再动侧栏一次
+
+    expect(player.play).toHaveBeenCalledTimes(2);
   });
 
   /**

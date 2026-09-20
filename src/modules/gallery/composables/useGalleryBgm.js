@@ -27,6 +27,16 @@ export function resolveBgm(item) {
 }
 
 /**
+ * 当前正在发声的实例（composable 的返回对象）。`null` 表示没有实例在响。
+ *
+ * **同一时刻只准一个实例出声。** 全站有两个实例：详情弹窗一个、编辑弹窗里的
+ * 选择器一个。两个实例各建各的媒体元素，而 `pauseForBgm` 只管侧栏 ——
+ * 详情弹窗开着时从它里面打开编辑弹窗试听，详情弹窗的曲子不会停，两路音频
+ * 就会一起响，且没有控件解释多出来的那一路。
+ */
+let soundingInstance = null;
+
+/**
  * 详情弹窗的背景音乐播放。
  *
  * 播放规则（D5）：
@@ -73,6 +83,8 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     releaseElement();
     activeBgm.value = null;
     activeId.value = null;
+    // 自己不再发声，就把「当前发声者」这个槽位也让出去
+    if (soundingInstance === api) soundingInstance = null;
     // 谁开的窗口谁关 —— 没开过的实例不许解停侧栏
     if (openedWindow) {
       openedWindow = false;
@@ -90,6 +102,11 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     if (activeId.value !== null && String(activeId.value) === String(id)) return;
 
     releaseElement();
+    // 别的实例还在响就先把它停掉。**顺序是固定的一环**：它的 stop() 会先把
+    // 侧栏还原，我们随后的 pauseForBgm() 才谈得上真正接管（否则这一让是空转）。
+    // 两步调换的话，停掉对方之后侧栏会留在它解停后的状态，而我们没接管成功
+    if (soundingInstance && soundingInstance !== api) soundingInstance.stop();
+    soundingInstance = api;
     // 先让侧栏闭嘴，再起自己的。记下是不是**我们**把它按下去的 ——
     // 记错了，stop() 就会去解停一个不是我们开的窗口
     openedWindow = pauseForBgm() || openedWindow;
@@ -113,5 +130,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     playSource(source, item?.id ?? source.src);
   };
 
-  return { activeBgm, activeId, play, playSource, stop };
+  // 对外对象同时也是「当前发声者」槽位里的把手：stop() 靠它判断自己是不是
+  // 正占着那个槽位。`stop` / `playSource` 在源码顺序上先于它，但它们都在本函数
+  // 返回之后才被调用，那时 api 已经就位
+  const api = { activeBgm, activeId, play, playSource, stop };
+  return api;
 }
