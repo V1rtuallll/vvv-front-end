@@ -30,7 +30,6 @@ describe("useBlogDetail", () => {
     signIn(7);
     getBlogDetail.mockResolvedValue({ data: { ...DETAIL } });
     deleteBlog.mockResolvedValue({ data: "已删除" });
-    window.confirm = vi.fn(() => true);
   });
 
   it("加载成功后提交文章，loading 归位", async () => {
@@ -73,16 +72,14 @@ describe("useBlogDetail", () => {
     expect(asOwner.canManage.value).toBe(true);
   });
 
-  it("没确认删除时不发请求", async () => {
-    window.confirm.mockReturnValue(false);
+  it("没有文章时不发删除请求", async () => {
     const api = useBlogDetail(ref(100));
-    await api.load();
 
     expect(await api.remove()).toBe(false);
     expect(deleteBlog).not.toHaveBeenCalled();
   });
 
-  it("确认后删除成功，返回 true 并提示", async () => {
+  it("删除成功返回 true 并提示", async () => {
     const api = useBlogDetail(ref(100));
     await api.load();
 

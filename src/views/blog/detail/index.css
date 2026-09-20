@@ -3,6 +3,12 @@
   margin: 0 auto;
 }
 
+/* 与编辑器顶部那颗「← Blogs」同一个类，这里只需要把它从正文流里单独拎出来 */
+.blog-detail-back {
+  display: inline-block;
+  margin-bottom: 18px;
+}
+
 .blog-loading,
 .blog-missing {
   padding: 60px 20px;

@@ -15,6 +15,7 @@ vi.mock("@/modules/blog/api/blogApi", () => ({
 
 import {
   deleteBlog,
+  deleteBlogComment,
   getBlogComments,
   getBlogDetail,
   postBlogComment,
@@ -26,6 +27,12 @@ const DETAIL = {
   id: 100, title: "文章标题", content: "# 正文标题\n\n正文内容", coverImage: null,
   authorId: 9, authorUsername: "作者", views: 3, status: 1, commentCount: 1,
   createdAt: "2026-09-17T10:00:00", updatedAt: "2026-09-17T10:00:00",
+};
+
+// userId 与 DETAIL.authorId 一致：作者本人能删自己文章下的评论
+const COMMENT = {
+  id: 11, content: "一条评论", userId: 9, username: "作者", parentId: null,
+  likes: 0, isLiked: false, createdAt: "2026-09-17T11:00:00",
 };
 
 let router;
@@ -57,7 +64,6 @@ describe("Blog 详情页", () => {
     getBlogComments.mockResolvedValue({ data: [] });
     postBlogComment.mockResolvedValue({ code: 200 });
     deleteBlog.mockResolvedValue({ data: "已删除" });
-    window.confirm = vi.fn(() => true);
   });
 
   it("渲染标题、作者、浏览数与 Markdown 正文", async () => {
@@ -115,14 +121,65 @@ describe("Blog 详情页", () => {
     expect(page.find(".comment-input textarea").element.value).toBe("");
   });
 
-  it("删除确认后跳回列表页", async () => {
+  it("顶部有回列表页的返回按钮", async () => {
+    const page = await mountDetail();
+
+    expect(page.find(".blog-detail-back").attributes("href")).toBe("/blog");
+  });
+
+  it("删除先弹项目自己的确认框，确认后才发请求并跳回列表页", async () => {
     useAuthStore.mockReturnValue({ user: { id: 9, username: "作者" }, token: "t", isLoggedIn: true });
     const page = await mountDetail();
 
     await page.find(".blog-detail-actions .danger").trigger("click");
+
+    expect(page.find(".confirm-modal").exists()).toBe(true);
+    expect(deleteBlog).not.toHaveBeenCalled();
+
+    await page.find(".confirm-btn").trigger("click");
     await flushPromises();
 
     expect(deleteBlog).toHaveBeenCalledWith(100);
     expect(router.currentRoute.value.path).toBe("/blog");
+  });
+
+  it("取消删除不发请求，确认框关掉", async () => {
+    useAuthStore.mockReturnValue({ user: { id: 9, username: "作者" }, token: "t", isLoggedIn: true });
+    const page = await mountDetail();
+
+    await page.find(".blog-detail-actions .danger").trigger("click");
+    await page.find(".cancel-btn").trigger("click");
+
+    expect(page.find(".confirm-modal").exists()).toBe(false);
+    expect(deleteBlog).not.toHaveBeenCalled();
+  });
+
+  it("删除评论也先过同一个弹窗，确认后才发请求", async () => {
+    useAuthStore.mockReturnValue({ user: { id: 9, username: "作者" }, token: "t", isLoggedIn: true });
+    getBlogComments.mockResolvedValue({ data: [{ ...COMMENT }] });
+    const page = await mountDetail();
+
+    await page.find(".comment-delete-btn").trigger("click");
+
+    expect(page.find(".confirm-modal h2").text()).toBe("删除评论");
+    expect(page.find(".confirm-message").text()).toContain("@作者");
+    expect(deleteBlogComment).not.toHaveBeenCalled();
+
+    await page.find(".confirm-btn").trigger("click");
+    await flushPromises();
+
+    expect(deleteBlogComment).toHaveBeenCalledWith(11);
+  });
+
+  it("取消删除评论不发请求", async () => {
+    useAuthStore.mockReturnValue({ user: { id: 9, username: "作者" }, token: "t", isLoggedIn: true });
+    getBlogComments.mockResolvedValue({ data: [{ ...COMMENT }] });
+    const page = await mountDetail();
+
+    await page.find(".comment-delete-btn").trigger("click");
+    await page.find(".cancel-btn").trigger("click");
+
+    expect(deleteBlogComment).not.toHaveBeenCalled();
+    expect(page.find(".confirm-modal").exists()).toBe(false);
   });
 });

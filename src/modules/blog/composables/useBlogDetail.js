@@ -40,12 +40,15 @@ export function useBlogDetail(idRef) {
   };
 
   /**
-   * 删除文章。风险动作，先问一次。
+   * 删除文章。
+   *
+   * 只做删除本身：确认框由页面持有（项目自己的弹窗，不是 window.confirm）——
+   * 与 gallery 的删除流程同一口径，否则「先问一次」这件事会在两处长得不一样。
+   *
    * @returns {Promise<boolean>} true 表示已删除，页面据此跳回列表
    */
   const remove = async () => {
     if (!blog.value) return false;
-    if (!window.confirm("确定删除这篇文章？该操作不可撤销。")) return false;
     try {
       await deleteBlog(blog.value.id);
       window.$vmessage.success("已删除");
