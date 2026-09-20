@@ -94,28 +94,28 @@ const pageSize = computed({
 </script>
 
 <style scoped>
-.admin-section { margin: 50px 0; padding: 30px; background: rgba(5, 5, 20, 0.6); border: 1px solid #00ffff44; border-radius: 12px; }
+.admin-section { margin: 50px 0; padding: 30px; background: #e9f2f9; border: 1px solid #b9c4cc; border-radius: 12px; }
 .resource-browser { margin: 60px 0; }
 .filter-bar { margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
 .resource-list-horizontal { display: flex; flex-direction: column; gap: 20px; }
-.resource-row { display: flex; align-items: stretch; background: rgba(0, 10, 25, 0.7); padding: 20px; border-radius: 10px; border: 1px solid #00ffff33; gap: 20px; flex-wrap: wrap; }
+.resource-row { display: flex; align-items: stretch; background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #b9c4cc; gap: 20px; flex-wrap: wrap; }
 .preview-col { flex: 0 0 220px; display: flex; justify-content: center; align-items: center; }
-.preview-img { max-height: 180px; max-width: 220px; border-radius: 8px; box-shadow: 0 0 15px #00ffff44; object-fit: contain; }
+.preview-img { max-height: 180px; max-width: 220px; border-radius: 8px; object-fit: contain; }
 .preview-media { max-width: 220px; max-height: 120px; border-radius: 8px; }
 .info-col { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 12px; }
-.header-info { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: #00ffff; font-size: 0.95rem; }
-.header-info .meta, .details p { color: #00dddd; }
+.header-info { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: #2f3b47; font-size: 0.95rem; }
+.header-info .meta, .details p { color: #54636f; }
 .src-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.src-input { flex: 1; min-width: 280px; padding: 10px; background: #000; border: 1px solid #00ffff88; color: #00ffff; border-radius: 6px; }
-.copy-btn { background: linear-gradient(45deg, #ff69b4, #00ffff); color: #000; font-weight: bold; white-space: nowrap; }
+.src-input { flex: 1; min-width: 280px; padding: 10px; background: #ffffff; border: 1px solid #b9c4cc; color: #2f3b47; border-radius: 6px; }
+.copy-btn { background: #0277bd; color: #ffffff; font-weight: bold; white-space: nowrap; }
 .details p { margin: 5px 0; font-size: 0.95rem; }
 .action-col { flex: 0 0 auto; display: flex; align-items: flex-start; padding-top: 40px; }
 .edit-btn { padding: 10px 18px; white-space: nowrap; }
-.empty-tip { text-align: center; padding: 60px; color: #00aaaa; font-style: italic; }
-.top-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin: 20px 0 30px; padding: 15px; background: rgba(0, 0, 20, 0.4); border-radius: 10px; border: 1px solid #00ffff33; }
-.pagination.top { display: flex; align-items: center; gap: 20px; font-size: 1.1rem; color: #ff69b4; }
+.empty-tip { text-align: center; padding: 60px; color: #7b8fa1; font-style: italic; }
+.top-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin: 20px 0 30px; padding: 15px; background: rgba(0, 0, 20, 0.4); border-radius: 10px; border: 1px solid #b9c4cc; }
+.pagination.top { display: flex; align-items: center; gap: 20px; font-size: 1.1rem; color: #c2185b; }
 .page-info { min-width: 160px; text-align: center; font-style: italic; }
-.page-size-selector { display: flex; align-items: center; gap: 10px; color: #00ffff; font-size: 1rem; }
+.page-size-selector { display: flex; align-items: center; gap: 10px; color: #2f3b47; font-size: 1rem; }
 
 /* ==== 窄屏适配 ====
    <=1024px 平板 / <=768px 竖屏平板与手机 / <=480px 小屏手机。

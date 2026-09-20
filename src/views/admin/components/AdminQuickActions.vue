@@ -62,14 +62,14 @@ const pendingCount = computed(
 .admin-section {
   margin: 50px 0;
   padding: 30px;
-  background: rgba(5, 5, 20, 0.6);
-  border: 1px solid #00ffff44;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   border-radius: 12px;
 }
 
 .quick-actions {
   background: rgba(20, 0, 30, 0.65);
-  border-color: #ff00ff55;
+  border-color: #c2185b;
 }
 
 .result-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }

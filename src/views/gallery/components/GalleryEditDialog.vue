@@ -130,36 +130,36 @@ const bgmChanged = () => {
 </script>
 
 <style scoped>
-.modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.96); backdrop-filter: blur(15px); }
+.modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(1, 40, 70, 0.55); backdrop-filter: blur(6px); }
 /* width 与 padding 同时存在，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
-.edit-modal { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
+.edit-modal { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; padding: 30px; color: #2f3b47; background: #ffffff; border: 1px solid #b9c4cc; border-radius: 4px; }
 .edit-modal h2 { margin-bottom: 20px; color: #ff69b4; font-size: 1.6rem; }
 .edit-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
-.field-label { color: #ffaae6; font-size: 1rem; }
-.field-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 12px; color: #00ffff; font-size: 1rem; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 10px; }
+.field-label { color: #c2185b; font-size: 1rem; }
+.field-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 12px; color: #2f3b47; font-size: 1rem; background: #e9f2f9; border: 1px solid #b9c4cc; border-radius: 4px; }
 .field-textarea { min-height: 80px; resize: vertical; }
 
 /* 文件行：当前文件名 + 更换 + 撤销，窄屏自动折行 */
 .file-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.file-current { flex: 1 1 200px; min-width: 0; overflow: hidden; color: #cceeff; font-size: 0.92rem; white-space: nowrap; text-overflow: ellipsis; }
+.file-current { flex: 1 1 200px; min-width: 0; overflow: hidden; color: #54636f; font-size: 0.92rem; white-space: nowrap; text-overflow: ellipsis; }
 .file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .file-pick { flex: 0 0 auto; cursor: pointer; }
 /* 触摸目标不小于 44px */
-.file-pick-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 8px; }
-.file-clear { min-height: 44px; padding: 8px 16px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.15); border: 1px solid #ff69b4; border-radius: 8px; cursor: pointer; }
-.file-chosen { color: #ffaae6; font-size: 0.88rem; line-height: 1.6; word-break: break-all; }
-.file-hint { color: #aaa; font-size: 0.85rem; line-height: 1.6; }
+.file-pick-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; color: #ffffff; font-weight: bold; background: #0277bd; border-radius: 4px; }
+.file-clear { min-height: 44px; padding: 8px 16px; color: #ff69b4; font-size: 0.9rem; background: #ffffff; border: 1px solid #ff69b4; border-radius: 4px; cursor: pointer; }
+.file-chosen { color: #c2185b; font-size: 0.88rem; line-height: 1.6; word-break: break-all; }
+.file-hint { color: #7b8fa1; font-size: 0.85rem; line-height: 1.6; }
 
 .modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-.modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; border-radius: 30px; cursor: pointer; }
-.save-btn { color: #000; font-weight: bold; background: #00ffff; border: 2px solid #00ffff; }
+.modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; border-radius: 4px; cursor: pointer; }
+.save-btn { color: #ffffff; font-weight: bold; background: #0277bd; border: 1px solid #b9c4cc; }
 .cancel-btn { color: #ff69b4; background: rgba(255, 105, 180, 0.2); border: 2px solid #ff69b4; }
 .modal-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ==== 窄屏适配 ==== */
 @media (max-width: 768px) {
   .modal-overlay { align-items: flex-end; padding: 0; }
-  .edit-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
+  .edit-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 4px; }
 }
 
 @media (max-width: 480px) {

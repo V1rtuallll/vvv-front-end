@@ -1,11 +1,13 @@
 /**
  * 视口能力探测工具。
  *
- * 布局以 CSS media query 为主，这里只处理 CSS 无法表达的两种情况：
- * 1. 设备是否支持 hover —— 移动端没有 hover，信息栏不能只靠 @mouseenter 展示；
- * 2. 当前是否为窄屏 —— 需要按视口切换交互方式时使用。
+ * 布局以 CSS media query 为主，这里只处理 CSS 无法表达的情况：
+ * 当前是否为窄屏（需要按视口切换交互方式时使用）。
  *
  * 三档断点与 CSS 保持一致：<=1024px 平板、<=768px 竖屏平板与手机、<=480px 小屏手机。
+ *
+ * `supportsHover` 目前没有调用方：首页两处信息栏（主展示、拼图卡）都已改为常显，
+ * 全项目不再有 @mouseenter / @mouseleave。保留导出供以后需要按指针能力分流时使用。
  */
 
 export const HOVER_MEDIA_QUERY = "(hover: hover)";

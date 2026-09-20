@@ -31,16 +31,16 @@ defineEmits(["close"]);
 </script>
 
 <style scoped>
-.crt-profile-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); }
+.crt-profile-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; background: rgba(1, 40, 70, 0.55); backdrop-filter: blur(6px); }
 /* width 与内层 padding 并存，overflow-y 保证内容超高时可滚动而不是被裁掉 */
 .crt-profile-content { box-sizing: border-box; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; }
-.crt-screen { position: relative; overflow: hidden; background: #000; border-radius: 20px; box-shadow: 0 0 60px rgba(0, 255, 255, 0.6); }
+.crt-screen { position: relative; overflow: hidden; background: #e9f2f9; border-radius: 4px; }
 .crt-content { position: relative; z-index: 1; padding: 60px 40px; text-align: center; }
-.crt-title { margin-bottom: 40px; color: #00ffff; font-size: 2.8rem; text-shadow: 0 0 30px #00ffff; word-break: break-word; }
+.crt-title { margin-bottom: 40px; color: #2f3b47; font-size: 2.8rem; word-break: break-word; }
 .avatar-section { margin: 40px 0; }
-.crt-avatar { width: 160px; height: 160px; object-fit: cover; border: 4px solid #00ffff; border-radius: 50%; box-shadow: 0 0 40px rgba(0, 255, 255, 0.8); }
+.crt-avatar { width: 160px; height: 160px; object-fit: cover; border: 2px solid #ff69b4; border-radius: 50%; }
 .info-display { margin: 50px 0; }
-.user-info { margin: 25px 0; color: #00ffff; font-size: 1.5rem; text-shadow: 0 0 15px #00ffff; word-break: break-word; }
+.user-info { margin: 25px 0; color: #2f3b47; font-size: 1.5rem; word-break: break-word; }
 .close-profile-btn { margin-top: 40px; min-height: 44px; padding: 10px 24px; }
 
 /* ==== 窄屏适配 ====

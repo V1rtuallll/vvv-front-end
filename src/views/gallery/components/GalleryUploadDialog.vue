@@ -131,23 +131,23 @@ const publish = () => {
 </script>
 
 <style scoped>
-.modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, 0.96); backdrop-filter: blur(15px); }
+.modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(1, 40, 70, 0.55); backdrop-filter: blur(6px); }
 /* width 与 padding 同时存在，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
-.upload-modal { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #00ffff; background: rgba(0, 0, 20, 0.98); border: 2px solid #00ffff; border-radius: 15px; box-shadow: 0 0 30px #00ffff88; }
+.upload-modal { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 30px; color: #2f3b47; background: #ffffff; border: 1px solid #b9c4cc; border-radius: 4px; }
 .upload-modal h2 { margin-bottom: 20px; color: #ff69b4; font-size: 1.6rem; }
 .file-label { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
 .hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 /* 触摸目标不小于 44px */
-.select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #000; font-weight: bold; background: #00ffff; border-radius: 6px; }
-.limit-tip { margin-top: 10px; color: #ffaae6; font-size: 0.9rem; }
+.select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #ffffff; font-weight: bold; background: #0277bd; border-radius: 6px; }
+.limit-tip { margin-top: 10px; color: #c2185b; font-size: 0.9rem; }
 
 /* 预览固定高度，不随文件尺寸变化 */
-.preview-box { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; margin: 20px 0; overflow: hidden; background: rgba(0, 0, 0, 0.6); border-radius: 10px; }
-.preview-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-.preview-none { padding: 20px; color: #00ffff; text-align: center; word-break: break-all; }
+.preview-box { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; margin: 20px 0; overflow: hidden; background: #e9f2f9; border-radius: 4px; }
+.preview-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+.preview-none { padding: 20px; color: #2f3b47; text-align: center; word-break: break-all; }
 
 .edit-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; text-align: left; }
-.field-label { color: #ffaae6; font-size: 1rem; }
+.field-label { color: #c2185b; font-size: 1rem; }
 
 .modal-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
 /* 两个按钮尺寸完全一致，只靠颜色区分主次 */
@@ -156,7 +156,7 @@ const publish = () => {
 /* ==== 窄屏适配 ==== */
 @media (max-width: 768px) {
   .modal-overlay { align-items: flex-end; padding: 0; }
-  .upload-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
+  .upload-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 4px; }
   .preview-box { height: 160px; }
 }
 

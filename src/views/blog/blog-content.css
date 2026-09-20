@@ -5,7 +5,7 @@
 
 .blog-content {
   margin: 28px 0;
-  color: #c9c9dd;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 1.02rem;
   line-height: 1.9;
@@ -23,20 +23,20 @@
 .blog-content h5,
 .blog-content h6 {
   margin: 1.4em 0 0.6em;
-  color: #00ffff;
+  color: #000000;
   font-family: "Orbitron", "Rajdhani", monospace;
   font-weight: normal;
   letter-spacing: 1px;
 }
 
 .blog-content a {
-  color: #00ffff;
+  color: #000000;
   text-decoration: none;
   border-bottom: 1px solid rgba(0, 255, 255, 0.35);
 }
 
 .blog-content a:hover {
-  color: #ff69b4;
+  color: #c2185b;
   border-bottom-color: rgba(255, 105, 180, 0.5);
 }
 
@@ -61,14 +61,14 @@
 .blog-content blockquote {
   margin: 1em 0;
   padding: 0.4em 0 0.4em 1em;
-  color: #a8a8c0;
+  color: #333333;
   background: rgba(0, 255, 255, 0.05);
-  border-left: 3px solid #00ffff;
+  border-left: 3px solid #0277bd;
 }
 
 .blog-content code {
   padding: 0.1em 0.4em;
-  color: #ff69b4;
+  color: #c2185b;
   background: rgba(255, 105, 180, 0.1);
   border-radius: 4px;
   font-family: "Courier New", monospace;
@@ -77,14 +77,14 @@
 .blog-content pre {
   padding: 14px 16px;
   overflow-x: auto;
-  background: rgba(0, 0, 0, 0.55);
+  background: #e9f2f9;
   border: 1px solid rgba(0, 255, 255, 0.25);
   border-radius: 10px;
 }
 
 .blog-content pre code {
   padding: 0;
-  color: #c9c9dd;
+  color: #000000;
   background: none;
 }
 
@@ -112,7 +112,7 @@
 }
 
 .blog-content figcaption {
-  color: #8a8aa0;
+  color: #000000;
   font-size: 0.85rem;
   text-align: center;
 }

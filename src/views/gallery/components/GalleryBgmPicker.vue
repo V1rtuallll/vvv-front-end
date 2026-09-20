@@ -150,24 +150,24 @@ onBeforeUnmount(() => bgm.stop());
 /* 与 GalleryEditDialog 的 .edit-field 保持同一套间距与配色 */
 .bgm-picker { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; text-align: left; }
 .bgm-current { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.bgm-current-label { color: #ffaae6; font-size: 1rem; }
-.bgm-current-name { flex: 1 1 180px; min-width: 0; overflow: hidden; color: #cceeff; font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis; }
-.bgm-toggle-btn { min-height: 44px; padding: 8px 18px; color: #000; font-weight: bold; background: #00ffff; border: none; border-radius: 8px; cursor: pointer; }
-.bgm-clear-btn { min-height: 44px; padding: 8px 16px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.15); border: 1px solid #ff69b4; border-radius: 8px; cursor: pointer; }
+.bgm-current-label { color: #c2185b; font-size: 1rem; }
+.bgm-current-name { flex: 1 1 180px; min-width: 0; overflow: hidden; color: #54636f; font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis; }
+.bgm-toggle-btn { min-height: 44px; padding: 8px 18px; color: #ffffff; font-weight: bold; background: #0277bd; border: none; border-radius: 4px; cursor: pointer; }
+.bgm-clear-btn { min-height: 44px; padding: 8px 16px; color: #ff69b4; font-size: 0.9rem; background: #ffffff; border: 1px solid #ff69b4; border-radius: 4px; cursor: pointer; }
 
-.bgm-panel { display: flex; flex-direction: column; gap: 12px; padding: 14px; background: rgba(0, 0, 0, 0.5); border: 1px solid #00ffff88; border-radius: 10px; }
+.bgm-panel { display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #e9f2f9; border: 1px solid #b9c4cc; border-radius: 4px; }
 .bgm-upload { display: flex; flex-direction: column; gap: 8px; }
 .bgm-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .bgm-upload-label { width: fit-content; cursor: pointer; }
-.bgm-upload-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; color: #00ffff; font-weight: bold; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 8px; }
-.bgm-hint { color: #aaa; font-size: 0.85rem; line-height: 1.6; }
+.bgm-upload-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; color: #2f3b47; font-weight: bold; background: #ffffff; border: 1px solid #0277bd; border-radius: 4px; }
+.bgm-hint { color: #7b8fa1; font-size: 0.85rem; line-height: 1.6; }
 
-.bgm-status { padding: 12px 4px; color: #aaa; font-size: 0.9rem; }
+.bgm-status { padding: 12px 4px; color: #7b8fa1; font-size: 0.9rem; }
 .bgm-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; max-height: 260px; overflow-y: auto; }
-.bgm-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; }
-.bgm-item-label { flex: 1 1 200px; min-width: 0; overflow: hidden; color: #cceeff; font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis; }
-.bgm-audition-btn { min-height: 44px; padding: 6px 16px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
-.bgm-choose-btn { min-height: 44px; padding: 6px 16px; color: #000; font-size: 0.9rem; font-weight: bold; background: #00ffff; border: none; border-radius: 20px; cursor: pointer; }
+.bgm-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px; background: #e9f2f9; border-radius: 4px; }
+.bgm-item-label { flex: 1 1 200px; min-width: 0; overflow: hidden; color: #54636f; font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis; }
+.bgm-audition-btn { min-height: 44px; padding: 6px 16px; color: #2f3b47; font-size: 0.9rem; background: #ffffff; border: 1px solid #0277bd; border-radius: 4px; cursor: pointer; }
+.bgm-choose-btn { min-height: 44px; padding: 6px 16px; color: #ffffff; font-size: 0.9rem; font-weight: bold; background: #0277bd; border: none; border-radius: 4px; cursor: pointer; }
 
 /* ==== 窄屏适配：与两个弹窗同一套 ==== */
 @media (max-width: 480px) {

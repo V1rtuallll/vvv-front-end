@@ -127,8 +127,8 @@ const submit = () => {
 .admin-section {
   margin: 50px 0;
   padding: 30px;
-  background: rgba(5, 5, 20, 0.6);
-  border: 1px solid #00ffff44;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   border-radius: 12px;
 }
 
@@ -150,8 +150,9 @@ const submit = () => {
 
 /* 预览面板模仿站点的 .vf-main，让作者看到的面板与访客看到的一致 */
 .preview-frame {
-  background: rgba(10, 0, 20, 0.85);
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
   padding: 24px;
   max-height: 420px;
   overflow-y: auto;
@@ -159,7 +160,7 @@ const submit = () => {
 
 .field-hint {
   margin: 8px 0 0;
-  color: #7a7a95;
+  color: #54636f;
   font-size: 0.8rem;
   line-height: 1.6;
   word-break: break-word;

@@ -10,20 +10,21 @@
   justify-content: space-between;
   gap: 16px;
   padding: 20px 0 26px;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.25);
+  border-bottom: 1px solid #b9c4cc;
 }
 
 .blog-title {
   margin: 0;
-  color: #00ffff;
-  font-family: "Orbitron", "Rajdhani", monospace;
-  font-size: 2rem;
+  color: #000000;
+  font-family: "Michroma", "Rajdhani", sans-serif;
+  font-size: 1.8rem;
   letter-spacing: 2px;
 }
 
+/* 单列：卡片本身是横着的，再分栏会把每条挤得很窄 */
 .blog-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
   gap: 24px;
   margin: 28px 0;
 }
@@ -37,7 +38,7 @@
 .blog-empty {
   grid-column: 1 / -1;
   padding: 60px 20px;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   text-align: center;
 }
@@ -49,7 +50,7 @@
   justify-content: center;
   gap: 14px;
   padding: 18px 0 40px;
-  color: #00ffff;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
 }
 

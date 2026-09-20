@@ -123,9 +123,9 @@ pnpm test:coverage  # 带覆盖率报告
   `config/WebConfig.java` 与 `index.html` 里的内联脚本都不在了，手机端可正常访问。
   残留的化石不影响功能：`SecurityConfig` 白名单里还留着 `"/mobile-blocked.html"`，
   `ApiErrorController` 的 javadoc 还提到 `MobileBlockFilter`。
-- `home/index.vue` 的悬浮信息栏是全项目唯一用 `@mouseenter` / `@mouseleave` 的地方，
-  且已处理触屏：`supportsHover()` 为假时信息栏常显
-  （`infoVisible` 的 `|| !hoverCapable`），拼图区块改走点击切换。
+- 首页两处信息栏（主展示 `.showcase-info-bottom`、拼图卡 `.gallery-info-bottom`）都是**常显**，
+  不依赖 hover，也不再是绝对定位的弹出栏 —— 全项目已无 `@mouseenter` / `@mouseleave`。
+  连带结果：`utils/responsive.js` 的 `supportsHover` 目前没有调用方。
 
 ## 不许做的事
 

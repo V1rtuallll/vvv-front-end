@@ -51,7 +51,7 @@
             class="comment-like-count"
             :class="{ 'is-liked': entry.isLiked }"
             @click="$emit('like-comment', entry)"
-          >❤️ {{ entry.likes || 0 }}</button>
+          ><span class="ui-icon ui-icon-heart"></span> {{ entry.likes || 0 }}</button>
           <button
             v-if="canManageComment(entry)"
             class="comment-delete-btn"
@@ -122,7 +122,7 @@ const totalComments = computed(() =>
 
 .comments-title {
   margin: 0 0 18px;
-  color: #00ffff;
+  color: #000000;
   font-family: "Orbitron", "Rajdhani", monospace;
   font-size: 1.25rem;
 }
@@ -143,9 +143,9 @@ const totalComments = computed(() =>
 .comment-input textarea {
   flex: 1;
   padding: 14px;
-  color: #00ffff;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
-  background: rgba(0, 0, 0, 0.6);
+  background: #e9f2f9;
   border: 1px solid rgba(0, 255, 255, 0.5);
   border-radius: 12px;
   resize: vertical;
@@ -157,7 +157,7 @@ const totalComments = computed(() =>
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  color: #ffaae6;
+  color: #c2185b;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 0.95rem;
   background: rgba(255, 105, 180, 0.12);
@@ -178,7 +178,7 @@ const totalComments = computed(() =>
 
 .comment-signin-hint {
   margin: 0 0 24px;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
 }
 
@@ -212,14 +212,14 @@ const totalComments = computed(() =>
 }
 
 .comment-reply-to {
-  color: #ffaae6;
+  color: #c2185b;
   font-size: 0.85rem;
   font-weight: normal;
 }
 
 .comment-content {
   margin: 0;
-  color: #cceeff;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   line-height: 1.7;
   word-break: break-word;
@@ -251,13 +251,13 @@ const totalComments = computed(() =>
 }
 
 .comment-reply-btn {
-  color: #00ffff;
+  color: #000000;
   background: rgba(0, 255, 255, 0.12);
-  border: 1px solid #00ffff;
+  border: 1px solid #0277bd;
 }
 
 .comment-replies-toggle {
-  color: #ffaae6;
+  color: #c2185b;
   background: rgba(255, 105, 180, 0.12);
   border: 1px solid #ff69b4;
 }
@@ -272,7 +272,7 @@ const totalComments = computed(() =>
 }
 
 .comment-like-count.is-liked {
-  color: #ff1493;
+  color: #c2185b;
   cursor: default;
 }
 
@@ -284,7 +284,7 @@ const totalComments = computed(() =>
 
 .no-comment {
   padding: 40px 20px;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   text-align: center;
 }

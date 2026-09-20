@@ -26,9 +26,9 @@ defineEmits(["save", "cancel"]);
 </script>
 
 <style scoped>
-.edit-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; box-sizing: border-box; }
+.edit-modal-overlay { position: fixed; inset: 0; background: rgba(1, 40, 70, 0.55); display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; box-sizing: border-box; }
 /* width 与 padding 并存，必须用 border-box，否则窄屏下弹窗宽度超出视口 */
-.edit-modal { box-sizing: border-box; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; background: rgba(0, 0, 20, 0.9); padding: 35px; border-radius: 15px; border: 2px solid #00ffff; box-shadow: 0 0 30px #00ffff88; }
+.edit-modal { box-sizing: border-box; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; background: #ffffff; padding: 35px; border-radius: 15px; border: 1px solid #b9c4cc; }
 .modal-actions { margin-top: 25px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
 .modal-actions button { min-height: 44px; padding: 10px 24px; font-size: 1rem; }
 

@@ -5,6 +5,12 @@
     <div class="field-group">
       <label>类型</label>
       <select v-model="config.main.type" class="crt-input">
+        <!-- 「全类型」= 在三张类型表里随机。画廊的图文全部落在 photo 表里，
+             绑死单一类型时如果绑成 video 就永远取不到画廊条目 -->
+        <option value="all">全类型（图片 / 动图 / 视频 随机）</option>
+        <!-- 两边规则不同：图片/动图只取画廊里的（保证点得进详情），
+             视频取全部（视频几乎不在画廊里，只取交集等于把视频整个排除） -->
+        <option value="gallery">画廊图文 + 全部视频</option>
         <option value="image">图片</option>
         <option value="gif">动图</option>
         <option value="video">视频</option>
@@ -120,13 +126,13 @@ const shortName = fileName;
 .admin-section {
   margin: 50px 0;
   padding: 30px;
-  background: rgba(5, 5, 20, 0.6);
-  border: 1px solid #00ffff44;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   border-radius: 12px;
 }
 
 .preview-none {
-  color: #00ffff88;
+  color: #7b8fa1;
   font-size: 0.9rem;
 }
 

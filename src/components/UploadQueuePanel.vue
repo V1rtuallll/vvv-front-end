@@ -107,11 +107,10 @@ const statusText = (item) => {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto 24px;
-  color: #00ffff;
-  background: rgba(0, 0, 20, 0.9);
-  border: 2px solid #00ffff;
-  border-radius: 12px;
-  box-shadow: 0 0 24px rgba(0, 255, 255, 0.35);
+  color: #2f3b47;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 0;
 }
 
 .queue-head {
@@ -120,7 +119,7 @@ const statusText = (item) => {
   gap: 10px;
   padding: 10px 14px;
   font-size: 0.92rem;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+  border-bottom: 1px solid #b9c4cc;
 }
 
 .queue-summary {
@@ -132,7 +131,7 @@ const statusText = (item) => {
   flex: 1;
   height: 8px;
   overflow: hidden;
-  background: rgba(0, 255, 255, 0.15);
+  background: #ffffff;
   border-radius: 4px;
 }
 
@@ -146,7 +145,7 @@ const statusText = (item) => {
   display: block;
   width: 0;
   height: 100%;
-  background: #00ffff;
+  background: #0277bd;
   transition: width 0.2s ease;
 }
 
@@ -155,7 +154,7 @@ const statusText = (item) => {
 }
 
 .fill-success {
-  background: #00ffff;
+  background: #0277bd;
 }
 
 .fill-failed {
@@ -163,7 +162,7 @@ const statusText = (item) => {
 }
 
 .fill-cancelled {
-  background: #888;
+  background: #7b8fa1;
 }
 
 .queue-list {
@@ -185,14 +184,14 @@ const statusText = (item) => {
   padding: 1px 8px;
   color: #000;
   font-weight: bold;
-  background: #00ffff;
-  border-radius: 10px;
+  background: #0277bd;
+  border-radius: 3px;
 }
 
 .queue-name {
   flex: 0 1 42%;
   overflow: hidden;
-  color: #cceeff;
+  color: #54636f;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -200,7 +199,7 @@ const statusText = (item) => {
 .queue-status {
   flex: 0 0 auto;
   min-width: 48px;
-  color: #ffaae6;
+  color: #c2185b;
   text-align: right;
 }
 
@@ -208,11 +207,11 @@ const statusText = (item) => {
   flex: 0 0 auto;
   min-height: 32px;
   padding: 4px 14px;
-  color: #00ffff;
+  color: #2f3b47;
   font-size: 0.85rem;
-  background: rgba(0, 255, 255, 0.12);
-  border: 1px solid #00ffff;
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 0;
   cursor: pointer;
 }
 

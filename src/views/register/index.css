@@ -7,7 +7,7 @@
 .pure-black-register {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: #ffffff;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -18,7 +18,7 @@
 .pure-black-screen {
   width: 100%;
   max-width: 800px;
-  background: #000;
+  background: #ffffff;
 }
 
 /* 内容区：纯黑，文字自己发光 */
@@ -29,10 +29,10 @@
 
 /* 标题：青蓝内glow，无外溢 */
 .pure-black-title {
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-family: "Michroma", "LXGW WenKai Mono TC", sans-serif;
   font-weight: 900;
   font-size: 3rem;
-  color: #00ffff;
+  color: #2f3b47;
   letter-spacing: 0.15em;
   margin-bottom: 40px;
 }
@@ -40,7 +40,7 @@
 .pure-black-hint {
   font-family: "LXGW WenKai Mono TC", monospace;
   font-size: 1.1rem;
-  color: #00aaaa;
+  color: #54636f;
   line-height: 1.8;
   margin-bottom: 20px;
 }
@@ -52,25 +52,23 @@
   padding: 18px 24px;
   margin: 20px 0;
   background: transparent;
-  border: 2px solid #00ffff;
+  border: 1px solid #b9c4cc;
   border-radius: 8px;
-  color: #00ffff;
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  color: #2f3b47;
+  font-family: "Michroma", "LXGW WenKai Mono TC", sans-serif;
   font-size: 1.6rem;
   font-weight: 800;
-  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
 }
 
 .pure-black-input:focus {
   outline: none;
-  box-shadow: inset 0 0 25px rgba(0, 255, 255, 0.4);
 }
 
 /* 字段级校验错误 */
 .pure-black-error {
   font-family: "LXGW WenKai Mono TC", monospace;
   font-size: 1.1rem;
-  color: #ff5577;
+  color: #c2185b;
   line-height: 1.6;
   margin: -8px 0 8px;
 }
@@ -81,40 +79,39 @@
   max-width: 400px;
   padding: 20px;
   margin: 40px 0;
-  background: transparent;
-  border: 3px solid #00ffff;
-  border-radius: 12px;
+  background: #0277bd;
+  border: 1px solid #01579b;
+  border-radius: 4px;
   cursor: pointer;
-  box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2);
 }
 
 .pure-black-btn:disabled {
-  border-color: #007777;
+  border-color: #b9c4cc;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .pure-black-btn:disabled .btn-text {
-  color: #007777;
+  color: #7b8fa1;
   text-shadow: none;
 }
 
 .btn-text {
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
+  font-family: "Michroma", "LXGW WenKai Mono TC", sans-serif;
   font-size: 1.8rem;
   font-weight: 900;
-  color: #00ffff;
+  color: #ffffff;
 }
 
 /* 提示文字 */
 .pure-black-tip {
   font-family: "LXGW WenKai Mono TC", monospace;
   font-size: 1.2rem;
-  color: #00aaaa;
+  color: #54636f;
   line-height: 2;
 }
 
 .pure-black-link {
-  color: #00ffff;
+  color: #2f3b47;
   text-decoration: underline;
 }

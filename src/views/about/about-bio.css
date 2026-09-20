@@ -5,7 +5,7 @@
 
 .about-bio {
   margin: 32px 0;
-  color: #c9c9dd;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 1rem;
   line-height: 1.9;
@@ -23,20 +23,20 @@
 .about-bio h5,
 .about-bio h6 {
   margin: 1.4em 0 0.6em;
-  color: #00ffff;
+  color: #000000;
   font-family: "Monoton", "Orbitron", cursive;
   font-weight: normal;
   letter-spacing: 1px;
 }
 
 .about-bio a {
-  color: #00ffff;
+  color: #000000;
   text-decoration: none;
   border-bottom: 1px solid rgba(0, 255, 255, 0.35);
 }
 
 .about-bio a:hover {
-  color: #ff69b4;
+  color: #c2185b;
   border-bottom-color: rgba(255, 105, 180, 0.5);
 }
 
@@ -60,14 +60,14 @@
 .about-bio blockquote {
   margin: 1em 0;
   padding: 0.4em 0 0.4em 1em;
-  border-left: 3px solid #00ffff;
+  border-left: 3px solid #0277bd;
   background: rgba(0, 255, 255, 0.05);
-  color: #a8a8c0;
+  color: #333333;
 }
 
 .about-bio code {
   padding: 0.1em 0.4em;
-  color: #ff69b4;
+  color: #c2185b;
   background: rgba(255, 105, 180, 0.1);
   border-radius: 4px;
   font-family: "Courier New", monospace;
@@ -76,14 +76,14 @@
 .about-bio pre {
   padding: 14px 16px;
   overflow-x: auto;
-  background: rgba(0, 0, 0, 0.55);
+  background: #e9f2f9;
   border: 1px solid rgba(0, 255, 255, 0.25);
   border-radius: 10px;
 }
 
 .about-bio pre code {
   padding: 0;
-  color: #c9c9dd;
+  color: #000000;
   background: none;
 }
 

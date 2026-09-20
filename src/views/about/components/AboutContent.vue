@@ -67,7 +67,7 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   align-items: center;
   gap: 32px;
   padding-bottom: 28px;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.18);
+  border-bottom: 1px solid #b9c4cc;
 }
 
 .about-avatar {
@@ -75,10 +75,7 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   height: 160px;
   object-fit: cover;
   border-radius: 50%;
-  border: 2px solid rgba(0, 255, 255, 0.55);
-  box-shadow:
-    0 0 20px rgba(0, 255, 255, 0.4),
-    0 0 40px rgba(255, 0, 255, 0.25);
+  border: 2px solid #ff69b4;
   flex-shrink: 0;
 }
 
@@ -94,10 +91,9 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 
 .about-tagline {
   margin: 0;
-  color: #00ffff;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 1.05rem;
-  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
 }
 
 .about-tagline::before {
@@ -107,7 +103,7 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 
 .about-empty {
   margin: 40px 0;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   text-align: center;
 }
@@ -123,12 +119,12 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 
 .about-tag {
   padding: 4px 14px;
-  color: #00ffff;
+  color: #0277bd;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 0.85rem;
-  border: 1px solid rgba(0, 255, 255, 0.35);
-  border-radius: 999px;
-  background: rgba(0, 255, 255, 0.06);
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  background: #e9f2f9;
 }
 
 .about-links {
@@ -141,10 +137,10 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 }
 
 .about-link {
-  color: #ff69b4;
+  color: #c2185b;
   font-family: "Rajdhani", "Courier New", monospace;
   text-decoration: none;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .about-link-icon {
@@ -156,8 +152,9 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
 }
 
 .about-link:hover {
-  color: #00ffff;
-  text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+  color: #0277bd;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 @media (max-width: 768px) {

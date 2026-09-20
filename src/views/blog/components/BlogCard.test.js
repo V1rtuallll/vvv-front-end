@@ -18,7 +18,7 @@ describe("BlogCard", () => {
   it("渲染标题、摘要、作者与互动数", () => {
     const wrapper = mount(BlogCard, { props: { blog: { ...BLOG } } });
 
-    expect(wrapper.find(".blog-card-title").text()).toBe("第一篇");
+    expect(wrapper.find(".blog-card-head-title").text()).toBe("第一篇");
     expect(wrapper.find(".blog-card-summary").text()).toBe("摘要文本");
     expect(wrapper.find(".blog-card-author").text()).toBe("@V1rtual");
     expect(wrapper.find(".blog-card-stats").text()).toContain("12");

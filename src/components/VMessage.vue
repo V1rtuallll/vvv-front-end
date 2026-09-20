@@ -56,13 +56,10 @@ onMounted(() => {
 .vmessage-item {
   min-width: 320px;
   padding: 18px 32px;
-  background: rgba(10, 0, 20, 0.92);
-  border: 2px double #fff;
-  border-radius: 16px;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4),
-    0 0 40px rgba(255, 255, 255, 0.25), inset 0 0 20px rgba(255, 255, 255, 0.15);
-  animation: vmessage-breath 10s infinite ease-in-out,
-    subtle-glitch 12s infinite;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
   text-align: center;
 }
 
@@ -71,11 +68,7 @@ onMounted(() => {
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #fff;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9),
-    0 0 16px rgba(255, 255, 255, 0.7), 0 0 24px rgba(255, 255, 255, 0.5),
-    0 0 36px rgba(255, 255, 255, 0.3);
-  animation: white-halo 12s infinite ease-in-out;
+  color: #000000;
 }
 
 /* 淡入淡出 */
@@ -90,29 +83,6 @@ onMounted(() => {
 }
 
 /* 呼吸光 */
-@keyframes vmessage-breath {
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4),
-      0 0 40px rgba(255, 255, 255, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.6),
-      0 0 60px rgba(255, 255, 255, 0.4);
-  }
-}
 
 /* 文字呼吸光晕*/
-@keyframes white-halo {
-  0%,
-  100% {
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.9),
-      0 0 16px rgba(255, 255, 255, 0.7), 0 0 24px rgba(255, 255, 255, 0.5);
-  }
-  50% {
-    text-shadow: 0 0 12px rgba(255, 255, 255, 1),
-      0 0 24px rgba(255, 255, 255, 0.9), 0 0 36px rgba(255, 255, 255, 0.7),
-      0 0 48px rgba(255, 255, 255, 0.5);
-  }
-}
 </style>

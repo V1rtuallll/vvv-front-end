@@ -102,7 +102,7 @@ const handleLogin = async () => {
 .pure-black-login {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: #ffffff;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -114,7 +114,7 @@ const handleLogin = async () => {
 .pure-black-screen {
   width: 100%;
   max-width: 800px;
-  background: #000;
+  background: #ffffff;
 }
 
 /* 内容区：纯黑，文字自己发光 */
@@ -128,8 +128,7 @@ const handleLogin = async () => {
   font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
   font-weight: 900;
   font-size: 3rem;
-  color: #00ffff;
-  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+  color: #2f3b47;
   letter-spacing: 0.15em;
   margin-bottom: 60px;
 }
@@ -141,13 +140,12 @@ const handleLogin = async () => {
   padding: 18px 24px;
   margin: 20px 0;
   background: transparent;
-  border: 2px solid #00ffff;
+  border: 1px solid #b9c4cc;
   border-radius: 8px;
-  color: #00ffff;
+  color: #2f3b47;
   font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
   font-size: 1.6rem;
   font-weight: 800;
-  text-shadow: 0 0 10px #00ffff;
   box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
 }
 
@@ -163,7 +161,7 @@ const handleLogin = async () => {
   padding: 20px;
   margin: 40px 0;
   background: transparent;
-  border: 3px solid #00ffff;
+  border: 2px solid #b9c4cc;
   border-radius: 12px;
   cursor: pointer;
   box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2);
@@ -173,8 +171,7 @@ const handleLogin = async () => {
   font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
   font-size: 1.8rem;
   font-weight: 900;
-  color: #00ffff;
-  text-shadow: 0 0 15px #00ffff;
+  color: #2f3b47;
 }
 
 /* 欢迎文字 */
@@ -186,21 +183,19 @@ const handleLogin = async () => {
   font-family: "Orbitron", "LXGW WenKai Mono TC", monospace;
   font-size: 2.4rem;
   font-weight: 900;
-  color: #00ffff;
-  text-shadow: 0 0 20px #00ffff;
+  color: #2f3b47;
 }
 
 /* 提示文字 */
 .pure-black-tip {
   font-family: "LXGW WenKai Mono TC", monospace;
   font-size: 1.2rem;
-  color: #00aaaa;
+  color: #54636f;
   line-height: 2;
-  text-shadow: 0 0 8px #00ffff;
 }
 
 .pure-black-link {
-  color: #00ffff;
+  color: #2f3b47;
   text-decoration: underline;
 }
 </style>

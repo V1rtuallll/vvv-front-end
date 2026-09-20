@@ -1,5 +1,5 @@
 /* =============================================================================
-   CRT 霓虹主题（全局）
+   站点通用主题（全局）
    =============================================================================
 
    为什么需要这个文件
@@ -11,44 +11,40 @@
 
    这里把通用的部分抽成全局主题，在 main.js 里引入一次，后台所有组件即可生效。
 
-   与 profile 的关系
-   -----------------
-   profile 保留自己那份 scoped 定义（scoped 选择器优先级高于全局），所以
-   那个页面的视觉**完全不受影响**。这里的取值是给后台这类紧凑布局用的合理基准，
-   比 profile 那份小一号；某个组件想改，在自己的 scoped 样式里覆盖即可。
+   ⚠️ 类名保留 crt- 前缀是历史原因（最早是一套 CRT 霓虹主题）。
+   2026-09-20 全站统一成「00 年代设计门户的商品卡」风格后，这套类实际渲染的是
+   白卡面 + 灰蓝描边 + 蓝色强调，跟 CRT 已经没关系了。类名待后续单独整理。
+
+   配色与 src/views/home/index.css 的卡片一致：
+     卡面 #ffffff / 描边 #b9c4cc / 正文 #2f3b47 / 次级 #54636f / 标签 #5a5a78
+     强调蓝 #0277bd / 深蓝 #01579b / 浅蓝底 #e9f2f9 / 粉色强调 #ff69b4
    ========================================================================== */
 
 .crt-title,
 .field-group label,
 .crt-mini-btn,
 .crt-btn {
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace, "Segoe UI Emoji";
+  font-family: "Michroma", "Eurostile", "Optima", sans-serif;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #00ffff;
+  color: #5a5a78;
 }
 
 /* ---- 布局外壳 ---- */
 
+/* 嵌在白面板 .vf-main 里的一张实色卡。用浅蓝底而不是纯白，
+   否则白卡套白面板，只靠两道同色描边分层，看着像画错了 */
 .crt-screen {
   position: relative;
   width: 100%;
-  background: #000;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   overflow: hidden;
 }
 
+/* 扫描线属于旧主题，白底上留它只会显脏 */
 .crt-scanlines {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  opacity: 0.5;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 255, 255, 0.04),
-    rgba(0, 255, 255, 0.04) 1px,
-    transparent 1px,
-    transparent 2px
-  );
+  display: none;
 }
 
 .crt-content {
@@ -59,6 +55,7 @@
 .crt-title {
   font-size: 1.8rem;
   margin-bottom: 28px;
+  color: #2f3b47;
 }
 
 /* ---- 表单 ---- */
@@ -73,7 +70,7 @@
 
 .field-group label,
 .section-title {
-  color: #00ffff;
+  color: #5a5a78;
   font-size: 1rem;
 }
 
@@ -87,13 +84,12 @@
   width: 100%;
   min-height: 44px;
   padding: 12px 14px;
-  color: #00ffff;
+  color: #2f3b47;
   font-family: inherit;
   font-size: 1.05rem;
-  background: transparent;
-  border: 2px solid #00ffff;
-  border-radius: 8px;
-  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
 }
 
 .crt-textarea {
@@ -104,20 +100,17 @@
 .crt-input:focus,
 .crt-textarea:focus {
   outline: none;
-  border-color: #00ffff;
-  box-shadow:
-    0 0 20px rgba(0, 255, 255, 0.8),
-    inset 0 0 20px rgba(0, 255, 255, 0.3);
-  animation: crt-glow-pulse 2s infinite alternate;
+  border-color: #0277bd;
+  box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.18);
 }
 
-/* 下拉框沿用同一套外观；原生箭头在深色背景上几乎看不见，用自绘的 */
+/* 下拉框沿用同一套外观；原生箭头在白底上仍偏淡，用自绘的 */
 .crt-input:where(select) {
   appearance: none;
   padding-right: 36px;
   background-image:
-    linear-gradient(45deg, transparent 50%, #00ffff 50%),
-    linear-gradient(135deg, #00ffff 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, #0277bd 50%),
+    linear-gradient(135deg, #0277bd 50%, transparent 50%);
   background-position:
     calc(100% - 20px) calc(50% - 2px),
     calc(100% - 14px) calc(50% - 2px);
@@ -133,29 +126,29 @@
   padding: 14px 24px;
   margin: 24px 0;
   font-size: 1.1rem;
-  background: transparent;
-  border: 3px solid #00ffff;
-  border-radius: 12px;
+  color: #ffffff;
+  background: #0277bd;
+  border: 1px solid #01579b;
+  border-radius: 4px;
   cursor: pointer;
   /* 这个类也用在 router-link 上，不写就会露出 <a> 的默认下划线 */
   text-decoration: none;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
-  transition: all 0.3s;
+  transition: background-color 0.2s ease;
 }
 
 .crt-btn:hover {
-  box-shadow: 0 0 40px rgba(0, 255, 255, 0.9);
+  background: #01579b;
 }
 
 /* 与 .crt-btn 同尺寸，只换颜色：同一排按钮大小不一致会显得很随意 */
 .crt-btn.danger {
-  color: #ff69b4;
-  border-color: #ff69b4;
-  box-shadow: 0 0 25px rgba(255, 105, 180, 0.6);
+  color: #ffffff;
+  background: #ff69b4;
+  border-color: #e0409a;
 }
 
 .crt-btn.danger:hover {
-  box-shadow: 0 0 40px rgba(255, 105, 180, 0.9);
+  background: #e0409a;
 }
 
 .crt-mini-btn {
@@ -165,35 +158,34 @@
   margin-top: 6px;
   font-size: 0.95rem;
   white-space: nowrap;
-  background: transparent;
-  border: 2px solid #00ffff;
-  border-radius: 8px;
+  color: #0277bd;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 4px;
   cursor: pointer;
   /* 同上：这个类也用在 router-link 上 */
   text-decoration: none;
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
-  transition: all 0.3s;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .crt-mini-btn:hover {
-  box-shadow: 0 0 28px rgba(0, 255, 255, 0.9);
+  background: #e9f2f9;
 }
 
 .crt-mini-btn.danger {
-  color: #ff69b4;
+  color: #c2185b;
   border-color: #ff69b4;
-  box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
 }
 
 .crt-mini-btn.danger:hover {
-  box-shadow: 0 0 28px rgba(255, 105, 180, 0.9);
+  color: #ffffff;
+  background: #ff69b4;
 }
 
 .crt-btn:disabled,
 .crt-mini-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 /* ---- 可用文件列表（后台 Home 配置用）---- */
@@ -213,8 +205,8 @@
   align-items: center;
   gap: 16px;
   padding: 12px;
-  background: rgba(0, 10, 25, 0.7);
-  border: 1px solid rgba(0, 255, 255, 0.2);
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   border-radius: 10px;
 }
 
@@ -225,7 +217,8 @@
   justify-content: center;
   height: 96px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.6);
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
   border-radius: 8px;
 }
 
@@ -248,28 +241,15 @@
 
 .file-link {
   max-width: 100%;
-  color: #00dddd;
+  color: #0277bd;
   font-size: 0.95rem;
   text-decoration: none;
   word-break: break-all;
 }
 
 .file-link:hover {
-  color: #00ffff;
+  color: #01579b;
   text-decoration: underline;
-}
-
-@keyframes crt-glow-pulse {
-  from {
-    box-shadow:
-      0 0 20px rgba(0, 255, 255, 0.8),
-      inset 0 0 20px rgba(0, 255, 255, 0.3);
-  }
-  to {
-    box-shadow:
-      0 0 30px rgba(0, 255, 255, 1),
-      inset 0 0 24px rgba(0, 255, 255, 0.45);
-  }
 }
 
 /* ---- 窄屏 ---- */
@@ -309,4 +289,87 @@
   .crt-mini-btn {
     min-height: 44px;
   }
+}
+
+/* ---- UI 图标 ----
+   全站不再用 emoji（❤️ 💬 👁 ♪ 这类在不同系统上字形差别很大，也不跟主题色）。
+   图标统一放 public/icons/，这里用 mask 而不是 <img>：
+   <img> 载入的 SVG 无法继承 CSS 的 color，mask + background-color: currentColor
+   才能让图标自动跟随所在文字的颜色。
+   加新图标：往 public/icons/ 放一个单色 path 的 SVG，再在下面加一行 mask-image */
+.ui-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.ui-icon-heart {
+  -webkit-mask-image: url("/icons/heart.svg");
+  mask-image: url("/icons/heart.svg");
+}
+
+.ui-icon-comment {
+  -webkit-mask-image: url("/icons/comment.svg");
+  mask-image: url("/icons/comment.svg");
+}
+
+.ui-icon-eye {
+  -webkit-mask-image: url("/icons/eye.svg");
+  mask-image: url("/icons/eye.svg");
+}
+
+.ui-icon-music {
+  -webkit-mask-image: url("/icons/music.svg");
+  mask-image: url("/icons/music.svg");
+}
+
+.ui-icon-play {
+  -webkit-mask-image: url("/icons/play.svg");
+  mask-image: url("/icons/play.svg");
+}
+
+.ui-icon-pause {
+  -webkit-mask-image: url("/icons/pause.svg");
+  mask-image: url("/icons/pause.svg");
+}
+
+/* 详情弹窗右栏里的背景音乐开关 */
+.bgm-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0277bd;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.bgm-toggle:hover {
+  color: #ffffff;
+  background: #0277bd;
+}
+
+.bgm-toggle.is-paused {
+  color: #c2185b;
+  border-color: #ff69b4;
+}
+
+.ui-icon-menu {
+  -webkit-mask-image: url("/icons/menu.svg");
+  mask-image: url("/icons/menu.svg");
 }

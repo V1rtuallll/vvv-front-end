@@ -11,7 +11,7 @@
         <div class="blog-detail-meta">
           <span class="blog-detail-author">@{{ blog.authorUsername || "神秘人" }}</span>
           <span class="blog-detail-time">{{ formatDate(blog.createdAt) }}</span>
-          <span class="blog-detail-views">👁 {{ blog.views || 0 }}</span>
+          <span class="blog-detail-views"><span class="ui-icon ui-icon-eye"></span> {{ blog.views || 0 }}</span>
           <span v-if="blog.status !== 1" class="blog-detail-draft">草稿</span>
         </div>
         <div v-if="canManage" class="blog-detail-actions">

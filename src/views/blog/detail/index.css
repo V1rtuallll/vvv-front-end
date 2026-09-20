@@ -12,7 +12,7 @@
 .blog-loading,
 .blog-missing {
   padding: 60px 20px;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   text-align: center;
 }
@@ -24,7 +24,7 @@
 
 .blog-detail-title {
   margin: 0 0 14px;
-  color: #00ffff;
+  color: #000000;
   font-family: "Orbitron", "Rajdhani", monospace;
   font-size: 1.9rem;
   line-height: 1.4;
@@ -35,13 +35,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  color: #8a8aa0;
+  color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;
   font-size: 0.9rem;
 }
 
 .blog-detail-author {
-  color: #ffaae6;
+  color: #c2185b;
 }
 
 .blog-detail-draft {

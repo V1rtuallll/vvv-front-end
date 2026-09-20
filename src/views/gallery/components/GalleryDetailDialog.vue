@@ -18,11 +18,30 @@
             <div class="meta-info"><span>{{ formatDate(item.createdAt) }}</span><span class="click-tip"> 点击头像查看用户</span></div>
           </div>
           <div class="detail-actions">
-            <button @click.stop="$emit('toggle-like', item)" class="like-btn" :class="{ liked: item.isLiked }">❤️ {{ item.likes }}</button>
+            <button @click.stop="$emit('toggle-like', item)" class="like-btn" :class="{ liked: item.isLiked }"><span class="ui-icon ui-icon-heart"></span> {{ item.likes }}</button>
             <template v-if="canManage(item)">
               <button class="detail-action-btn detail-edit-btn" @click.stop="$emit('edit', item)">编辑</button>
               <button class="detail-action-btn detail-delete-btn" @click.stop="$emit('delete', item)">删除</button>
             </template>
+          </div>
+
+          <!-- 背景音乐。曲子的媒体元素是用 document.createElement 建的、
+               **从不插进 DOM**，所以既没有原生控件也没有现成的曲名可显示，
+               开关和名字都得自己画。没有 BGM 的项也保留这一行，显示占位文案 -->
+          <div class="bgm-row">
+            <button
+              v-if="activeBgm"
+              class="bgm-toggle"
+              :class="{ 'is-paused': paused }"
+              @click.stop="toggleBgm"
+            >
+              <span
+                class="ui-icon"
+                :class="paused ? 'ui-icon-play' : 'ui-icon-pause'"
+              ></span>
+              {{ paused ? "播放" : "暂停" }}
+            </button>
+            <span class="bgm-name">{{ bgmName }}</span>
           </div>
         </div>
 
@@ -70,7 +89,7 @@
                     @click.stop="$emit('toggle-replies', entry.id)"
                   >{{ isExpanded(entry.id) ? "收起回复" : `展开回复 (${entry.replies.length})` }}</button>
                 </div>
-                <div class="comment-like-area" @click.stop="$emit('like-comment', entry)"><span class="comment-like-count" :class="{ 'eternal-liked': entry.isLiked }">❤️ {{ entry.likes || entry.likeCount || 0 }}</span></div>
+                <div class="comment-like-area" @click.stop="$emit('like-comment', entry)"><span class="comment-like-count" :class="{ 'eternal-liked': entry.isLiked }"><span class="ui-icon ui-icon-heart"></span> {{ entry.likes || entry.likeCount || 0 }}</span></div>
                 <button
                   v-if="canManageComment(entry)"
                   class="comment-delete-btn"
@@ -111,7 +130,7 @@ const props = defineProps({
 defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
 const description = ref(null);
 
-const { play: playBgm, stop: stopBgm } = useGalleryBgm();
+const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = useGalleryBgm();
 
 // 打开就播、关闭就停。
 //
@@ -144,6 +163,22 @@ watch(
 );
 
 const isExpanded = (threadId) => props.expandedThreads.has(String(threadId));
+
+/**
+ * 当前背景音乐的曲名。
+ *
+ * 优先用后端算好的 `bgmTitle`（GalleryItemVO 上一直有这个字段，只是前端从没读过）；
+ * 取不到时退回从地址末段还原文件名 —— 要去掉扩展名。
+ *
+ * ⚠️ 退路只对「文件名本身可读」的曲子管用。OSS 上存的是 UUID 文件名
+ * （如 a18778e1-f6a9-....mp3），退回来就是一串乱码，所以后端字段是主路径。
+ */
+const bgmName = computed(() => {
+  if (!activeBgm.value) return "无背景音乐";
+  if (props.item?.bgmTitle) return props.item.bgmTitle;
+  const file = decodeURIComponent(activeBgm.value.src.split("/").pop() || "");
+  return file.replace(/\.[^.]+$/, "") || "背景音乐";
+});
 
 /**
  * 顶层评论与它的回复铺平成一串：回复紧跟在自己的根评论后面，
@@ -210,53 +245,82 @@ onBeforeUnmount(() => stopBgm());
 </script>
 
 <style scoped>
-.modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.96); backdrop-filter: blur(15px); }
-.detail-modal { position: relative; display: flex; width: 96%; max-width: 1600px; height: 92vh; overflow: hidden; background: transparent; border-radius: 35px; box-shadow: 0 0 100px rgba(0, 255, 255, 0.4); }
-.close-btn { position: absolute; top: 20px; right: 30px; z-index: 10; width: 50px; height: 50px; color: #ff69b4; font-size: 2rem; font-weight: bold; background: rgba(255, 105, 180, 0.2); border: 2px solid #ff69b4; border-radius: 50%; cursor: pointer; }
-.detail-left { display: flex; flex: 0 0 70%; align-items: center; justify-content: center; height: 100%; background: #000; }
+.modal-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: rgba(1, 40, 70, 0.55); backdrop-filter: blur(6px); }
+.detail-modal { position: relative; display: flex; width: 96%; max-width: 1600px; height: 92vh; overflow: hidden; background: #ffffff; border: 1px solid #b9c4cc; }
+.close-btn { position: absolute; top: 20px; right: 30px; z-index: 10; width: 44px; height: 44px; color: #54636f; font-size: 1.6rem; font-weight: bold; background: #ffffff; border: 1px solid #b9c4cc; border-radius: 4px; cursor: pointer; }
+.close-btn:hover { color: #c2185b; border-color: #ff69b4; }
+.detail-left { display: flex; flex: 0 0 70%; align-items: center; justify-content: center; height: 100%; background: #e9f2f9; }
 .detail-media { max-width: 100%; max-height: 100%; object-fit: contain; }
 .detail-audio { width: 90%; max-width: 1000px; }
-.detail-right { display: flex; flex: 0 0 30%; flex-direction: column; height: 100%; padding: 25px 20px; overflow: auto; box-sizing: border-box; background: rgba(0, 0, 20, 0.98); }
+.detail-right { display: flex; flex: 0 0 30%; flex-direction: column; height: 100%; padding: 25px 20px; overflow: auto; box-sizing: border-box; background: #ffffff; border-left: 1px solid #b9c4cc; }
 .detail-info-fixed { flex: 0 0 auto; overflow-y: auto; }
-.detail-info-fixed h2 { margin-bottom: 12px; color: #ff69b4; font-size: 2.1rem; text-shadow: 0 0 15px #ff00ff; word-break: break-word; }
-.detail-desc { min-height: 3.8em; height: 6.8em; padding-right: 8px; overflow-y: auto; color: #cceeff; font-size: 1.25rem; line-height: 1.7; word-break: break-word; }
+.detail-info-fixed h2 { margin-bottom: 12px; color: #2f3b47; font-size: 1.9rem; word-break: break-word; }
+.detail-desc { min-height: 3.8em; height: 6.8em; padding-right: 8px; overflow-y: auto; color: #54636f; font-size: 1.15rem; line-height: 1.7; word-break: break-word; }
 .detail-meta { cursor: pointer; }
-.detail-uploader-avatar { width: 70px; height: 70px; margin-right: 12px; object-fit: cover; border: 3px solid #ff69b4; box-shadow: 0 0 25px #ff1493; }
-.uploader-name { color: #ffaae6; font-size: 1.6rem; font-weight: bold; }
-.meta-info { margin-top: 6px; color: #aaa; }
+.detail-uploader-avatar { width: 70px; height: 70px; margin-right: 12px; object-fit: cover; border: 2px solid #ff69b4; }
+.uploader-name { color: #c2185b; font-size: 1.5rem; font-weight: bold; }
+.meta-info { margin-top: 6px; color: #7b8fa1; }
 .detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
-.like-btn { padding: 14px 35px; color: #ff69b4; font-size: 1.4rem; background: rgba(255, 105, 180, 0.3); border: 2px solid #ff69b4; border-radius: 40px; cursor: pointer; }
-.liked { text-shadow: 0 0 40px #ff1493; }
-.detail-action-btn { min-height: 44px; padding: 10px 24px; font-size: 1rem; border-radius: 40px; cursor: pointer; }
-.edit-btn { color: #00ffff; background: rgba(0, 255, 255, 0.15); border: 2px solid #00ffff; }
-.delete-btn { color: #ff69b4; background: rgba(255, 105, 180, 0.2); border: 2px solid #ff69b4; }
-.resize-handle { display: flex; align-items: center; justify-content: center; height: 8px; margin: 12px 0; background: rgba(255, 105, 180, 0.3); border-radius: 4px; cursor: ns-resize; user-select: none; }
+.bgm-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.bgm-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #000000; font-size: 0.9rem; }
+.like-btn { color: #c2185b; border: 1px solid #ff69b4; }
+/* 点赞 / 编辑 / 删除三个按钮等大、都不带底色，只靠描边和字色区分。
+   写在一起是为了它们永远同高同宽 —— 分开写迟早会漂 */
+.like-btn,
+.detail-action-btn {
+  box-sizing: border-box;
+  min-width: 96px;
+  min-height: 44px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  background: transparent;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+/* ⚠️ 必须写成 .like-btn.liked 这种双类（优先级 0,2,0）。
+   写成单类 .liked（0,1,0）会输给上面那条共享规则里的 background: transparent ——
+   同优先级下后者在文件里更靠后，于是点赞后底色被清掉，
+   而 color 还是白的，白字白底直接看不见 */
+.like-btn.liked,
+.like-btn:hover {
+  color: #ffffff;
+  background: #ff69b4;
+}
+/* 类名与模板一致（detail-edit-btn）。原先是 .edit-btn，选择器对不上，
+   这两个按钮的样式从来没生效过，一直渲染成浏览器默认的灰按钮 */
+.detail-edit-btn { color: #0277bd; border: 1px solid #0277bd; }
+.detail-edit-btn:hover { background: #e9f2f9; }
+.detail-delete-btn { color: #c2185b; border: 1px solid #ff69b4; }
+.detail-delete-btn:hover { color: #ffffff; background: #ff69b4; }
+.resize-handle { display: flex; align-items: center; justify-content: center; height: 8px; margin: 12px 0; background: #dbeaf5; border-radius: 4px; cursor: ns-resize; user-select: none; }
 .comments-scrollable { display: flex; flex: 1; flex-direction: column; min-height: 200px; overflow: hidden; }
 /* 回复条与输入框属于同一条输入流，所以放进同一个纵向容器 */
 .comment-composer { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .comment-input { display: flex; gap: 12px; }
-.comment-input textarea { flex: 1; padding: 16px; color: #00ffff; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff88; border-radius: 15px; resize: vertical; }
+.comment-input textarea { flex: 1; padding: 16px; color: #2f3b47; background: #ffffff; border: 1px solid #b9c4cc; border-radius: 4px; resize: vertical; }
+.comment-input textarea:focus { outline: none; border-color: #0277bd; box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.18); }
 .send-btn { align-self: flex-end; }
-.reply-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: #ffaae6; font-size: 0.95rem; background: rgba(255, 105, 180, 0.12); border-left: 3px solid #ff69b4; border-radius: 8px; }
-.reply-cancel { min-height: 32px; padding: 4px 14px; color: #ff69b4; font-size: 0.85rem; background: transparent; border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
+.reply-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: #c2185b; font-size: 0.95rem; background: #e9f2f9; border-left: 3px solid #ff69b4; border-radius: 4px; }
+.reply-cancel { min-height: 32px; padding: 4px 14px; color: #c2185b; font-size: 0.85rem; background: #ffffff; border: 1px solid #ff69b4; border-radius: 4px; cursor: pointer; }
 .comment-list { flex: 1; padding-right: 8px; overflow-y: auto; }
-.comment-item { padding: 18px; margin-bottom: 18px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; }
+.comment-item { padding: 18px; margin-bottom: 18px; background: #e9f2f9; border: 1px solid #b9c4cc; border-radius: 4px; }
 /* 回复缩进一格，并用一条竖线连回所属的根评论 */
-.comment-reply-item { margin-left: 28px; border-left: 2px solid rgba(255, 105, 180, 0.45); border-radius: 0 15px 15px 0; }
-.comment-header { display: flex; justify-content: space-between; margin-bottom: 10px; color: #ff69b4; }
+.comment-reply-item { margin-left: 28px; border-left: 2px solid #b9c4cc; border-radius: 0 4px 4px 0; }
+.comment-header { display: flex; justify-content: space-between; margin-bottom: 10px; color: #5a5a78; }
 .comment-author { display: flex; align-items: center; gap: 10px; }
-.comment-reply-to { color: #ffaae6; font-size: 0.85rem; font-weight: normal; }
-.comment-content { color: #cceeff; line-height: 1.6; }
+.comment-reply-to { color: #c2185b; font-size: 0.85rem; font-weight: normal; }
+.comment-content { color: #2f3b47; line-height: 1.6; }
 .comment-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 12px; }
 /* 回复与展开靠左，点赞与删除留在右边 */
 .comment-actions { display: flex; align-items: center; gap: 12px; margin-right: auto; }
-.comment-reply-btn { min-height: 32px; padding: 4px 14px; color: #00ffff; font-size: 0.9rem; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 20px; cursor: pointer; }
-.comment-replies-toggle { min-height: 32px; padding: 4px 14px; color: #ffaae6; font-size: 0.9rem; background: rgba(255, 105, 180, 0.12); border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
+.comment-reply-btn { min-height: 32px; padding: 4px 14px; color: #0277bd; font-size: 0.9rem; background: #ffffff; border: 1px solid #0277bd; border-radius: 4px; cursor: pointer; }
+.comment-replies-toggle { min-height: 32px; padding: 4px 14px; color: #c2185b; font-size: 0.9rem; background: #ffffff; border: 1px solid #ff69b4; border-radius: 4px; cursor: pointer; }
 .comment-like-area { text-align: right; }
-.comment-delete-btn { min-height: 32px; padding: 4px 14px; color: #ff69b4; font-size: 0.9rem; background: rgba(255, 105, 180, 0.2); border: 1px solid #ff69b4; border-radius: 20px; cursor: pointer; }
-.comment-like-count { color: #ff69b4; cursor: pointer; }
-.eternal-liked { color: #ff1493; cursor: default; }
-.no-comment { padding: 60px 20px; color: #888; text-align: center; }
+.comment-delete-btn { min-height: 32px; padding: 4px 14px; color: #c2185b; font-size: 0.9rem; background: #ffffff; border: 1px solid #ff69b4; border-radius: 4px; cursor: pointer; }
+.comment-like-count { color: #c2185b; cursor: pointer; }
+.eternal-liked { color: #c2185b; cursor: default; }
+.no-comment { padding: 60px 20px; color: #54636f; text-align: center; }
 @media (max-width: 1100px) { .detail-modal { flex-direction: column; height: 96vh; } .detail-left { flex: 0 0 55%; height: 55%; } .detail-right { flex: 1; height: 45%; } }
 
 /* ==== 窄屏适配 ====
@@ -269,14 +333,17 @@ onBeforeUnmount(() => stopBgm());
   .detail-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; border-radius: 0; }
   .close-btn { top: 10px; right: 12px; width: 44px; height: 44px; font-size: 1.6rem; }
   .detail-left { flex: 0 0 42%; height: 42%; }
-  .detail-right { flex: 1 1 58%; height: auto; min-height: 0; padding: 14px 12px; overflow: hidden; }
+  /* 窄屏把右栏整体改成滚动容器：信息区（标题/描述/按钮/BGM）在桌面是固定不滚的，
+     手机上内容一多就被 overflow: hidden 直接裁掉，且没有任何办法滚到下面 */
+  .detail-right { flex: 1 1 58%; height: auto; min-height: 0; padding: 14px 12px; overflow-y: auto; }
+  .comments-scrollable { overflow: visible; }
+  .comment-list { overflow: visible; }
   .detail-info-fixed { flex: 0 0 auto; }
   .detail-info-fixed h2 { margin-bottom: 8px; font-size: 1.45rem; }
   .detail-desc { height: 4.2em; min-height: 2.6em; font-size: 1rem; }
   .detail-uploader-avatar { width: 48px; height: 48px; margin-right: 8px; border-width: 2px; }
   .uploader-name { font-size: 1.1rem; }
   .meta-info { font-size: 0.85rem; }
-  .like-btn { min-height: 44px; margin-top: 10px; padding: 10px 24px; font-size: 1.1rem; }
   .resize-handle { height: 22px; margin: 10px 0; touch-action: none; }
   .comments-scrollable { min-height: 0; }
   .comments-scrollable h3 { margin-bottom: 8px; font-size: 1.1rem; }
@@ -299,7 +366,6 @@ onBeforeUnmount(() => stopBgm());
   .detail-info-fixed h2 { font-size: 1.25rem; }
   .detail-desc { height: 3.4em; min-height: 2.2em; font-size: 0.95rem; }
   .detail-meta .uploader-name { font-size: 1rem; }
-  .like-btn { padding: 8px 18px; font-size: 1rem; }
   .comment-like-count { font-size: 0.95rem; }
 }
 </style>

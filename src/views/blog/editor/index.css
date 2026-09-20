@@ -21,7 +21,7 @@
 
 .editor-title {
   margin: 0;
-  color: #00ffff;
+  color: #000000;
   font-family: "Orbitron", "Rajdhani", monospace;
   font-size: 1.6rem;
 }
@@ -37,7 +37,7 @@
 .editor-load-error {
   margin: 18px 0 0;
   font-family: "Rajdhani", "Courier New", monospace;
-  color: #ff5577;
+  color: #c2185b;
 }
 
 /* 左编辑右预览，与后台 About 配置表单同一套布局思路 */

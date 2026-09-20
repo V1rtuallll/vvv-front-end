@@ -1,7 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@800;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=LXGW+WenKai+Mono+TC&display=swap");
+/* 个人资料页。卡面与全站统一：浅蓝底 + 灰蓝描边 + 蓝色强调，
+   外层 .vf-main 是白面板（顶部带点阵），这里是一张嵌在里面的实色卡 */
 
-/* 全局统一字体 & 增强泛光 */
+/* 全站统一字体。Michroma 由 DefaultLayout.css 全局引入，这里直接用即可 */
 .crt-title,
 .field-group label,
 .avatar-tip,
@@ -15,43 +15,32 @@
 .preview-info,
 .current-gender-tip,
 .preview-tip {
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace, "Segoe UI Emoji" !important;
-  font-weight: 900 !important;
+  font-family: "Michroma", "LXGW WenKai Mono TC", "Optima", sans-serif;
+  font-weight: 700;
   letter-spacing: 0.08em;
   font-size: 1.05em;
-  color: #00ffff;
+  color: #5a5a78;
 }
 
 .crt-input,
 .crt-textarea {
-  font-family: "Orbitron", "LXGW WenKai Mono TC", monospace, "Segoe UI Emoji" !important;
-  color: #00ffff;
-  font-weight: 800 !important;
+  font-family: "Michroma", "LXGW WenKai Mono TC", "Optima", sans-serif;
+  color: #2f3b47;
+  font-weight: 400;
 }
 
 .crt-input:focus,
 .crt-textarea:focus {
   outline: none;
-  border-color: #00ffff;
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8),
-    inset 0 0 20px rgba(0, 255, 255, 0.3);
-  animation: crt-glow-pulse 2s infinite alternate;
+  border-color: #0277bd;
+  box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.18);
 }
-/* 头像提示增强 */
-.avatar-tip {
-  margin-top: 16px;
-  font-size: 1.2rem;
-  font-weight: 800;
-  line-height: 1.8;
-  color: #00ffff;
-  letter-spacing: 0.05em;
-  animation: crt-flicker 8s infinite;
-}
-/* 基础布局 */
+
+/* 基础布局。外层底图由 .vf-main 负责，这里保持透明 */
 .crt-profile-wrapper {
   width: 100%;
   height: 100%;
-  background: #000;
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -63,24 +52,14 @@
   position: relative;
   width: 100%;
   max-width: 800px;
-  background: #000;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   overflow: hidden;
-  /* 不设外层 box-shadow，与背景融合 */
 }
 
+/* 扫描线属于旧主题，浅底上留它只会显脏 */
 .crt-scanlines {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 255, 255, 0.04),
-    rgba(0, 255, 255, 0.04) 1px,
-    transparent 1px,
-    transparent 2px
-  );
-  animation: crt-scan-move 12s linear infinite;
-  opacity: 0.7;
+  display: none;
 }
 
 .crt-content {
@@ -88,64 +67,70 @@
   z-index: 1;
   text-align: center;
   padding: 60px 40px;
-  animation: crt-flicker 8s infinite;
 }
 
 /* 头像、按钮与预览 */
 .crt-title {
-  font-weight: 900;
-  font-size: 2.8rem;
+  font-weight: 700;
+  font-size: 2.4rem;
   margin-bottom: 40px;
+  color: #2f3b47;
 }
+
 .avatar-section {
   margin: 40px 0;
 }
+
 .crt-avatar {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  border: 3px solid #00ffff;
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.7), 0 0 40px rgba(0, 255, 255, 0.4);
+  border: 3px solid #ff69b4;
   cursor: pointer;
   object-fit: cover;
-  transition: all 0.3s;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
+
 .crt-avatar:hover {
-  box-shadow: 0 0 30px rgba(0, 255, 255, 1), 0 0 60px rgba(0, 255, 255, 0.6);
+  border-color: #e0409a;
   transform: scale(1.05);
 }
+
 .avatar-tip {
   font-size: 1.1rem;
   margin-top: 12px;
-  color: #00aaaa;
+  color: #54636f;
 }
 
 .info-form {
   max-width: 600px;
   margin: 0 auto;
 }
+
 .field-group {
   margin: 30px 0;
   text-align: left;
 }
+
 .field-group label {
   display: block;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   margin-bottom: 10px;
+  color: #5a5a78;
 }
 
 .crt-input,
 .crt-textarea {
   width: 100%;
   padding: 16px;
-  background: transparent;
-  border: 2px solid #00ffff;
-  border-radius: 8px;
-  font-size: 1.4rem;
-  box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.2);
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  font-size: 1.2rem;
   /* width: 100% 配合 padding 和 border 需要 border-box，否则窄屏溢出 */
   box-sizing: border-box;
 }
+
 .crt-textarea {
   height: 120px;
   resize: vertical;
@@ -155,17 +140,19 @@
 .crt-preview-btn {
   margin-top: 10px;
   padding: 10px 24px;
-  background: transparent;
-  border: 2px solid #00ffff;
-  border-radius: 8px;
-  font-size: 1.2rem;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  color: #0277bd;
   cursor: pointer;
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
-  transition: all 0.3s;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
+
 .crt-mini-btn:hover,
 .crt-preview-btn:hover {
-  box-shadow: 0 0 35px rgba(0, 255, 255, 0.9);
+  background: #0277bd;
+  color: #ffffff;
 }
 
 .crt-btn {
@@ -173,30 +160,33 @@
   max-width: 400px;
   padding: 18px;
   margin: 40px 0;
-  background: transparent;
-  border: 3px solid #00ffff;
-  border-radius: 12px;
+  background: #0277bd;
+  border: 1px solid #01579b;
+  border-radius: 4px;
   cursor: pointer;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
-  transition: all 0.3s;
+  transition: background-color 0.2s ease;
 }
+
 .crt-btn:hover {
-  box-shadow: 0 0 40px rgba(0, 255, 255, 0.9);
+  background: #01579b;
 }
+
 .btn-text {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
+  color: #ffffff;
 }
 
 .crt-preview-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7); /* 半透明遮罩，保留背景可见 */
+  background: rgba(1, 40, 70, 0.55); /* 半透明遮罩，保留背景可见 */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   backdrop-filter: blur(4px); /* 背景模糊 */
 }
+
 .crt-preview-content {
   position: relative;
   width: 90%;
@@ -204,68 +194,45 @@
   max-height: 90vh;
   overflow-y: auto;
   padding: 50px;
-  background: #000;
-  border-radius: 15px;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 6px;
   text-align: center;
   /* width: 90% 配合 padding 需要 border-box，否则窄屏超出视口 */
   box-sizing: border-box;
-  box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.15),
-    0 0 20px rgba(0, 255, 255, 0.2);
 }
+
 .crt-close-btn {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
 }
+
 .crt-preview-title {
-  font-size: 2.2rem;
+  font-size: 2rem;
   margin-bottom: 40px;
+  color: #2f3b47;
 }
+
 .preview-avatar-img {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  border: 4px solid #00ffff;
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.8), 0 0 60px rgba(0, 255, 255, 0.5);
+  border: 3px solid #ff69b4;
   object-fit: cover;
 }
+
 .preview-username,
 .preview-info {
   margin: 20px 0;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
+  color: #54636f;
 }
+
 .preview-tip {
   margin-top: 40px;
   font-size: 1.1rem;
-  color: #00aaaa;
+  color: #54636f;
 }
 
-/* 动画 */
-@keyframes crt-glow-pulse {
-  from {
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6),
-      inset 0 0 20px rgba(0, 255, 255, 0.2);
-  }
-  to {
-    box-shadow: 0 0 30px rgba(0, 255, 255, 0.9),
-      inset 0 0 30px rgba(0, 255, 255, 0.4);
-  }
-}
-@keyframes crt-flicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.98;
-  }
-}
-@keyframes crt-scan-move {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(2px);
-  }
-}
 .preview-enter-active,
 .preview-leave-active {
   transition: opacity 0.8s ease, transform 0.8s ease;
@@ -282,18 +249,19 @@
   opacity: 1;
   transform: scale(1) translateY(0);
 }
+
 .admin-secret-btn {
   margin-top: 20px;
   padding: 12px 30px;
-  background: transparent;
-  border: 2px solid #ff00ff; /* 粉色边框 */
-  color: #ff00ff;
-  box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
-  animation: crt-glow-pulse 3s infinite alternate;
+  background: #ffffff;
+  border: 1px solid #ff69b4;
+  color: #c2185b;
 }
+
 .admin-secret-btn:hover {
-  box-shadow: 0 0 40px rgba(255, 0, 255, 0.9);
-  transform: scale(1.05);
+  background: #ff69b4;
+  color: #ffffff;
+  transform: none;
 }
 
 /* ==== 窄屏适配 ====
@@ -316,7 +284,7 @@
   }
 
   .crt-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
     margin-bottom: 24px;
   }
 
@@ -334,7 +302,7 @@
   }
 
   .field-group label {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
   }
 
   .crt-btn {
@@ -353,7 +321,7 @@
   }
 
   .crt-preview-title {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     margin-bottom: 20px;
   }
 
@@ -364,7 +332,7 @@
 
   .preview-username,
   .preview-info {
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin: 14px 0;
     word-break: break-word;
   }
@@ -380,7 +348,7 @@
   }
 
   .crt-title {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
 
   .crt-avatar {
@@ -411,10 +379,10 @@
   }
 
   .crt-preview-title {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
 
   .btn-text {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
 }
