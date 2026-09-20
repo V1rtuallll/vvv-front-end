@@ -22,12 +22,6 @@
   text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
 }
 
-.blog-subtitle {
-  margin: 6px 0 0;
-  color: #8a8aa0;
-  font-family: "Rajdhani", "Courier New", monospace;
-}
-
 .blog-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

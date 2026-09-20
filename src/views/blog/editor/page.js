@@ -1,5 +1,5 @@
 export default {
-  title: '写博客',
+  title: 'Write something',
   requiresAuth: true,
   layout: 'default'
 }

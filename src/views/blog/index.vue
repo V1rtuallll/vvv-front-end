@@ -3,11 +3,10 @@
     <header class="blog-header">
       <div class="header-content">
         <h1 class="blog-title">Blog</h1>
-        <p class="blog-subtitle">长一点的东西写在这里。</p>
       </div>
       <div class="header-right">
         <!-- 与 gallery 的上传按钮同一条可见性规则：入口隐藏只是显示逻辑，接口自己校验权限 -->
-        <router-link v-if="authStore.isLoggedIn" to="/blog/editor" class="crt-btn blog-write-btn">写博客</router-link>
+        <router-link v-if="authStore.isLoggedIn" to="/blog/editor" class="crt-btn blog-write-btn">Write something</router-link>
       </div>
     </header>
 

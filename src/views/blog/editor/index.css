@@ -13,6 +13,12 @@
   border-bottom: 1px solid rgba(0, 255, 255, 0.25);
 }
 
+.editor-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .editor-title {
   margin: 0;
   color: #00ffff;

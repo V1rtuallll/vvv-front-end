@@ -33,7 +33,7 @@ describe("Blog 列表页", () => {
     getBlogList.mockResolvedValue({ data: { list: [{ id: 1, title: "第一篇", summary: "摘要" }], total: 1 } });
   });
 
-  it("未登录没有写博客入口，登录后有且指向编辑器", async () => {
+  it("未登录没有写作入口，登录后有且指向编辑器", async () => {
     expect((await mountPage()).find(".blog-write-btn").exists()).toBe(false);
 
     signIn(true);

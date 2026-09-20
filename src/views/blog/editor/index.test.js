@@ -25,6 +25,7 @@ let wrapper;
 
 async function mountEditor(query = "") {
   const routes = [
+    { path: "/blog", component: { template: "<div />" } },
     { path: "/blog/editor", component: BlogEditorPage },
     { path: "/blog/detail/:id", component: { template: "<div />" } },
   ];
@@ -60,6 +61,12 @@ describe("Blog 编辑器", () => {
     await page.find(".editor-content-input").setValue("## 小标题");
 
     expect(page.find(".preview-pane .blog-content h2").text()).toBe("小标题");
+  });
+
+  it("返回按钮指向博客列表", async () => {
+    const page = await mountEditor();
+
+    expect(page.find(".editor-back").attributes("href")).toBe("/blog");
   });
 
   it("发布成功后跳到详情页", async () => {

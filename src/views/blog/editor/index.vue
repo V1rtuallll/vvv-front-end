@@ -1,7 +1,10 @@
 <template>
   <div class="blog-editor">
     <header class="editor-header">
-      <h1 class="editor-title">{{ isEdit ? "编辑文章" : "写博客" }}</h1>
+      <div class="editor-title-group">
+        <router-link to="/blog" class="crt-mini-btn editor-back">← Blogs</router-link>
+        <h1 class="editor-title">{{ isEdit ? "Edit post" : "Write something" }}</h1>
+      </div>
       <div class="editor-actions">
         <BlogMediaPicker label="插入图片 / 视频" @picked="insertMedia" />
         <BlogMediaPicker label="上传封面" accept="image/*" @picked="onCoverPicked" />
