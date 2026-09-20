@@ -40,7 +40,7 @@ describe("useLatestGallery", () => {
     expect(api.items.value[0].src).toBe("https://cdn/a.png");
   });
 
-  it("音乐不进网格，筛完最多留 3 条", async () => {
+  it("音乐不进网格，筛完最多留 5 条", async () => {
     getGalleryPage.mockResolvedValue({
       data: {
         list: [
@@ -58,7 +58,8 @@ describe("useLatestGallery", () => {
     const api = await mountRail();
 
     // 音乐确实可能出现在 gallery 表里（画廊上传接受音频），右栏只是不展示
-    expect(api.items.value.map((item) => item.id)).toEqual([7, 5, 4]);
+    // 上限提到 5 后，第 3 条非音乐（id=3）也补位进来
+    expect(api.items.value.map((item) => item.id)).toEqual([7, 5, 4, 3]);
   });
 
   it("后端没给数据时是空列表，不是 undefined", async () => {

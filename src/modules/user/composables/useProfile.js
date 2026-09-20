@@ -5,6 +5,7 @@ import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
 import { updatePassword, updateProfile, updateUsername, uploadAvatar } from "@/modules/user/api/userApi";
 import { formatDate } from "@/utils/DateUtil";
+import { displayGender } from "@/utils/gender";
 
 // 发请求的方法，catch 里只做状态回滚，不弹提示：
 // 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
@@ -81,14 +82,6 @@ export function useProfile() {
     authStore.logout();
     window.$vmessage.info("已退出登录");
     router.push("/home");
-  };
-
-  const displayGender = (sex) => {
-    const value = sex?.toString().toLowerCase().trim();
-    if (["male", "m"].includes(value)) return "男";
-    if (["female", "f"].includes(value)) return "女";
-    if (["other", "secret", "s"].includes(value)) return "其他/秘密";
-    return "未设置";
   };
 
   const isSuperAdmin = computed(() => isOwner(authStore.user));

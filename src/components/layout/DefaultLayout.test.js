@@ -1,9 +1,14 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
+
 vi.mock("@/modules/user/api/userApi", () => ({
   getUserCount: vi.fn().mockResolvedValue({ data: 1 }),
+  getUserStats: vi.fn().mockResolvedValue({
+    data: { galleryCount: 12, galleryLikes: 48, blogCount: 3, blogViews: 36 },
+  }),
 }));
 
 vi.mock("@/modules/blog/api/blogApi", () => ({
@@ -20,7 +25,14 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
 // 挂载正常，不会抛异常，因此这里直接用真的，守卫用例才有意义。
 import { getLatestBlogs } from "@/modules/blog/api/blogApi";
 import { getGalleryPage } from "@/modules/gallery/api/galleryApi";
+import { useAuthStore } from "@/stores/auth";
 import DefaultLayout from "@/components/layout/DefaultLayout.vue";
+
+// 每个用例都从「未登录」起手：ID 卡的默认形态是未登录，
+// 需要登录态的用例自己在 mount 前重新 mockReturnValue
+beforeEach(() => {
+  useAuthStore.mockReturnValue({ isLoggedIn: false, user: null });
+});
 
 const stubs = {
   // 真 router-link 要求目标路由已注册，这里只把 to 渲染成 href。
@@ -217,11 +229,11 @@ describe("右栏最新画廊", () => {
     expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 12 });
   });
 
-  it("三条都带上各自的 id 指向画廊页，图片与视频都显示画面", async () => {
+  it("五条都带上各自的 id 指向画廊页，图片与视频都显示画面", async () => {
     const wrapper = await mountLayout();
     await flush();
 
-    const cells = wrapper.findAll(".right .gallery-grid a");
+    const cells = wrapper.findAll(".right .gallery-rows a");
     expect(cells).toHaveLength(3);
     // 带上 id，画廊页才能直接把这一条的详情弹出来
     expect(cells.map((cell) => cell.attributes("href"))).toEqual([
@@ -262,5 +274,57 @@ describe("播放器元素常驻", () => {
     expect(wrapper.find(".music-player .player-controls").exists()).toBe(true);
     // 导航已从左栏抽屉移到顶部 tab 栏，同样必须常驻
     expect(wrapper.find(".vf-navbar-tabs a").exists()).toBe(true);
+  });
+
+  describe("侧栏底部 ID 卡", () => {
+    it("未登录时大小不变，显示空头像和登录/注册入口", () => {
+      const wrapper = mount(DefaultLayout, { global: { stubs, plugins: [router] } });
+
+      const card = wrapper.find(".id-card");
+      expect(card.exists()).toBe(true);
+      expect(card.find(".id-card-avatar-empty").exists()).toBe(true);
+      expect(card.find(".id-card-name").text()).toBe("未登录");
+      expect(card.find(".id-card-actions").exists()).toBe(true);
+
+      const hrefs = card.findAll(".id-card-btn").map((a) => a.attributes("href"));
+      expect(hrefs).toEqual(["/login", "/register"]);
+    });
+
+    it("已登录时渲染四项战绩，数值来自 /user/stats", async () => {
+      useAuthStore.mockReturnValue({
+        isLoggedIn: true,
+        user: { id: 7, username: "V1rtual", avatar: "/a.png" },
+      });
+
+      const wrapper = mount(DefaultLayout, { global: { stubs, plugins: [router] } });
+      await flushPromises();
+
+      const nums = wrapper.findAll(".id-card-stat-num").map((e) => e.text());
+      const labels = wrapper.findAll(".id-card-stat-label").map((e) => e.text());
+      expect(labels).toEqual(["画廊", "获赞", "文章", "阅读"]);
+      expect(nums).toEqual(["12", "48", "3", "36"]);
+    });
+
+    it("未登录时不渲染战绩格", () => {
+      const wrapper = mount(DefaultLayout, { global: { stubs, plugins: [router] } });
+
+      expect(wrapper.find(".id-card-stats").exists()).toBe(false);
+    });
+
+    it("已登录时显示头像、用户名和真实 ID", () => {
+      useAuthStore.mockReturnValue({
+        isLoggedIn: true,
+        user: { id: 7, username: "V1rtual", avatar: "/a.png" },
+      });
+
+      const wrapper = mount(DefaultLayout, { global: { stubs, plugins: [router] } });
+
+      const card = wrapper.find(".id-card");
+      expect(card.find(".id-card-avatar").attributes("src")).toBe("/a.png");
+      expect(card.find(".id-card-name").text()).toBe("V1rtual");
+      expect(card.find(".id-card-no").text()).toBe("ID #007");
+      // 登录态不该再出现登录/注册入口
+      expect(card.find(".id-card-actions").exists()).toBe(false);
+    });
   });
 });

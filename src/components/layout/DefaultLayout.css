@@ -10,7 +10,8 @@
   padding: 0;
   height: 100%;
   width: 100%;
-  background: #000;
+  /* 天空底图万一没铺满，露出来的也应该是天空色而不是黑 */
+  background: #1e88e5;
 }
 
 /* 霓虹 glitch 标题 */
@@ -391,9 +392,9 @@
   --drawer-toggle-size: 44px;
   --drawer-toggle-gap: 12px;
   min-height: 100vh;
-  background: #000;
-  /* 底保纯黑 */
-  color: #fff;
+  background: #1e88e5;
+  /* 天空色兜底，别用黑：浅色面板上漏出黑底会很扎眼 */
+  color: #2f3b47;
   font-family: "Courier New", monospace;
   position: relative;
   /* 让背景层相对它 */
@@ -523,18 +524,86 @@
   border-top: 3px dashed #ff1493;
 }
 
-/* ==== 左右边栏：实色面板版 ==== */
-/* 用户明确要求「不要透明」，所以这里是实色底，不做玻璃/半透效果。
-   深蓝取自天空调色，让面板像是从天空里切出来的，而不是贴上去的 */
+/* ==== 侧栏与主内容：白卡面版 ==== */
+/* 用户明确要求「不要透明」，所以这里是实色白底，不做玻璃/半透效果 */
 .sidebar {
-  background: #0277bd;
-  border: 1px solid rgba(179, 229, 252, 0.22);
-  border-radius: 14px;
-  padding: 25px;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 0;
+  /* ⚠️ 这个 padding-top 是「首块距顶」的间距，必须与下面各块的 margin-bottom 相等，
+     否则整条侧栏的节奏会忽松忽紧 */
+  padding: 28px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.26);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.18);
   /* 只留一层落地阴影把面板从背景里抬起来，不要霓虹发光 */
+}
+
+/* 四条边各铺一段蓝色点阵，各自向中心淡出。
+   两条伪元素分工：::before 管上下，::after 管左右；叠加起来四个方向都有边带，
+   中间留白。这样比只用上下两条丰富，又不用 mask-composite（各家关键字不一致，容易翻车）。
+
+   ⚠️ 伪元素刻意**不写 z-index**：写了会给 .vf-main 造出 stacking context，
+   把内联渲染的弹窗（position: fixed + z-index 999）一并关进去，
+   于是弹窗会被吸顶导航（z-index 40）盖住。改成让内容子元素 position: relative，
+   后于伪元素绘制，同样能压住点阵 */
+.sidebar::before,
+.sidebar::after,
+.vf-main::before,
+.vf-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    rgba(2, 119, 189, 0.4) 1px,
+    transparent 1.3px
+  );
+  background-size: 8px 8px;
+}
+
+/* 上下边带。刻意用固定像素而不是百分比 —— 面板动辄两三千像素高，
+   百分比会把渐变拉到上千像素，点阵一直铺到页面中段，跟卡片自己的点阵糊成一片 */
+.sidebar::before,
+.vf-main::before {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0px,
+    transparent 140px,
+    transparent calc(100% - 140px),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0px,
+    transparent 140px,
+    transparent calc(100% - 140px),
+    #000 100%
+  );
+}
+
+.sidebar::after,
+.vf-main::after {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0px,
+    transparent 140px,
+    transparent calc(100% - 140px),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0px,
+    transparent 140px,
+    transparent calc(100% - 140px),
+    #000 100%
+  );
+}
+
+.sidebar > *,
+.vf-main > * {
+  position: relative;
 }
 
 /* 侧栏标题条。版式取自 00 年代 Flash 站的侧栏：小图标 + 大写标签 + 左侧色条 */
@@ -568,7 +637,7 @@
 .right .top-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 26px;
+  margin: 0 0 28px;
 }
 
 /* 每条：左侧封面 + 右侧正文，右下角带 » VIEW。
@@ -580,14 +649,14 @@
 
 .right .top-list .top-link {
   display: grid;
-  grid-template-columns: 40px 1fr;
+  grid-template-columns: 40px 1fr auto;
   gap: 9px;
   padding: 8px;
   border-radius: 4px;
-  background: rgba(3, 169, 244, 0.1);
-  border: 1px solid rgba(179, 229, 252, 0.18);
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
   text-decoration: none;
-  color: #b3e5fc;
+  color: #2f3b47;
   font-size: 0.9rem;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -595,109 +664,217 @@
 /* 左侧封面位。有封面就显示真封面，没有就用点阵方块占位 */
 .right .top-list .top-cover {
   display: block;
-  grid-row: span 2;
+  grid-column: 1;
+  grid-row: 1 / 3;
   width: 40px;
   height: 40px;
   object-fit: cover;
-  border-left: 3px solid #4fc3f7;
-  background-color: #01579b;
+  border-left: 3px solid #0277bd;
+  background-color: #e9f2f9;
 }
 
 .right .top-list .top-cover-empty {
-  background-image: radial-gradient(circle, #81d4fa 1.2px, transparent 1.5px);
+  background-image: radial-gradient(circle, #7fb4d4 1.2px, transparent 1.5px);
   background-size: 5px 5px;
 }
 
 .right .top-list .top-link:hover {
-  background: rgba(3, 169, 244, 0.24);
-  border-color: #4fc3f7;
+  background: #dbeaf5;
+  border-color: #0277bd;
+}
+
+/* 右列：编号 + 阅读/评论，与下面的画廊列表同一套 */
+.right .top-list .top-side {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.right .top-list .top-id {
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: #8b8bb0;
+  color: #ffffff;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.right .top-list .top-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.56rem;
+  color: #c2185b;
+}
+
+.right .top-list .top-stats .ui-icon-comment {
+  margin-left: 6px;
+  color: #0277bd;
 }
 
 /* 右下角的动作链接 */
 .right .top-list .top-link::after {
   content: "» VIEW";
-  display: block;
+  grid-column: 2;
+  grid-row: 2;
   margin-top: 4px;
   text-align: right;
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.56rem;
   letter-spacing: 0.14em;
-  color: #4fc3f7;
+  color: #0277bd;
 }
 
 .right .top-list .top-summary {
   display: block;
   margin-top: 3px;
-  color: rgba(179, 229, 252, 0.55);
+  color: #54636f;
   font-size: 0.75rem;
   line-height: 1.5;
 }
 
-/* 随机画廊三格。每格做成一张卡：顶部带 » 的标题条 + 图 + 底部色条，
-   版式取自 00 年代 Flash 站的卡片式作品展示 */
-.gallery-grid {
+/* 随机画廊列表：一行一条，缩略图带细框 + 标题/类型 + 行尾编号。
+   版式取自 00 年代 Flash 站的展示条目，和上面的博客列表同一套骨架 */
+.gallery-rows {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+/* 异形面板：切掉右上与左下两个角。
+   做法是「外框 + 内容」两层都套同一个 clip-path，外层大 1px 露出描边色 ——
+   clip-path 会把 border 和 box-shadow 一起切掉，所以不能用常规描边。
+   ⚠️ 内层是 1px 小一圈的同一个形状，切角的斜边会有约 1px 的对不齐；
+   14px 的切角下肉眼看不出来，但切角改小到 3~4px 就会露馅 */
+.gallery-rows li {
+  --row-clip: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% 100%,
+    14px 100%,
+    0 calc(100% - 14px)
+  );
+  margin: 0 0 6px;
+  padding: 1px;
+  background: #b9c4cc;
+  clip-path: var(--row-clip);
+}
+
+.gallery-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.gallery-grid a {
-  display: block;
-  position: relative;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  /* 右侧多留 18px：右上角被切掉 14px，徽章不缩进来就会被切到 */
+  padding: 6px 18px 6px 6px;
+  background: #e9f2f9;
+  clip-path: var(--row-clip);
   text-decoration: none;
-  background: #0277bd;
-  border: 1px solid rgba(179, 229, 252, 0.3);
-  transition: border-color 0.2s ease;
+  color: #2f3b47;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
 }
 
-.gallery-grid a:hover {
-  border-color: #4fc3f7;
+.gallery-row:hover {
+  background: #dbeaf5;
 }
 
-/* 顶部标题条 */
-.gallery-grid a::before {
-  content: "»";
+/* 缩略图：固定方格 + 细框。视频与图片共用一套尺寸，
+   thumbnail 列从来不写，没有独立封面可用，放 video 让浏览器显示首帧 */
+.gallery-row-thumb {
   display: block;
-  padding: 1px 6px;
-  background: #01579b;
-  border-bottom: 1px solid rgba(179, 229, 252, 0.25);
-  color: #4fc3f7;
-  font-size: 0.6rem;
-  line-height: 1.5;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid #9aa9b8;
+  background: #ffffff;
 }
 
-/* 底部色条 */
-.gallery-grid a::after {
-  content: "";
-  display: block;
-  height: 3px;
-  background: #03a9f4;
-}
-
-/* 视频格子与图片格子共用一套：thumbnail 列从来不写，没有独立封面可用，
-   放 video 元素让浏览器显示首帧，尺寸因此要和图片完全一致 */
-.gallery-grid img,
-.gallery-grid video {
+.gallery-row-thumb img,
+.gallery-row-thumb video {
   display: block;
   width: 100%;
-  /* 固定成方格，三条高度才齐；object-fit 保证竖图横图都不变形 */
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
 }
 
-/* 兜底：既不是图片也不是视频时用类型名占位。音乐在 useLatestGallery 里已经筛掉了，
-   这里只兜住将来新增的类型，免得网格里出现空格子 */
-.gallery-grid .gallery-type {
+/* 兜底：既不是图片也不是视频时的占位。音乐在 useLatestGallery 里已经筛掉了，
+   这里只兜住将来新增的类型，免得列表里出现空框 */
+.gallery-type {
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1;
-  color: #b3e5fc;
+  width: 100%;
+  height: 100%;
+  color: #7b8fa1;
+  font-size: 1.1rem;
+}
+
+/* ⚠️ 省略号只加在标题上。整列一起 nowrap + overflow: hidden 的话，
+   下面那行「类型 + 统计」超出列宽会被整段裁掉（而不是换行或缩略） */
+.gallery-row-text {
+  min-width: 0;
+}
+
+.gallery-row-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-row-type {
+  display: block;
+  margin-top: 2px;
   font-family: "Michroma", "Eurostile", sans-serif;
-  font-size: 0.6rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: #0277bd;
+  color: #7b8fa1;
+}
+
+/* 右列：编号 + 小统计，右对齐竖排 */
+.gallery-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.gallery-row-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0;
+  color: #c2185b;
+}
+
+.gallery-row-stats .ui-icon-comment {
+  margin-left: 6px;
+  color: #0277bd;
+}
+
+/* 行尾编号：与首页卡片右上角同一枚藕荷徽章 */
+.gallery-row-id {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: #8b8bb0;
+  color: #ffffff;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 /* ==== 新增动画钥匙 ==== */
@@ -748,18 +925,18 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: #01579b;
-  border-top: 1px solid rgba(179, 229, 252, 0.28);
+  background: #ffffff;
 }
 
-/* 上下各一条粗分隔线，带一层很淡的辉光 */
+/* 上下各一条细黑线，带一点阴影把栏体从天空里托起来。
+   两条必须同高同色 —— 曾经上边叠了 1px 的 border-top，结果上 3px、下 2px */
 .vf-navbar::before,
 .vf-navbar::after {
   content: "";
   display: block;
-  height: 2px;
-  background: rgba(79, 195, 247, 0.75);
-  box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+  height: 1px;
+  background: #111111;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.35);
 }
 
 /* 标签行：左「Global Navigator」右站名，和原站的信息条同构 */
@@ -767,12 +944,12 @@
   display: flex;
   justify-content: space-between;
   padding: 7px 24px;
-  border-bottom: 1px solid rgba(130, 180, 245, 0.18);
+  border-bottom: 1px solid rgba(1, 87, 155, 0.18);
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.62rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(179, 229, 252, 0.8);
+  color: #0277bd;
 }
 
 .vf-navbar-tabs {
@@ -790,7 +967,7 @@
   pointer-events: none;
   background-image: radial-gradient(
     circle,
-    rgba(130, 180, 245, 0.42) 1px,
+    rgba(2, 119, 189, 0.4) 1px,
     transparent 1.3px
   );
   background-size: 8px 8px;
@@ -798,7 +975,7 @@
   mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
 }
 
-/* 每个 tab：斜纹底 + 竖分隔线，hover / 当前路由时点亮 */
+/* 每个 tab：竖分隔线，hover / 当前路由时点亮 */
 .vf-tab {
   position: relative;
   z-index: 1;
@@ -810,8 +987,8 @@
   font-size: 0.78rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #b3e5fc;
-  border-right: 1px solid rgba(179, 229, 252, 0.18);
+  color: #0277bd;
+  border-right: 1px solid rgba(1, 87, 155, 0.15);
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -820,25 +997,185 @@
 }
 
 .vf-tab:hover {
-  color: #e1f5fe;
-  background-color: rgba(3, 169, 244, 0.35);
+  color: #01579b;
+  background-color: rgba(2, 119, 189, 0.12);
 }
 
+/* 当前路由：填色块，白字 */
 .vf-tab.router-link-active {
-  color: #e1f5fe;
-  background-color: rgba(3, 169, 244, 0.55);
+  color: #ffffff;
+  background-color: #0277bd;
+}
+
+/* ==== 侧栏底部的当前用户 ID 卡 ==== */
+/* 两种状态（已登录 / 未登录）高度必须一致：body 用固定 min-height，
+   内容在里面垂直居中，登录状态切换时侧栏不会跳 */
+.id-card {
+  margin: 0 0 28px;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
+}
+
+.id-card-head {
+  padding: 6px 10px;
+  background: #b9c6d4;
+  border-bottom: 1px solid #9aa9b8;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(60, 80, 100, 0.55);
+}
+
+.id-card-body {
+  /* 头像单独一行、居中：整卡纵向排，横向也对齐到中线。
+     min-height 固定，登录状态切换时卡不会跳 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 150px;
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.id-card-avatar {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  border: 2px solid #ff69b4;
+  background: #ffffff;
+}
+
+/* 未登录：同样大小的空头像框，占住位置 */
+.id-card-avatar-empty {
+  border-style: dashed;
+  border-color: #b9c4cc;
+  background-image: radial-gradient(circle, #c2d6e4 1.2px, transparent 1.5px);
+  background-size: 6px 6px;
+}
+
+.id-card-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.id-card-name {
+  overflow: hidden;
+  color: #000000;
+  font-weight: bold;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.id-card-no {
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: #8b8bb0;
+  color: #ffffff;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+}
+
+/* 明细区：与 profile 页展示的字段一致（性别 / 注册时间 / 签名）。
+   用 dl 而不是一堆 div —— 键值对本来就是它的语义 */
+.id-card-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 10px;
+  margin: 0;
+  padding: 10px;
+  border-top: 1px solid #b9c4cc;
+  font-size: 0.8rem;
+}
+
+.id-card-fields dt {
+  color: #7b8fa1;
+  white-space: nowrap;
+}
+
+.id-card-fields dd {
+  margin: 0;
+  color: #000000;
+  word-break: break-word;
+}
+
+/* 战绩格：2×2，把卡面下半截填满 —— 只放姓名和 ID 时下面会空一大块 */
+.id-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #b9c4cc;
+}
+
+.id-card-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+}
+
+/* 右列与下行各补一条分隔线，拼成田字格 */
+.id-card-stat:nth-child(odd) {
+  border-right: 1px solid #b9c4cc;
+}
+
+.id-card-stat:nth-child(-n + 2) {
+  border-bottom: 1px solid #b9c4cc;
+}
+
+.id-card-stat-num {
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 1.1rem;
+  color: #000000;
+}
+
+.id-card-stat-label {
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7b8fa1;
+}
+
+.id-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.id-card-btn {
+  padding: 5px 14px;
+  color: #0277bd;
+  font-size: 0.85rem;
+  text-decoration: none;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.id-card-btn:hover {
+  color: #ffffff;
+  background: #0277bd;
 }
 
 /* ==== 中间内容区：实色面板版 ==== */
 /* 和 .sidebar 同一套：实色底 + 细边框 + 一层落地阴影，不要透明和发光 */
 .vf-main {
-  background: #0277bd;
-  border: 1px solid rgba(179, 229, 252, 0.22);
-  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 0;
   padding: 30px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
 
 /* Featured 网格方块 */
@@ -866,7 +1203,7 @@
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  color: #fff;
+  color: #2f3b47;
   font-family: "Courier New", monospace;
   line-height: 1.8;
 }
@@ -909,9 +1246,9 @@
   }
 }
 
-/* ==== 页脚：和header滚动条完全统一的粉青霓虹版 ==== */
+/* ==== 页脚：备案号居中，右下角站点签句 ==== */
 .neon-footer {
-  background: #01579b;
+  background: #0277bd;
   border-top: 2px solid rgba(79, 195, 247, 0.5);
   padding: 20px 0;
   margin-top: 40px;
@@ -919,32 +1256,18 @@
   position: relative;
 }
 
-.footer-marquee-container {
-  width: 100%;
-  overflow: hidden;
-  position: relative;
-}
-
-.footer-marquee-text {
-  display: inline-block;
-  white-space: nowrap;
-  font-size: 1.4rem;
-  font-weight: bold;
-  letter-spacing: 0.15em;
-  color: #81d4fa;
-  animation: footer-marquee-scroll 40s linear infinite;
-  /* 40s 一轮。原先叠的闪烁和抖动动画已移除，只保留滚动 */
-}
-
+/* 三列网格：左列与右列等宽，中间的备案号因此始终落在正中；
+   签句靠右列右缘，即右下角 */
 .filing-footer {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
   padding: 14px 24px 0;
-  margin-top: 14px;
-  border-top: 1px solid rgba(179, 229, 252, 0.22);
 }
 
 .filing-link {
+  grid-column: 2;
   color: rgba(179, 229, 252, 0.85);
   font-family: "Rajdhani", sans-serif;
   font-size: 0.9rem;
@@ -966,29 +1289,44 @@
   outline-offset: 5px;
 }
 
+/* 与标题下方那行小字同族同字号 */
+.footer-signoff {
+  grid-column: 3;
+  justify-self: end;
+  margin: 0;
+  font-family: "Michroma", "Eurostile", "Optima", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #e8f3ff;
+}
+
 @media (max-width: 600px) {
   .neon-footer {
     padding: 16px 0;
   }
 
+  /* 窄屏三列挤不下，改回单列上下排列 */
   .filing-footer {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 8px;
     padding: 12px 16px 0;
-    margin-top: 12px;
+  }
+
+  .filing-link,
+  .footer-signoff {
+    grid-column: 1;
+    /* 基础样式里签句是 justify-self: end，这里必须显式收回，否则窄屏仍贴着右缘 */
+    justify-self: center;
   }
 
   .filing-link {
     font-size: 0.82rem;
   }
-}
 
-/* 关键：无缝滚动核心动画（平移50%，完美衔接） */
-@keyframes footer-marquee-scroll {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
+  .footer-signoff {
+    font-size: 0.8rem;
   }
 }
 
@@ -996,11 +1334,11 @@
    结构照 00 年代 Flash 站的音频面板：信息条 + 显示区 + 方块按钮排。
    斜纹和细线组都用 CSS 画，不引外部素材；配色沿用站内的深蓝 */
 .music-player {
-  background: #0288d1;
-  border: 1px solid rgba(130, 180, 245, 0.22);
-  border-radius: 10px;
+  background: #e9f2f9;
+  border: 1px solid #b9c4cc;
+  border-radius: 0;
   padding-bottom: 12px;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
   overflow: hidden;
 }
 
@@ -1010,12 +1348,12 @@
   display: flex;
   justify-content: space-between;
   padding: 6px 12px;
-  border-bottom: 1px solid rgba(150, 195, 250, 0.16);
+  border-bottom: 1px solid #b9c4cc;
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.58rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(179, 229, 252, 0.85);
+  color: #5a5a78;
 }
 
 /* 渐变点阵底，和顶部 tab 栏同款。
@@ -1028,7 +1366,7 @@
   pointer-events: none;
   background-image: radial-gradient(
     circle,
-    rgba(150, 195, 250, 0.42) 1px,
+    rgba(2, 119, 189, 0.4) 1px,
     transparent 1.3px
   );
   background-size: 8px 8px;
@@ -1055,7 +1393,7 @@
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
-  color: #e8f3ff;
+  color: #2f3b47;
 }
 
 .music-player progress {
@@ -1065,19 +1403,19 @@
   appearance: none;
   border: none;
   border-radius: 0;
-  background: rgba(130, 180, 245, 0.16);
+  background: rgba(2, 119, 189, 0.15);
 }
 
 .music-player progress::-webkit-progress-bar {
-  background: rgba(130, 180, 245, 0.16);
+  background: rgba(2, 119, 189, 0.15);
 }
 
 .music-player progress::-webkit-progress-value {
-  background: #8fc4ff;
+  background: #0277bd;
 }
 
 .music-player progress::-moz-progress-bar {
-  background: #8fc4ff;
+  background: #0277bd;
 }
 
 /* 装饰波浪条：stickers/loop1.gif 逆时针转 90° 后横向拉伸。
@@ -1091,10 +1429,11 @@
   background: url("/jpgs/mp_wave.gif") center / 100% 100% no-repeat;
 }
 
-/* 方块按钮排 */
+/* 方块按钮排：三个连成一个整体，中间不开口子 —— 各自只留外框，
+   相邻的边框叠成一条线 */
 .player-controls {
   display: flex;
-  gap: 4px;
+  gap: 0;
   padding: 0 12px;
 }
 
@@ -1103,17 +1442,21 @@
   height: 34px;
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.7rem;
-  color: #b3e5fc;
-  background: #0277bd;
-  border: 1px solid rgba(179, 229, 252, 0.28);
-  border-radius: 4px;
+  color: #0277bd;
+  background: transparent;
+  border: 1px solid #0277bd;
+  border-radius: 0;
   cursor: pointer;
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
+.player-controls button + button {
+  border-left: none;
+}
+
 .player-controls button:hover {
   color: #ffffff;
-  background: #12244a;
+  background: #0277bd;
 }
 
 /* 音量区 */
@@ -1126,7 +1469,7 @@
   width: 100%;
   height: 4px;
   appearance: none;
-  background: rgba(130, 180, 245, 0.18);
+  background: rgba(2, 119, 189, 0.15);
   cursor: pointer;
 }
 
@@ -1134,7 +1477,7 @@
   appearance: none;
   width: 10px;
   height: 14px;
-  background: #8fc4ff;
+  background: #0277bd;
   cursor: pointer;
 }
 
@@ -1142,7 +1485,7 @@
   width: 10px;
   height: 14px;
   border: none;
-  background: #8fc4ff;
+  background: #0277bd;
   cursor: pointer;
 }
 
@@ -1152,7 +1495,7 @@
   font-size: 0.58rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(179, 229, 252, 0.75);
+  color: #54636f;
 }
 
 
@@ -1171,10 +1514,10 @@
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  color: #00ffff;
-  background: rgba(10, 0, 20, 0.9);
-  border: 1px solid #00ffff88;
-  border-radius: 10px;
+  color: #0277bd;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
   backdrop-filter: blur(6px);
   cursor: pointer;
 }
@@ -1248,6 +1591,19 @@
     padding: 24px 16px;
   }
 
+  /* ⚠️ 标题与水印此前**没有任何断点**：桌面构图是 11rem / 15rem，
+     窄屏照搬会直接横向溢出、标题被切掉一半。这里按视口收窄字号，
+     并去掉描边加粗 —— 小字号下描边只会把笔画糊成一团 */
+  .vf-title {
+    font-size: 4.4rem;
+    -webkit-text-stroke-width: 0;
+  }
+
+  .header-watermark {
+    font-size: 6rem;
+    right: 0;
+  }
+
   .glitch-title {
     font-size: 2.6rem;
     letter-spacing: 0.1em;
@@ -1261,6 +1617,20 @@
   .neon-welcome {
     font-size: 1.2rem;
     letter-spacing: 0.08em;
+  }
+
+  /* 导航条：五个 tab 平分一行，桌面字号在 390px 下会溢出（GALLERY 被截断）。
+     同时收紧 head 那条 —— 「GLOBAL NAVIGATOR」在窄屏会折成两行 */
+  .vf-navbar-head {
+    padding: 6px 12px;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+  }
+
+  .vf-tab {
+    padding: 10px 2px;
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
   }
 
   .neon-marquee {
@@ -1347,6 +1717,14 @@
 }
 
 @media (max-width: 480px) {
+  .vf-title {
+    font-size: 3.2rem;
+  }
+
+  .header-watermark {
+    font-size: 4.4rem;
+  }
+
   .vf-container {
     gap: 12px;
     padding: 10px;

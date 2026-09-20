@@ -32,7 +32,7 @@ describe("useBlogList", () => {
   it("挂载即按第一页 10 条加载", async () => {
     const api = await mountList();
 
-    expect(getBlogList).toHaveBeenCalledWith({ page: 1, limit: 10 });
+    expect(getBlogList).toHaveBeenCalledWith({ page: 1, limit: 3 });
     expect(api.blogs.value).toHaveLength(1);
     expect(api.total.value).toBe(21);
   });
@@ -40,7 +40,8 @@ describe("useBlogList", () => {
   it("总数算出总页数", async () => {
     const api = await mountList();
 
-    expect(api.totalPages.value).toBe(3);
+    // 总数 21、每页 3 条 —— 改了页大小这个数就得跟着走
+    expect(api.totalPages.value).toBe(7);
   });
 
   it("翻页带上新页码重新请求", async () => {
@@ -49,7 +50,7 @@ describe("useBlogList", () => {
     api.changePage(2);
     await flushPromises();
 
-    expect(getBlogList).toHaveBeenLastCalledWith({ page: 2, limit: 10 });
+    expect(getBlogList).toHaveBeenLastCalledWith({ page: 2, limit: 3 });
   });
 
   it("越界的页码不触发请求", async () => {

@@ -7,7 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 export function useBlogList() {
   const authStore = useAuthStore();
   const page = ref(1);
-  const limit = ref(10);
+  const limit = ref(3);
   const total = ref(0);
   const blogs = ref([]);
   const loading = ref(false);

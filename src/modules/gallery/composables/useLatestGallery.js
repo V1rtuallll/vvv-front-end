@@ -2,8 +2,8 @@ import { onMounted, ref } from "vue";
 
 import { getGalleryPage } from "@/modules/gallery/api/galleryApi";
 
-/** 右栏网格显示的条数 */
-const VISIBLE_COUNT = 3;
+/** 右栏列表显示的条数 */
+const VISIBLE_COUNT = 5;
 
 /**
  * 一次取回多少条再筛。列表接口的 type 只有「等于」没有「不等于」，
