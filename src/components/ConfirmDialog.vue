@@ -12,6 +12,14 @@
 </template>
 
 <script setup>
+/**
+ * 全站共用的确认弹窗。
+ *
+ * 用它而不是 window.confirm：浏览器原生弹窗的按钮文案、样式都不受站点控制，
+ * 在 CRT 主题里格外突兀，而且会被部分浏览器按「不再显示」静默屏蔽掉。
+ *
+ * 确认期间由调用方把 confirming 置真，按钮同时禁用两个，避免重复提交。
+ */
 defineProps({
   visible: Boolean,
   title: { type: String, default: "确认删除" },

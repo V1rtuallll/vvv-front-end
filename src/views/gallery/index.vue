@@ -108,7 +108,7 @@
       @submit="submitEdit"
       @select-replacement="setReplacementFile"
     />
-    <GalleryConfirmDialog
+    <ConfirmDialog
       :visible="!!deleteTarget"
       :title="deleteTarget?.type === 'comment' ? '删除评论' : '删除资源'"
       :message="deleteTarget ? `确定删除 ${deleteTarget.label}？该操作不可撤销。` : ''"
@@ -120,12 +120,12 @@
 </template>
 
 <script setup>
-import GalleryConfirmDialog from "./components/GalleryConfirmDialog.vue";
 import GalleryDetailDialog from "./components/GalleryDetailDialog.vue";
 import GalleryEditDialog from "./components/GalleryEditDialog.vue";
 import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const {
