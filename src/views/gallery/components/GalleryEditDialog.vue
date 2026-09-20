@@ -34,6 +34,8 @@
         <textarea v-model="form.description" rows="3" class="field-input field-textarea"></textarea>
       </label>
 
+      <GalleryBgmPicker v-model="bgm" />
+
       <div class="modal-actions">
         <button class="save-btn" :disabled="saving" @click="submit">{{ saving ? "保存中..." : "保存" }}</button>
         <button class="cancel-btn" :disabled="saving" @click="$emit('close')">取消</button>
@@ -44,6 +46,8 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+
+import GalleryBgmPicker from "@/views/gallery/components/GalleryBgmPicker.vue";
 
 const props = defineProps({
   visible: Boolean,
@@ -65,6 +69,10 @@ const emptyForm = () => EDITABLE_KEYS.reduce((form, key) => ({ ...form, [key]: "
 const form = ref(emptyForm());
 let initialForm = emptyForm();
 
+// { src, type } 或 null。与接口字段同形，不做转换
+const bgm = ref(null);
+let initialBgm = null;
+
 const currentName = computed(() => {
   const src = props.item?.src ?? "";
   const path = String(src).split("?")[0];
@@ -79,6 +87,9 @@ const syncForm = (item) => {
   });
   form.value = { ...next };
   initialForm = { ...next };
+  const nextBgm = item?.bgmSrc ? { src: item.bgmSrc, type: item.bgmType ?? "audio" } : null;
+  bgm.value = nextBgm;
+  initialBgm = nextBgm;
 };
 
 watch(
@@ -101,7 +112,19 @@ const submit = () => {
   EDITABLE_KEYS.forEach((key) => {
     if (form.value[key] !== initialForm[key]) payload[key] = form.value[key];
   });
+  // BGM 是一对：变了就两个一起发（清空时两个都是 null），没变就不提它。
+  // 只发一边会被服务端当成参数不完整，而不是「清空」
+  if (bgmChanged()) {
+    payload.bgmSrc = bgm.value?.src ?? null;
+    payload.bgmType = bgm.value?.type ?? null;
+  }
   emit("submit", payload);
+};
+
+const bgmChanged = () => {
+  if (!initialBgm && !bgm.value) return false;
+  if (!initialBgm || !bgm.value) return true;
+  return initialBgm.src !== bgm.value.src || initialBgm.type !== bgm.value.type;
 };
 </script>
 

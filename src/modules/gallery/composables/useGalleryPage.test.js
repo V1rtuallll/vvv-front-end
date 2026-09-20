@@ -263,6 +263,31 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(api.galleryList.value).toHaveLength(1);
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
+
+  /** 取消编辑要把 BGM 一起改回去，否则用户以为取消了、曲子却换掉了 */
+  it("编辑中途取消会把背景音乐一起回滚", async () => {
+    let releaseFirst;
+    updateGallery
+      .mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = resolve; }))
+      .mockResolvedValue({ data: {} });
+    const api = await mountGallery();
+    const item = { ...api.galleryList.value[0], bgmSrc: "https://cdn.example.test/music/old.mp3", bgmType: "audio" };
+    api.galleryList.value = [item];
+
+    api.openEditModal(item);
+    api.submitEdit({ bgmSrc: "https://cdn.example.test/music/new.mp3", bgmType: "audio" });
+    await flushPromises();
+
+    const cancelling = api.cancelTask(api.uploadItems.value[0]);
+    releaseFirst({ data: {} });
+    await cancelling;
+    await flushPromises();
+
+    expect(updateGallery).toHaveBeenLastCalledWith(100, {
+      bgmSrc: "https://cdn.example.test/music/old.mp3",
+      bgmType: "audio",
+    });
+  });
 });
 
 describe("useGalleryPage 的日期显示", () => {
@@ -599,5 +624,33 @@ describe("useGalleryPage 的上传队列", () => {
 
     expect(window.confirm).toHaveBeenCalled();
     expect(api.showUploadModal.value).toBe(true);
+  });
+
+  /** 随图配的曲子要真的跟着这一次请求走，否则用户以为配好了、详情里却静默无声 */
+  it("发表时把背景音乐一起提交", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
+    const api = await mountGallery();
+
+    api.publishOne({
+      file: picked("a.png"),
+      bgm: { src: "https://cdn.example.test/music/a.mp3", type: "audio" },
+    });
+    await flushPromises();
+
+    const sent = uploadGalleryFile.mock.calls[0][0];
+    expect(sent.get("bgmSrc")).toBe("https://cdn.example.test/music/a.mp3");
+    expect(sent.get("bgmType")).toBe("audio");
+  });
+
+  it("不配背景音乐时两个字段都不出现", async () => {
+    uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
+    const api = await mountGallery();
+
+    api.publishOne({ file: picked("a.png") });
+    await flushPromises();
+
+    const sent = uploadGalleryFile.mock.calls[0][0];
+    expect(sent.has("bgmSrc")).toBe(false);
+    expect(sent.has("bgmType")).toBe(false);
   });
 });

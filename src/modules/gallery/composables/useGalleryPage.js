@@ -243,10 +243,10 @@ export function useGalleryPage() {
   };
 
   /**
-   * 发表一个资源：一次一个文件、一份信息。
+   * 发表一个资源：一次一个文件、一份信息，以及可选的一首背景音乐。
    * 想连发多个就再点一次「上传」，队列本身支持并发，进度在页面顶部的面板里看。
    */
-  const publishOne = ({ file, title, description } = {}) => {
+  const publishOne = ({ file, title, description, bgm } = {}) => {
     if (!file) return;
     uploadQueue.add(file, {
       kind: TASK_KIND.UPLOAD,
@@ -254,6 +254,8 @@ export function useGalleryPage() {
       // 留空时由队列按文件名兜底
       title: title || undefined,
       description: description || "",
+      // 随图配的背景音乐；队列会把它拼进同一次 multipart 请求
+      bgm: bgm ?? null,
       // 中途取消：把服务端已经产生的行与 OSS 对象一起清掉
       onCancel: async (item) => {
         // 没发过请求就什么都没产生，不用白跑一趟

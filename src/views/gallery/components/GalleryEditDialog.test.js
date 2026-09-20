@@ -10,9 +10,20 @@ const ITEM = {
   src: "https://example.test/imgs/9f3c1a2b-4d5e.png",
 };
 
+// 选曲面板换成替身，理由同 GalleryUploadDialog.test.js
+const BgmPickerStub = {
+  name: "GalleryBgmPicker",
+  props: ["modelValue"],
+  emits: ["update:modelValue"],
+  template:
+    '<button class="bgm-stub" @click="$emit(\'update:modelValue\', ' +
+    "{ src: 'https://cdn.example.test/music/new.mp3', type: 'audio' })\" />",
+};
+
 function mountDialog(overrides = {}, replacementFile = null) {
   return mount(GalleryEditDialog, {
     props: { visible: true, item: { ...ITEM, ...overrides }, saving: false, replacementFile },
+    global: { stubs: { GalleryBgmPicker: BgmPickerStub } },
   });
 }
 
@@ -135,5 +146,66 @@ describe("GalleryEditDialog 的更换文件", () => {
     await pickFile(wrapper, file);
 
     expect(input.element.value).toBe("");
+  });
+});
+
+describe("GalleryEditDialog 的背景音乐", () => {
+  const WITH_BGM = {
+    bgmSrc: "https://cdn.example.test/music/old.mp3",
+    bgmType: "audio",
+  };
+
+  it("打开时回填当前配的曲子", () => {
+    const wrapper = mountDialog(WITH_BGM);
+
+    expect(wrapper.findComponent({ name: "GalleryBgmPicker" }).props("modelValue")).toEqual({
+      src: "https://cdn.example.test/music/old.mp3", type: "audio",
+    });
+  });
+
+  /** 没改动就不提它：「原样打开再保存」不该顺手把 BGM 重写一遍 */
+  it("没改 BGM 时载荷里不出现它", async () => {
+    const wrapper = mountDialog(WITH_BGM);
+
+    await wrapper.find(".save-btn").trigger("click");
+
+    expect(wrapper.emitted("submit")).toEqual([[{}]]);
+  });
+
+  it("改了 BGM 时两个字段一起提交", async () => {
+    const wrapper = mountDialog();
+
+    await wrapper.find(".bgm-stub").trigger("click");
+    await wrapper.find(".save-btn").trigger("click");
+
+    expect(wrapper.emitted("submit")[0][0]).toEqual({
+      bgmSrc: "https://cdn.example.test/music/new.mp3",
+      bgmType: "audio",
+    });
+  });
+
+  /** 清空要发两个 null，只发一个会被服务端当成参数不完整而拒绝整次编辑 */
+  it("取消背景音乐时两个字段都发 null", async () => {
+    const wrapper = mountDialog(WITH_BGM);
+
+    // 替身直接把值改成另一首，这里改用「清空」的替身行为来触发
+    await wrapper.findComponent({ name: "GalleryBgmPicker" }).vm.$emit("update:modelValue", null);
+    await wrapper.find(".save-btn").trigger("click");
+
+    expect(wrapper.emitted("submit")[0][0]).toEqual({ bgmSrc: null, bgmType: null });
+  });
+
+  it("BGM 与文本字段可以一起提交", async () => {
+    const wrapper = mountDialog();
+
+    await textFields(wrapper)[0].setValue("新标题");
+    await wrapper.find(".bgm-stub").trigger("click");
+    await wrapper.find(".save-btn").trigger("click");
+
+    expect(wrapper.emitted("submit")[0][0]).toEqual({
+      title: "新标题",
+      bgmSrc: "https://cdn.example.test/music/new.mp3",
+      bgmType: "audio",
+    });
   });
 });

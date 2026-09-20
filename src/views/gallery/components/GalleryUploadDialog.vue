@@ -29,6 +29,8 @@
           <span class="field-label">描述</span>
           <textarea v-model="description" class="crt-input" placeholder="写点描述"></textarea>
         </label>
+
+        <GalleryBgmPicker v-model="bgm" />
       </template>
 
       <div class="modal-actions">
@@ -41,6 +43,8 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+
+import GalleryBgmPicker from "@/views/gallery/components/GalleryBgmPicker.vue";
 
 const props = defineProps({
   visible: Boolean,
@@ -58,6 +62,9 @@ const title = ref("");
 const description = ref("");
 const previewUrl = ref("");
 
+// 随图配的背景音乐 { src, type } 或 null，形状与接口字段一致，不做转换
+const bgm = ref(null);
+
 const releasePreview = () => {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
   previewUrl.value = "";
@@ -68,6 +75,7 @@ const reset = () => {
   file.value = null;
   title.value = "";
   description.value = "";
+  bgm.value = null;
 };
 
 // 每次打开都是一个干净的表单，不会带上一次的内容
@@ -110,6 +118,7 @@ const publish = () => {
     file: file.value,
     title: title.value.trim(),
     description: description.value.trim(),
+    bgm: bgm.value,
   });
   reset();
 };
