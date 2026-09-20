@@ -87,7 +87,9 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+
+import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 
 // canManage / canManageComment 由页面注入：编辑、删除入口只在作者本人或管理员处显示，
 // 组件自身不判断身份，保持纯展示。
@@ -108,6 +110,23 @@ const props = defineProps({
 
 defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
 const description = ref(null);
+
+const { play: playBgm, stop: stopBgm } = useGalleryBgm();
+
+// 打开就播、关闭就停。
+//
+// 用 watch 而不是 onMounted：item 由父组件控制，同一次挂载里会反复变化，
+// onMounted 只在第一次打开时生效。immediate 把「父组件已经带着 item 挂上来」
+// 这条路径也一并覆盖 —— 弹窗是被 v-if 直接摘挂还是常驻，这里都不用管。
+watch(
+  () => props.item,
+  (item) => {
+    // 没有可播的曲子时 play 自己会退化成 stop，这里不必先判一次
+    if (item) playBgm(item);
+    else stopBgm();
+  },
+  { immediate: true },
+);
 
 const isExpanded = (threadId) => props.expandedThreads.has(String(threadId));
 
@@ -169,6 +188,10 @@ const startTouchResize = (event) => {
 };
 
 onBeforeUnmount(stopTouchResize);
+
+// 组件被摘掉也要停：父组件用 v-if 关掉弹窗是常见做法，
+// 那时 watch 不一定还来得及跑
+onBeforeUnmount(() => stopBgm());
 </script>
 
 <style scoped>

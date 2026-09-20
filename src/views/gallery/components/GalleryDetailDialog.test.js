@@ -1,7 +1,22 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.vue";
+
+// useGalleryBgm 换成替身：这一层要断言的是「弹窗什么时候让它播、什么时候让它停」，
+// 播放本身（建元素、循环、音量、与侧栏协调）由 useGalleryBgm.test.js 负责。
+// 而真实实现会在 jsdom 里建真的媒体元素，那既没解码器、也不是本文件的被测对象。
+const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn() }));
+
+vi.mock("@/modules/gallery/composables/useGalleryBgm", () => ({
+  useGalleryBgm: () => ({
+    activeBgm: { value: null },
+    activeId: { value: null },
+    play: bgmSpies.play,
+    playSource: vi.fn(),
+    stop: bgmSpies.stop,
+  }),
+}));
 
 const ITEM = { id: 1, type: "photo", src: "/a.jpg", title: "标题", description: "描述" };
 
@@ -175,5 +190,43 @@ describe("GalleryDetailDialog 的回复", () => {
     const wrapper = mountDialog({ threads: [THREAD] });
 
     expect(wrapper.find(".comments-scrollable h3").text()).toContain("2");
+  });
+});
+
+describe("GalleryDetailDialog 的背景音乐", () => {
+  const WITH_BGM = {
+    ...ITEM,
+    bgmSrc: "https://cdn.example.test/music/a.mp3",
+    bgmType: "audio",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("打开一条项就把播放交给 useGalleryBgm", () => {
+    mountDialog({ item: WITH_BGM });
+
+    expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: WITH_BGM.id }));
+  });
+
+  /** 弹窗没了音乐还在响，用户找不到地方关它 */
+  it("关闭时停掉背景音乐", async () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+    bgmSpies.stop.mockClear();
+
+    await wrapper.setProps({ item: null });
+
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
+  /** 父组件用 v-if 摘掉整个弹窗是常见做法，那时 props 不会再变 */
+  it("组件卸载时停掉背景音乐", () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+    bgmSpies.stop.mockClear();
+
+    wrapper.unmount();
+
+    expect(bgmSpies.stop).toHaveBeenCalled();
   });
 });
