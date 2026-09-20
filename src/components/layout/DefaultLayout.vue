@@ -7,7 +7,7 @@
       <div class="header-content">
         <h1 class="vf-title glitch-title">✞ V1rtual ✞</h1>
         <div class="freak-line neon-freak">
-          （若加载不出 刷新即可） 人类数量:
+          人类数量:
           <span ref="userCountEl" class="counter-number">加载中... </span>
         </div>
         <p class="welcome-text neon-welcome">🖤 Welcome to my imagination 🖤</p>
