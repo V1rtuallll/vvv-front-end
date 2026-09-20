@@ -1,5 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryHistory, createRouter } from "vue-router";
 
 vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
@@ -37,10 +38,26 @@ const ITEM = { id: 100, title: "月光", description: "描述", type: "photo", s
 // userId 与登录用户一致：自己发的评论才看得到删除入口
 const COMMENT = { id: 500, content: "一条评论", userId: 7, username: "u7", parentId: null, likes: 0, isLiked: false };
 
+/**
+ * 挂载页面。必须装 router：侧栏深链那套逻辑读 route.query.id，
+ * 没有活动路由时 useRoute() 直接抛。
+ */
+async function mountPage(path = "/gallery") {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: "/gallery", component: { template: "<div />" } }],
+  });
+  await router.push(path);
+  await router.isReady();
+
+  const wrapper = mount(GalleryPage, { global: { plugins: [router] } });
+  await flushPromises();
+  return { wrapper, router };
+}
+
 /** 打开详情弹窗：评论输入与发送都在这里面 */
 async function openDetail() {
-  const wrapper = mount(GalleryPage);
-  await flushPromises();
+  const { wrapper } = await mountPage();
   await wrapper.find(".gallery-card").trigger("click");
   await flushPromises();
   return wrapper;
@@ -192,5 +209,87 @@ describe("Gallery 页面的评论", () => {
 
     expect(deleteComment).not.toHaveBeenCalled();
     expect(wrapper.find(".confirm-modal").exists()).toBe(false);
+  });
+});
+
+describe("Gallery 页面的侧栏深链", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 1024 } });
+  });
+
+  it("带 ?id= 进来时自动打开那一条的详情", async () => {
+    const { wrapper } = await mountPage("/gallery?id=100");
+
+    expect(wrapper.find(".modal-overlay").exists()).toBe(true);
+    expect(wrapper.find(".detail-modal h2").text()).toBe("月光");
+  });
+
+  it("?id= 指向当前页没有的资源时不弹窗", async () => {
+    const { wrapper } = await mountPage("/gallery?id=999");
+
+    expect(wrapper.find(".modal-overlay").exists()).toBe(false);
+  });
+
+  it("关掉详情把 id 从地址里撤掉，同一条才点得开第二次", async () => {
+    const { wrapper, router } = await mountPage("/gallery?id=100");
+    expect(router.currentRoute.value.query.id).toBe("100");
+
+    await wrapper.find(".detail-modal .close-btn").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".modal-overlay").exists()).toBe(false);
+    expect(router.currentRoute.value.query.id).toBeUndefined();
+  });
+
+  it("已经在页面上时换一个 id 会换成那一条的详情", async () => {
+    getGalleryPage.mockResolvedValue({
+      data: { list: [{ ...ITEM }, { ...ITEM, id: 200, title: "海潮" }], total: 2 },
+    });
+    const { wrapper, router } = await mountPage("/gallery?id=100");
+    expect(wrapper.find(".detail-modal h2").text()).toBe("月光");
+
+    await router.push("/gallery?id=200");
+    await flushPromises();
+
+    expect(wrapper.find(".detail-modal h2").text()).toBe("海潮");
+  });
+});
+
+describe("Gallery 列表里的音乐项", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 1024 } });
+    getGalleryPage.mockResolvedValue({
+      data: {
+        list: [{ ...ITEM, id: 300, type: "music", title: "一首歌", src: "https://cdn/song.mp3" }],
+        total: 1,
+      },
+    });
+  });
+
+  it("音乐项不是播放器，只留一个入口占位", async () => {
+    const { wrapper } = await mountPage();
+
+    // 一页 6 个 <audio controls> 会一起加载解码，播放与暂停放到详情弹窗里
+    expect(wrapper.find(".gallery-card audio").exists()).toBe(false);
+    expect(wrapper.find(".media-audio-placeholder").text()).toBe("♪");
+  });
+
+  it("音乐项仍然点得进详情，详情里才有能播放、能暂停的播放器", async () => {
+    const { wrapper } = await mountPage();
+
+    await wrapper.find(".gallery-card").trigger("click");
+    await flushPromises();
+
+    const audio = wrapper.find(".detail-modal audio");
+    expect(audio.exists()).toBe(true);
+    expect(audio.attributes("src")).toBe("https://cdn/song.mp3");
+    expect(audio.attributes("controls")).toBeDefined();
   });
 });

@@ -89,19 +89,26 @@
   height: 200px;
   overflow: hidden;
 }
-.media-preview {
+.media-preview,
+.media-audio-placeholder {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;
 }
-.gallery-card:hover .media-preview {
+.gallery-card:hover .media-preview,
+.gallery-card:hover .media-audio-placeholder {
   transform: scale(1.12);
 }
-.media-audio-preview {
-  width: 100%;
-  padding: 40px;
+/* 音乐项的封面位。列表里不播，点进详情才播 */
+.media-audio-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: #00ff00;
   background: rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 12px #00ff00;
 }
 .type-badge {
   position: absolute;

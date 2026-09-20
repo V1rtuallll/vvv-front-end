@@ -532,7 +532,10 @@
   text-decoration: none;
 }
 
-.gallery-grid img {
+/* 视频格子与图片格子共用一套：thumbnail 列从来不写，没有独立封面可用，
+   放 video 元素让浏览器显示首帧，尺寸因此要和图片完全一致 */
+.gallery-grid img,
+.gallery-grid video {
   display: block;
   width: 100%;
   /* 固定成方格，三条高度才齐；object-fit 保证竖图横图都不变形 */
@@ -545,13 +548,15 @@
   animation: neon-flicker 5s infinite ease-in-out;
 }
 
-.gallery-grid img:hover {
+.gallery-grid img:hover,
+.gallery-grid video:hover {
   transform: scale(1.15) rotate(5deg);
   box-shadow: 0 0 25px rgba(255, 0, 255, 0.9);
   z-index: 10;
 }
 
-/* 视频与音乐没有可当缩略图的图，用类型名占住同一个格子 */
+/* 兜底：既不是图片也不是视频时用类型名占位。音乐在 useLatestGallery 里已经筛掉了，
+   这里只兜住将来新增的类型，免得网格里出现空格子 */
 .gallery-grid .gallery-type {
   display: flex;
   align-items: center;

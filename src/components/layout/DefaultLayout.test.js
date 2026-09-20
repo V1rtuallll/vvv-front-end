@@ -23,7 +23,22 @@ import { getGalleryPage } from "@/modules/gallery/api/galleryApi";
 import DefaultLayout from "@/components/layout/DefaultLayout.vue";
 
 const stubs = {
-  "router-link": { props: ["to"], template: '<a :href="to"><slot /></a>' },
+  // 真 router-link 要求目标路由已注册，这里只把 to 渲染成 href。
+  // 对象形式（带 query）拼成 path?query，断言才看得到真实地址。
+  "router-link": {
+    props: ["to"],
+    template: '<a :href="href"><slot /></a>',
+    computed: {
+      href() {
+        const to = this.to;
+        if (typeof to === "string") return to;
+        const query = Object.entries(to.query || {})
+          .map(([key, value]) => `${key}=${value}`)
+          .join("&");
+        return query ? `${to.path}?${query}` : to.path;
+      },
+    },
+  },
   "router-view": true,
 };
 
@@ -164,15 +179,19 @@ describe("右侧榜单", () => {
     expect(getLatestBlogs).toHaveBeenCalledWith({ limit: 5 });
   });
 
-  it("渲染 5 条，标题链接指向详情页并带上摘要", async () => {
+  it("渲染 5 条，整行都是指向详情页的链接", async () => {
     const wrapper = await mountLayout();
     await flush();
 
     const items = wrapper.findAll(".right .top-list li");
     expect(items).toHaveLength(5);
-    expect(items[0].find("a").text()).toBe("第一篇");
     expect(items[0].find("a").attributes("href")).toBe("/blog/detail/1");
-    expect(items[0].text()).toContain("摘要一");
+    expect(items[0].find("a").text()).toContain("第一篇");
+    // 摘要也在链接里。放在链接外时它看着像链接却点不动
+    expect(items[0].find("a .top-summary").text()).toBe("摘要一");
+    // li 的直接子元素只有那一个 <a>，整行都归它管
+    expect(items[0].element.children).toHaveLength(1);
+    expect(items[0].element.children[0].tagName).toBe("A");
   });
 
   it("右栏区块有标题 Blogs，且没有硬编码的假数据", async () => {
@@ -198,25 +217,33 @@ describe("右栏最新画廊", () => {
     });
   });
 
-  it("按最新 3 条取画廊列表的第一页", async () => {
+  it("取画廊列表第一页，窗口比 3 大：音乐要筛掉，筛完才凑得齐 3 格", async () => {
     await mountLayout();
     await flush();
 
-    expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 3 });
+    expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 12 });
   });
 
-  it("三条都指向画廊页；图片当缩略图，视频音乐用类型占位", async () => {
+  it("三条都带上各自的 id 指向画廊页，图片与视频都显示画面", async () => {
     const wrapper = await mountLayout();
     await flush();
 
     const cells = wrapper.findAll(".right .gallery-grid a");
     expect(cells).toHaveLength(3);
-    expect(cells.map((cell) => cell.attributes("href"))).toEqual(["/gallery", "/gallery", "/gallery"]);
+    // 带上 id，画廊页才能直接把这一条的详情弹出来
+    expect(cells.map((cell) => cell.attributes("href"))).toEqual([
+      "/gallery?id=3",
+      "/gallery?id=2",
+      "/gallery?id=1",
+    ]);
     expect(cells[0].find("img").attributes("src")).toBe("https://cdn/3.png");
     expect(cells[0].find("img").attributes("alt")).toBe("第三张");
-    // 视频的 src 直接塞进 img 会得到一个破图，所以这一格必须是文本
+    // 视频的 src 塞进 img 只会得到破图，所以这一格是 video 元素而不是类型名文本
     expect(cells[2].find("img").exists()).toBe(false);
-    expect(cells[2].find(".gallery-type").text()).toBe("video");
+    expect(cells[2].find(".gallery-type").exists()).toBe(false);
+    // preload=metadata 才拿得到首帧；默认值在部分浏览器会连整个文件一起下
+    expect(cells[2].find("video").attributes("preload")).toBe("metadata");
+    expect(cells[2].find("video").attributes("src")).toBe("https://cdn/1.mp4");
   });
 
   it("Imgs 贴纸与那行小字已经撤掉", async () => {

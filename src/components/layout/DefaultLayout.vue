@@ -96,15 +96,29 @@
         <h3>Blogs</h3>
         <ul class="top-list">
           <li v-for="blog in latestBlogs" :key="blog.id">
-            <router-link :to="`/blog/detail/${blog.id}`" class="top-link">{{ blog.title }}</router-link>
-            <span class="top-summary">{{ blog.summary }}</span>
+            <!-- 整行都是链接：只有标题那行字能点时，摘要看着像链接却点不动 -->
+            <router-link :to="`/blog/detail/${blog.id}`" class="top-link">
+              {{ blog.title }}
+              <span class="top-summary">{{ blog.summary }}</span>
+            </router-link>
           </li>
         </ul>
         <h3>Gallery</h3>
         <div class="gallery-grid">
-          <router-link v-for="item in latestGallery" :key="item.id" to="/gallery">
+          <router-link
+            v-for="item in latestGallery"
+            :key="item.id"
+            :to="{ path: '/gallery', query: { id: item.id } }"
+          >
             <img v-if="isImage(item)" :src="item.src" :alt="item.title || '画廊'" />
-            <!-- 视频与音乐没有能当缩略图的图，用类型占住同一个格子 -->
+            <!-- 视频没有独立的缩略图（thumbnail 列从不写入），放 video 元素让浏览器显示首帧 -->
+            <video
+              v-else-if="item.type === 'video'"
+              :src="item.src"
+              :aria-label="item.title || '画廊视频'"
+              muted
+              preload="metadata"
+            ></video>
             <span v-else class="gallery-type">{{ item.type }}</span>
           </router-link>
         </div>

@@ -32,7 +32,9 @@
         <div class="media-preview-wrapper">
           <img v-if="item.type === 'photo' || item.type === 'gif'" :src="item.src" class="media-preview" />
           <video v-else-if="item.type === 'video'" :src="item.src" loop muted class="media-preview"></video>
-          <audio v-else-if="item.type === 'music'" :src="item.src" controls class="media-audio-preview"></audio>
+          <!-- 音乐项只是进入详情的入口，不在列表里播：一页 6 个 <audio controls>
+               会一起加载解码，而真正的播放与暂停在详情弹窗里 -->
+          <div v-else-if="item.type === 'music'" class="media-audio-placeholder">♪</div>
           <div class="type-badge" :class="item.type">{{ item.type.toUpperCase() }}</div>
         </div>
 
@@ -79,7 +81,7 @@
       :format-short-date="formatShortDate"
       :can-manage="canManageItem"
       :can-manage-comment="canManageComment"
-      @close="closeDetail"
+      @close="closeDetailAndClearQuery"
       @show-user="openUserProfile"
       @toggle-like="toggleLike"
       @resize-start="startResize"
@@ -120,6 +122,9 @@
 </template>
 
 <script setup>
+import { watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
 import GalleryDetailDialog from "./components/GalleryDetailDialog.vue";
 import GalleryEditDialog from "./components/GalleryEditDialog.vue";
 import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
@@ -185,6 +190,40 @@ const {
   cancelDelete,
   confirmDelete,
 } = useGalleryPage();
+
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * 侧栏点进来的深链：/gallery?id=N 时自动弹出那一条的详情。
+ *
+ * 不需要「按 id 查单条」的接口：侧栏取的是最新 3 条，而列表第一页最少也有 4 条
+ * （页大小最小是 4），所以目标必定已经在 galleryList 里。
+ */
+const openDetailFromQuery = () => {
+  const wanted = route.query.id;
+  if (wanted == null || wanted === "") return;
+  const item = galleryList.value.find((row) => String(row.id) === String(wanted));
+  if (item) openDetailModal(item);
+};
+
+// 首屏要等列表加载完才找得到目标，所以盯着 galleryList 而不是挂在 onMounted 上
+watch(galleryList, openDetailFromQuery, { immediate: true });
+
+// 已经在 /gallery 时再点侧栏另一条：路由没变、组件不重挂载，只有 query 变
+watch(() => route.query.id, openDetailFromQuery);
+
+/**
+ * 关掉详情要把 id 从地址里撤掉。不撤的话再点侧栏同一条，query 没变，
+ * 上面那个 watch 不触发，弹窗不会重新打开。
+ */
+const closeDetailAndClearQuery = () => {
+  closeDetail();
+  if (route.query.id == null) return;
+  const rest = { ...route.query };
+  delete rest.id;
+  router.replace({ path: route.path, query: rest });
+};
 </script>
 
 <style src="./index.css" scoped></style>
