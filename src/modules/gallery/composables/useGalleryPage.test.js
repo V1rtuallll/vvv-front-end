@@ -6,6 +6,7 @@ vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
 vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
   cancelUpload: vi.fn(),
+  getGalleryBgmCandidates: vi.fn(),
   getGalleryComments: vi.fn(),
   getGalleryPage: vi.fn(),
   getUploadLimit: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
   likeGalleryComment: vi.fn(),
   postGalleryComment: vi.fn(),
   replaceGalleryFile: vi.fn(),
+  uploadGalleryBgm: vi.fn(),
   uploadGalleryFile: vi.fn(),
   updateGallery: vi.fn(),
   deleteGallery: vi.fn(),

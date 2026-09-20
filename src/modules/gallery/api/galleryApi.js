@@ -21,3 +21,8 @@ export const cancelUpload = (clientUploadId) =>
 export const updateGallery = (id, payload) => request.patch(`/gallery/${id}`, payload);
 export const deleteGallery = (id) => request.delete(`/gallery/${id}`);
 export const deleteComment = (commentId) => request.delete(`/gallery/comments/${commentId}`);
+// 背景音乐上传：走独立接口，只在登记表里记一行，**不建画廊项** ——
+// 所以它不会出现在画廊列表里。这是隔离方案的关键，不要在别处「顺手」改成普通上传。
+export const uploadGalleryBgm = (formData) => request.post("/gallery/bgm", formData);
+// 「挑一首背景音乐」的候选：有声音的项 + 自己配过 BGM 的图文项。不分页
+export const getGalleryBgmCandidates = () => request.get("/gallery/bgm-candidates");
