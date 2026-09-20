@@ -19,6 +19,58 @@ const playlist = [
   "Sewerslvt - Swinging in His Cell (Explicit).mp3",
 ];
 
+// =============================================================================
+// 为详情弹窗的背景音乐让位
+// =============================================================================
+//
+// 侧栏播放器和详情弹窗的 BGM 是两个音源，同时响会糊成一片。详情打开时让侧栏
+// 暂停，关闭时还原 —— 但**只有它原本在播才还原**：用户本来就没放音乐，
+// 关掉详情却突然响起侧栏的曲子，比不还原更糟。
+//
+// 状态放在模块级而不是 useAudioPlayer 的返回值里：播放器的内部状态全在 onMounted
+// 的闭包中，外面拿不到那个 audio 元素。而全应用只有一个侧栏播放器实例，
+// 模块级变量正好表达这件事（不新建 Pinia store —— 为一个暂停开关不值得）。
+
+/** 侧栏的 audio 元素。由播放器在 onMounted 时登记，测试里也可以直接喂替身进来。 */
+let playerAudio = null;
+
+/** 让位之前它到底在不在播。只有 true 才恢复。 */
+let wasPlayingBeforeBgm = false;
+
+/**
+ * 播放器挂载时把自己登记进来。
+ *
+ * 导出的目的是让「暂停/恢复」这一对有个明确的作用对象 —— 测试因此不必去真挂一个
+ * DefaultLayout 才能断言这两个函数的行为。
+ */
+export function registerPlayerAudio(audio) {
+  playerAudio = audio;
+}
+
+/** 详情弹窗要播自己的 BGM，先让侧栏闭嘴 */
+export function pauseForBgm() {
+  const audio = playerAudio;
+  if (!audio || audio.paused) {
+    wasPlayingBeforeBgm = false;
+    return;
+  }
+  wasPlayingBeforeBgm = true;
+  audio.pause();
+}
+
+/** 详情弹窗关了，把侧栏还原成原来的样子 */
+export function resumeAfterBgm() {
+  const shouldResume = wasPlayingBeforeBgm;
+  wasPlayingBeforeBgm = false;
+  if (!shouldResume || !playerAudio) return;
+
+  // play() 有两种不肯返回 Promise 的情况：jsdom 里它返回 undefined，
+  // 浏览器里则可能因为自动播放策略被拒。两种都不能让异常冒出去 ——
+  // 关弹窗这件事不该因为音频起播失败而出错
+  const started = playerAudio.play();
+  if (started && typeof started.catch === "function") started.catch(() => {});
+}
+
 export function useAudioPlayer() {
   const audioEl = ref(null);
   const playPauseBtn = ref(null);
@@ -42,6 +94,8 @@ export function useAudioPlayer() {
     const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
     let currentIndex = 0;
 
+    // 把元素交给模块级的让位逻辑：详情弹窗打开时要靠它把侧栏暂停下来
+    registerPlayerAudio(audio);
     audio.volume = 0.3;
     const formatTrackName = (filename) => {
       const name = filename.replace(".mp3", "");
