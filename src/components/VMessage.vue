@@ -17,9 +17,7 @@ const showMessage = (content, duration = 3000) => {
   const id = ++idCounter;
   messages.value.push({ id, content });
   // 直接调用全局随机音效
-
   if (window.playGlobalRandomSound) {
-    console.log("playGlobalRandomSound");
     window.playGlobalRandomSound();
   }
   setTimeout(() => {
