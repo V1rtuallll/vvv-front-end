@@ -11,10 +11,16 @@
       <!-- 视频/图片 -->
       <transition name="fade">
         <div v-if="mainItem" class="showcase-media-wrapper">
+          <!--
+            刻意**不加 autoplay**：未静音的 autoplay 在用户交互前会被浏览器拦下，
+            但用户一旦在站内点过任何东西，之后每次挂载（进出首页、换随机项、
+            开新标签页）它都会真的自动满音量起播 —— 而侧栏的背景音乐是独立的一路、
+            不会让位，于是同一段随机视频越听越多层。
+            默认暂停：要听就自己点播放按钮。
+          -->
           <video
             v-if="mainItem.type === 'video'"
             :src="mainItem.src"
-            autoplay
             loop
             playsinline
             controls

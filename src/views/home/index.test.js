@@ -114,3 +114,45 @@ describe("Home 页面信息栏", () => {
     expect(wrapper.find(".gallery-info-bottom").exists()).toBe(false);
   });
 });
+
+describe("Home 主展示媒体", () => {
+  const 原始主项 = () => ({
+    type: "photo",
+    src: "/main.jpg",
+    title: "主展示标题",
+    description: "主展示描述",
+    uploaderUsername: "uploader",
+  });
+
+  beforeEach(() => {
+    useHomeContent().mainItem.value = {
+      type: "video",
+      src: "/main.mp4",
+      title: "主展示视频",
+    };
+  });
+
+  afterEach(() => {
+    useHomeContent().mainItem.value = 原始主项();
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * 主展示视频默认暂停。
+   *
+   * 未静音的 autoplay 在用户交互前会被浏览器拦下，看上去没事；但用户一旦在站内
+   * 点过任何东西，之后每次挂载（进出首页、换随机项、开新标签页）它都会真的自动
+   * 满音量起播 —— 而侧栏的背景音乐是独立的一路、不会让位，
+   * 同一段随机视频就会一层层叠着响。默认暂停后，要听必须自己点播放按钮。
+   */
+  it("主展示视频不自动播放，但保留原生控件", () => {
+    stubHover(true);
+
+    const wrapper = mount(HomePage);
+    const video = wrapper.find("video.showcase-media");
+
+    expect(video.exists()).toBe(true);
+    expect(video.attributes("autoplay")).toBeUndefined();
+    expect(video.attributes("controls")).toBeDefined();
+  });
+});
