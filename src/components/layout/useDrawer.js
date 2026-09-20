@@ -11,8 +11,6 @@ import { isNarrowViewport } from "@/utils/responsive";
  *
  * 显隐由 CSS transform 完成，元素始终留在 DOM 中 —— 播放器在 onMounted 里
  * 直接对 refs 取属性，元素一旦被 v-if 摘除，播放器会在所有分辨率下失效。
- *
- * 设计依据见 components/layout/doc/设计说明.md。
  */
 
 const resolveWindow = () => (typeof window === "undefined" ? null : window);
