@@ -96,6 +96,8 @@ export function useUploadQueue(upload, options = {}) {
       preview: meta.preview ?? null,
       title: meta.title ?? (file ? titleFromFile(file) : ""),
       description: meta.description ?? "",
+      /** 随图一起提交的背景音乐 { src, type }；不配时为 null */
+      bgm: meta.bgm ?? null,
       targetId: meta.targetId ?? null,
       status: UPLOAD_STATUS.QUEUED,
       progress: 0,
@@ -117,6 +119,12 @@ export function useUploadQueue(upload, options = {}) {
       formData.append("title", item.title);
       formData.append("description", item.description);
       formData.append("clientUploadId", item.clientUploadId);
+      // 背景音乐跟着同一次请求走：两个字段要么都带、要么都不带 ——
+      // 只带一个会被服务端当成参数不完整而拒绝整个上传
+      if (item.bgm?.src) {
+        formData.append("bgmSrc", item.bgm.src);
+        formData.append("bgmType", item.bgm.type);
+      }
     }
     return formData;
   };

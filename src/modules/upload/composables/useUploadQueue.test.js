@@ -1,7 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
+import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 
 function deferred() {
   let resolve;
@@ -283,5 +283,51 @@ describe("useUploadQueue 的忙碌状态与取消清理", () => {
     queue.start();
     await flushPromises();
     expect(queue.overallProgress.value).toBe(100);
+  });
+});
+
+describe("上传队列随图提交背景音乐", () => {
+  const controlled = () => vi.fn(() => {
+    const d = deferred();
+    controlled.last = d;
+    return d.promise;
+  });
+
+  it("配了背景音乐时把地址与类型一起带上", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    const file = new File(["x"], "a.png", { type: "image/png" });
+
+    queue.add(file, {
+      kind: TASK_KIND.UPLOAD,
+      title: "标题",
+      bgm: { src: "https://cdn.example.test/music/a.mp3", type: "audio" },
+    });
+    queue.start();
+    await flushPromises();
+
+    const formData = upload.mock.calls[0][0];
+    expect(formData.get("bgmSrc")).toBe("https://cdn.example.test/music/a.mp3");
+    expect(formData.get("bgmType")).toBe("audio");
+  });
+
+  /**
+   * 没配 BGM 时一个字段都不许带。
+   *
+   * 带上一个空的 bgmSrc 而没有 bgmType，服务端会判成「参数不完整」——
+   * 一个本来完全正常的普通上传会因此整个失败。
+   */
+  it("没配背景音乐时两个字段都不出现", async () => {
+    const upload = controlled();
+    const queue = await mountQueue(upload);
+    const file = new File(["x"], "a.png", { type: "image/png" });
+
+    queue.add(file, { kind: TASK_KIND.UPLOAD, title: "标题" });
+    queue.start();
+    await flushPromises();
+
+    const formData = upload.mock.calls[0][0];
+    expect(formData.has("bgmSrc")).toBe(false);
+    expect(formData.has("bgmType")).toBe(false);
   });
 });
