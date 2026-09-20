@@ -206,6 +206,98 @@ describe("useGalleryBgm 的播放", () => {
   });
 });
 
+describe("useGalleryBgm 的暂停与继续", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("起播之后是播放状态", () => {
+    const { bgm } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM);
+
+    expect(bgm.playing.value).toBe(true);
+  });
+
+  /**
+   * 暂停只按停元素，**不释放侧栏**。
+   *
+   * 走成 stop() 那一套的话，曲子暂停的瞬间侧栏就被解停了 —— 用户按了暂停，
+   * 听见的却是另一路声音。曲子本身也还挂着：继续要接着放，不是从头再来一遍。
+   */
+  it("暂停不释放侧栏，曲子还挂着", () => {
+    const { bgm, created, player } = mountBgm({ playerPaused: false });
+    bgm.play(PHOTO_WITH_BGM);
+
+    bgm.toggle();
+
+    expect(created[0].pause).toHaveBeenCalledTimes(1);
+    expect(bgm.playing.value).toBe(false);
+    expect(bgm.activeBgm.value).not.toBe(null);
+    expect(player.play).not.toHaveBeenCalled();
+  });
+
+  it("继续时接着放，不重建元素", () => {
+    const { bgm, created } = mountBgm();
+    bgm.play(PHOTO_WITH_BGM);
+    bgm.toggle();
+
+    bgm.toggle();
+
+    expect(created).toHaveLength(1);
+    expect(created[0].play).toHaveBeenCalledTimes(2);
+    expect(bgm.playing.value).toBe(true);
+  });
+
+  it("没有在播的曲子时切换是空操作", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.toggle();
+
+    expect(created).toHaveLength(0);
+    expect(bgm.playing.value).toBe(false);
+  });
+
+  it("停止后不再是在播状态", () => {
+    const { bgm } = mountBgm();
+    bgm.play(PHOTO_WITH_BGM);
+
+    bgm.stop();
+
+    expect(bgm.playing.value).toBe(false);
+  });
+
+  /** 暂停没把窗口让出去，停止就仍然认账：关掉弹窗后侧栏该恢复 */
+  it("暂停之后停止仍然还原侧栏", () => {
+    const { bgm, player } = mountBgm({ playerPaused: false });
+    bgm.play(PHOTO_WITH_BGM);
+
+    bgm.toggle();
+    bgm.stop();
+
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * 浏览器拒绝自动起播时，按钮不能显示成「暂停」。
+   *
+   * 显示成暂停的话，用户点它只是去暂停一个本来就没在响的东西 ——
+   * 页面上再也没有入口让这首曲子响起来。
+   */
+  it("起播被拒时回落成未播放", async () => {
+    registerPlayerAudio(null);
+    const bgm = useGalleryBgm(() => ({
+      loop: false, src: "", pause: vi.fn(),
+      play: vi.fn(() => Promise.reject(new Error("blocked"))),
+    }));
+
+    bgm.play(PHOTO_WITH_BGM);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(bgm.playing.value).toBe(false);
+  });
+});
+
 describe("useGalleryBgm 与侧栏的协调", () => {
   beforeEach(() => {
     vi.clearAllMocks();

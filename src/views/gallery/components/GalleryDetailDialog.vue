@@ -12,6 +12,16 @@
         <div class="detail-info-fixed">
           <h2>{{ item.title }}</h2>
           <p ref="description" class="detail-desc">{{ item.description || "无描述" }}</p>
+
+          <!-- 正在播放放右栏，不压在图上：左侧就是媒体本身，盖一层浮层必然挡住内容。
+               只在「自己配了 BGM」的图文项出现 —— 音乐/视频项的左侧就是它自己的播放器，
+               那一行与它重复。 -->
+          <div v-if="item.bgmSrc" class="detail-bgm">
+            <span class="detail-bgm-label">♪ 背景音乐：{{ bgmLabel }}</span>
+            <button class="detail-bgm-toggle" type="button" @click.stop="toggleBgm">
+              {{ playing ? "暂停" : "播放" }}
+            </button>
+          </div>
           <div class="detail-meta" @click.stop="$emit('show-user', item.userId || item.uploaderId, item.uploaderUsername)">
             <img :src="item.uploaderAvatar || '/default-avatar.gif'" alt="上传者头像" class="detail-uploader-avatar" />
             <span class="uploader-name">@{{ item.uploaderUsername || "神秘人" }}</span>
@@ -111,7 +121,16 @@ const props = defineProps({
 defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
 const description = ref(null);
 
-const { play: playBgm, stop: stopBgm } = useGalleryBgm();
+const { play: playBgm, stop: stopBgm, toggle: toggleBgm, playing } = useGalleryBgm();
+
+/**
+ * 「音频 · 一首歌」。类型跟着 bgmType 走，名字取不到时只剩类型 ——
+ * 留一个空的分隔符会渲染成「音频 · 」，看着像名字没加载出来。
+ */
+const bgmLabel = computed(() => {
+  const type = props.item?.bgmType === "video" ? "视频" : "音频";
+  return props.item?.bgmTitle ? `${type} · ${props.item.bgmTitle}` : type;
+});
 
 // 打开就播、关闭就停。
 //
@@ -227,6 +246,10 @@ onBeforeUnmount(() => stopBgm());
 .detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
 .like-btn { padding: 14px 35px; color: #ff69b4; font-size: 1.4rem; background: rgba(255, 105, 180, 0.3); border: 2px solid #ff69b4; border-radius: 40px; cursor: pointer; }
 .liked { text-shadow: 0 0 40px #ff1493; }
+/* 正在播放：跟在描述下面，右边留给暂停/播放按钮 */
+.detail-bgm { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.detail-bgm-label { flex: 1 1 auto; min-width: 0; color: #ffaae6; font-size: 0.95rem; line-height: 1.5; word-break: break-all; }
+.detail-bgm-toggle { flex: 0 0 auto; min-height: 44px; padding: 8px 20px; color: #00ffff; font-size: 0.9rem; font-weight: bold; background: rgba(0, 255, 255, 0.12); border: 1px solid #00ffff; border-radius: 22px; cursor: pointer; }
 .detail-action-btn { min-height: 44px; padding: 10px 24px; font-size: 1rem; border-radius: 40px; cursor: pointer; }
 .edit-btn { color: #00ffff; background: rgba(0, 255, 255, 0.15); border: 2px solid #00ffff; }
 .delete-btn { color: #ff69b4; background: rgba(255, 105, 180, 0.2); border: 2px solid #ff69b4; }
@@ -277,6 +300,8 @@ onBeforeUnmount(() => stopBgm());
   .uploader-name { font-size: 1.1rem; }
   .meta-info { font-size: 0.85rem; }
   .like-btn { min-height: 44px; margin-top: 10px; padding: 10px 24px; font-size: 1.1rem; }
+  .detail-bgm { margin-top: 8px; }
+  .detail-bgm-label { font-size: 0.9rem; }
   .resize-handle { height: 22px; margin: 10px 0; touch-action: none; }
   .comments-scrollable { min-height: 0; }
   .comments-scrollable h3 { margin-bottom: 8px; font-size: 1.1rem; }

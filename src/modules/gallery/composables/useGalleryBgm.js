@@ -54,10 +54,34 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   const activeId = ref(null);
   let element = null;
 
+  /**
+   * 当前元素是不是在响。它只驱动那个暂停/播放按钮的文案，与播放逻辑无关 ——
+   * 播放本身看的是 {@link #element} 与 activeBgm。
+   */
+  const playing = ref(false);
+
   const releaseElement = () => {
     if (!element) return;
     element.pause();
     element = null;
+    playing.value = false;
+  };
+
+  /**
+   * 起播并跟踪状态。
+   *
+   * **失败要回落成未播放**：自动播放策略拒绝时元素其实没响，按钮却停在「暂停」上 ——
+   * 用户点它只是去暂停一个没在响的东西，页面上再没有入口让这首曲子响起来。
+   * 换过元素之后旧的拒绝不该冲掉新状态，所以比对的是这一个元素。
+   */
+  const startElement = (el) => {
+    const started = el.play();
+    if (started && typeof started.catch === "function") {
+      started.catch(() => {
+        if (element === el) playing.value = false;
+      });
+    }
+    playing.value = true;
   };
 
   /**
@@ -127,8 +151,24 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
 
     // 起播失败只意味着没声音，不该影响看图。浏览器的自动播放策略、
     // 地址 404、OSS 挂掉，全都静默降级在这里
-    const started = el.play();
-    if (started && typeof started.catch === "function") started.catch(() => {});
+    startElement(el);
+  };
+
+  /**
+   * 暂停 / 继续。
+   *
+   * **不走 stop()**：stop 的语义是「关掉弹窗」—— 释放元素、清空状态、解停侧栏。
+   * 暂停只把元素按下去，元素与窗口都留着：继续的时候接着放，而侧栏也不会在暂停的
+   * 那一瞬间被解停（否则用户按了暂停，听见的却是另一路声音）。
+   */
+  const toggle = () => {
+    if (!element) return;
+    if (playing.value) {
+      element.pause();
+      playing.value = false;
+      return;
+    }
+    startElement(element);
   };
 
   const play = (item) => {
@@ -140,6 +180,6 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   // 对外对象同时也是「当前发声者」槽位里的把手：stop() 靠它判断自己是不是
   // 正占着那个槽位。`stop` / `playSource` 在源码顺序上先于它，但它们都在本函数
   // 返回之后才被调用，那时 api 已经就位
-  const api = { activeBgm, activeId, play, playSource, stop };
+  const api = { activeBgm, activeId, playing, play, playSource, toggle, stop };
   return api;
 }

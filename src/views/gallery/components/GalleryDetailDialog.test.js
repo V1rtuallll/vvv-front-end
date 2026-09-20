@@ -7,17 +7,24 @@ import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.
 // useGalleryBgm 换成替身：这一层要断言的是「弹窗什么时候让它播、什么时候让它停」，
 // 播放本身（建元素、循环、音量、与侧栏协调）由 useGalleryBgm.test.js 负责。
 // 而真实实现会在 jsdom 里建真的媒体元素，那既没解码器、也不是本文件的被测对象。
-const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn() }));
+const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn(), toggle: vi.fn(), playing: null }));
 
-vi.mock("@/modules/gallery/composables/useGalleryBgm", () => ({
-  useGalleryBgm: () => ({
-    activeBgm: { value: null },
-    activeId: { value: null },
-    play: bgmSpies.play,
-    playSource: vi.fn(),
-    stop: bgmSpies.stop,
-  }),
-}));
+vi.mock("@/modules/gallery/composables/useGalleryBgm", async () => {
+  const { ref } = await import("vue");
+  // playing 必须是真 ref，模板才跟着变。默认在播 —— 绝大多数情况下自动起播是成功的
+  bgmSpies.playing = ref(true);
+  return {
+    useGalleryBgm: () => ({
+      activeBgm: { value: null },
+      activeId: { value: null },
+      playing: bgmSpies.playing,
+      play: bgmSpies.play,
+      playSource: vi.fn(),
+      toggle: bgmSpies.toggle,
+      stop: bgmSpies.stop,
+    }),
+  };
+});
 
 const ITEM = { id: 1, type: "photo", src: "/a.jpg", title: "标题", description: "描述" };
 
@@ -203,6 +210,7 @@ describe("GalleryDetailDialog 的背景音乐", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    bgmSpies.playing.value = true;
   });
 
   it("打开一条项就把播放交给 useGalleryBgm", () => {
@@ -274,5 +282,73 @@ describe("GalleryDetailDialog 的背景音乐", () => {
     wrapper.unmount();
 
     expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+});
+
+describe("GalleryDetailDialog 的正在播放", () => {
+  const WITH_BGM = {
+    ...ITEM,
+    bgmSrc: "https://cdn.example.test/music/a.mp3",
+    bgmType: "audio",
+    bgmTitle: "一首歌",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    bgmSpies.playing.value = true;
+  });
+
+  it("显示这首曲子叫什么", () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+
+    expect(wrapper.find(".detail-bgm").text()).toContain("一首歌");
+  });
+
+  /** 视频当背景音乐时标的类型要是视频，否则用户会以为放的是音频 */
+  it("视频当背景音乐时标成视频", () => {
+    const wrapper = mountDialog({ item: { ...WITH_BGM, bgmType: "video", bgmTitle: "一段片" } });
+
+    const text = wrapper.find(".detail-bgm").text();
+    expect(text).toContain("视频");
+    expect(text).toContain("一段片");
+  });
+
+  /**
+   * 名字取不到时（V007 之前配的曲子）只显示类型。
+   *
+   * 留一个空的分隔符会渲染成「音频 · 」，看着像名字加载失败。
+   */
+  it("名字缺失时只显示类型，不留空尾巴", () => {
+    const wrapper = mountDialog({ item: { ...WITH_BGM, bgmTitle: null } });
+
+    const text = wrapper.find(".detail-bgm").text();
+    expect(text).toContain("音频");
+    expect(text).not.toContain("·");
+  });
+
+  it("没配背景音乐就不出现这一行", () => {
+    expect(mountDialog().find(".detail-bgm").exists()).toBe(false);
+  });
+
+  it("按钮把播放与暂停都交给 useGalleryBgm", async () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+
+    await wrapper.find(".detail-bgm-toggle").trigger("click");
+
+    expect(bgmSpies.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("在播时按钮写暂停", () => {
+    expect(mountDialog({ item: WITH_BGM }).find(".detail-bgm-toggle").text()).toBe("暂停");
+  });
+
+  /** 起播被拒时状态回落，按钮要跟着变成播放 —— 否则用户没有入口让这首曲子响起来 */
+  it("暂停之后按钮写播放", async () => {
+    const wrapper = mountDialog({ item: WITH_BGM });
+
+    bgmSpies.playing.value = false;
+    await nextTick();
+
+    expect(wrapper.find(".detail-bgm-toggle").text()).toBe("播放");
   });
 });
