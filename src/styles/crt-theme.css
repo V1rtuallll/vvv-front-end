@@ -137,6 +137,8 @@
   border: 3px solid #00ffff;
   border-radius: 12px;
   cursor: pointer;
+  /* 这个类也用在 router-link 上，不写就会露出 <a> 的默认下划线 */
+  text-decoration: none;
   box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
   transition: all 0.3s;
 }
@@ -167,6 +169,8 @@
   border: 2px solid #00ffff;
   border-radius: 8px;
   cursor: pointer;
+  /* 同上：这个类也用在 router-link 上 */
+  text-decoration: none;
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
   transition: all 0.3s;
 }
