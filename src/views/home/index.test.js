@@ -10,6 +10,8 @@ vi.mock("@/modules/home/composables/useHomeContent", async () => {
     title: "主展示标题",
     description: "主展示描述",
     uploaderUsername: "uploader",
+    random: true,
+    inGallery: true,
   });
   const galleryItems = ref([
     {
@@ -97,15 +99,25 @@ describe("Home 页面信息栏", () => {
     expect(touchWrapper.find(".masonry-item .gallery-info-bottom").exists()).toBe(true);
   });
 
-  it("支持 hover 的设备上主展示信息栏仍是悬浮才显示", async () => {
+  it("只有资源确实在画廊里时才给「详情」入口", () => {
+    stubHover(true);
+    const withDetail = mount(HomePage);
+    expect(withDetail.find(".detail-btn").exists()).toBe(true);
+
+    // 类型表里有些素材从没进过画廊，对它们而言链接是死的，不该出现
+    useHomeContent().mainItem.value = { ...useHomeContent().mainItem.value, inGallery: false };
+    const without = mount(HomePage);
+    expect(without.find(".detail-btn").exists()).toBe(false);
+  });
+
+  it("支持 hover 的设备上主展示信息栏也常显，「换一个」与上传信息同属左栏", () => {
     stubHover(true);
 
     const wrapper = mount(HomePage);
 
-    expect(wrapper.find(".showcase-info-bottom").exists()).toBe(false);
-
-    await wrapper.find(".main-showcase").trigger("mouseenter");
     expect(wrapper.find(".showcase-info-bottom").exists()).toBe(true);
+    // 按钮和头像、用户名同在 .uploader-left 里，不另起一行
+    expect(wrapper.find(".uploader-left .change-btn").exists()).toBe(true);
   });
 });
 
@@ -132,21 +144,25 @@ describe("Home 主展示媒体", () => {
   });
 
   /**
-   * 主展示视频默认暂停。
+   * 主展示视频自动播放（**不静音**，按用户要求）。
    *
-   * 未静音的 autoplay 在用户交互前会被浏览器拦下，看上去没事；但用户一旦在站内
-   * 点过任何东西，之后每次挂载（进出首页、换随机项、开新标签页）它都会真的自动
-   * 满音量起播 —— 而侧栏的背景音乐是独立的一路、不会让位，
-   * 同一段随机视频就会一层层叠着响。默认暂停后，要听必须自己点播放按钮。
+   * 代价已知：用户交互前浏览器会拦下这次 autoplay；交互后它会满音量起播，
+   * 而侧栏播放器不会让位，两路会同时响。取消 muted 是用户的选择，不是疏漏。
    */
-  it("主展示视频不自动播放，但保留原生控件", () => {
+  it("主展示视频自动播放且不静音，并保留原生控件", () => {
     stubHover(true);
 
     const wrapper = mount(HomePage);
     const video = wrapper.find("video.showcase-media");
 
     expect(video.exists()).toBe(true);
-    expect(video.attributes("autoplay")).toBeUndefined();
-    expect(video.attributes("controls")).toBeDefined();
+    // autoplay / muted 在 jsdom 里的落点不稳定 —— 可能被写进 property，
+    // 也可能留在属性上（muted 不是标准的反射属性）。两个都认，
+    // 断言的是「确实会静音自动起播」这个行为，而不是它落在哪一层
+    const el = video.element;
+    expect(el.autoplay === true || el.hasAttribute("autoplay")).toBe(true);
+    // 显式断言「没有被静音」—— 去掉 muted 是刻意的，别被顺手加回来
+    expect(el.muted === true || el.hasAttribute("muted")).toBe(false);
+    expect(el.hasAttribute("controls") || el.controls === true).toBe(true);
   });
 });

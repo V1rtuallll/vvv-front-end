@@ -278,7 +278,8 @@ describe("Gallery 列表里的音乐项", () => {
 
     // 一页 6 个 <audio controls> 会一起加载解码，播放与暂停放到详情弹窗里
     expect(wrapper.find(".gallery-card audio").exists()).toBe(false);
-    expect(wrapper.find(".media-audio-placeholder").text()).toBe("♪");
+    // 占位不再用 ♪ 这类 emoji，改成统一的 UI 图标
+    expect(wrapper.find(".media-audio-placeholder .ui-icon-music").exists()).toBe(true);
   });
 
   it("音乐项仍然点得进详情，详情里才有能播放、能暂停的播放器", async () => {

@@ -1,6 +1,17 @@
 import { nextTick, onMounted, ref } from "vue";
 
-const playlist = [
+// eslint-disable-next-line import/no-unresolved -- 由 vite.config.js 的 musicManifest 插件提供
+import manifest from "virtual:music-manifest";
+
+/**
+ * 曲库清单的兜底名单。
+ *
+ * 正常情况下读的是 `public/music/manifest.json` —— 它由 vite.config.js 里的
+ * musicManifest 插件在启动/构建时扫描目录生成，往 public/music/ 丢新歌即可生效，
+ * 不用改代码。这份数组只在清单取不到时兜底：直接开 dist/index.html、
+ * 清单被误删、请求失败，都还能放出声，不至于整个播放器哑掉。
+ */
+const FALLBACK_PLAYLIST = [
   "3tries - In My Restless Dreams.mp3",
   "aak3 - dissociated.mp3",
   "aak3 _ Softboy7 - false promises (feat_ Softboy7).mp3",
@@ -18,6 +29,12 @@ const playlist = [
   "Sewerslvt - Mr_ Kill Myself.mp3",
   "Sewerslvt - Swinging in His Cell (Explicit).mp3",
 ];
+
+// 曲库清单由 vite.config.js 的 musicManifest 插件在构建期生成，
+// 往 public/music/ 丢新歌即可生效，不用改代码
+const playlist = typeof manifest === "object" && Array.isArray(manifest) && manifest.length > 0
+  ? manifest
+  : FALLBACK_PLAYLIST;
 
 // =============================================================================
 // 为详情弹窗的背景音乐让位
@@ -111,7 +128,8 @@ export function useAudioPlayer() {
     registerPlayerAudio(audio);
     audio.volume = 0.3;
     const formatTrackName = (filename) => {
-      const name = filename.replace(".mp3", "");
+      // 曲库现在 mp3 与 flac 混着，必须按扩展名整段去，不能只 replace(".mp3")
+      const name = filename.replace(/\.[^.]+$/, "");
       const dashIndex = name.lastIndexOf(" - ");
       return dashIndex !== -1 ? name.substring(dashIndex + 3).trim() : name.replace(/_/g, " ").trim();
     };

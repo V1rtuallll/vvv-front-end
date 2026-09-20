@@ -29,25 +29,40 @@
 
     <main class="gallery-grid">
       <article v-for="item in galleryList" :key="item.id" class="gallery-card" @click="openDetailModal(item)">
+        <!-- 顶部条：左标题、右编号。与首页拼图卡同一套版式。
+             编号用后端下发的真实主键，不用列表序号 -->
+        <div class="card-head">
+          <span class="card-head-title">{{ item.title || "未命名" }}</span>
+          <span class="card-head-id">ID #{{ String(item.id).padStart(3, "0") }}</span>
+        </div>
+
         <div class="media-preview-wrapper">
           <img v-if="item.type === 'photo' || item.type === 'gif'" :src="item.src" class="media-preview" />
           <video v-else-if="item.type === 'video'" :src="item.src" loop muted class="media-preview"></video>
           <!-- 音乐项只是进入详情的入口，不在列表里播：一页 6 个 <audio controls>
                会一起加载解码，而真正的播放与暂停在详情弹窗里 -->
-          <div v-else-if="item.type === 'music'" class="media-audio-placeholder">♪</div>
-          <div class="type-badge" :class="item.type">{{ item.type.toUpperCase() }}</div>
+          <div v-else-if="item.type === 'music'" class="media-audio-placeholder"><span class="ui-icon ui-icon-music"></span></div>
         </div>
 
         <div class="card-body">
-          <h3 class="card-title">{{ item.title }}</h3>
-          <p class="card-desc">{{ item.description || "无描述" }}</p>
-          <div class="card-meta" @click.stop="openUserProfile(item.userId || item.uploaderId, item.uploaderUsername)">
-            <img :src="item.uploaderAvatar || item.uploader_avatar || '/default-avatar.gif'" alt="上传者头像" class="card-avatar" />
-            <div class="meta-text"><span class="uploader">@{{ item.uploaderUsername || "神秘人" }}</span><span class="time">{{ formatShortDate(item.createdAt) }}</span></div>
+          <!-- 与首页卡片同构：左上传信息、右标题+描述。标题在顶部条已出现一次，
+               这里再放大出现一次 —— 只放顶部那条小字，标题基本读不出来 -->
+          <div class="card-info">
+            <div class="card-meta" @click.stop="openUserProfile(item.userId || item.uploaderId, item.uploaderUsername)">
+              <img :src="item.uploaderAvatar || item.uploader_avatar || '/default-avatar.gif'" alt="上传者头像" class="card-avatar" />
+              <div class="meta-text"><span class="uploader">@{{ item.uploaderUsername || "神秘人" }}</span><span class="time">{{ formatShortDate(item.createdAt) }}</span></div>
+            </div>
+            <div class="card-text">
+              <h3 class="card-title">{{ item.title || "未命名" }}</h3>
+              <p class="card-desc">{{ item.description || "无描述" }}</p>
+            </div>
           </div>
-          <div class="interactions"><span class="like-count">❤️ {{ item.likes }}</span><span class="comment-count">💬 {{ item.commentCount || 0 }}</span></div>
+          <div class="interactions"><span class="like-count"><span class="ui-icon ui-icon-heart"></span> {{ item.likes }}</span><span class="comment-count"><span class="ui-icon ui-icon-comment"></span> {{ item.commentCount || 0 }}</span></div>
           <!-- 编辑与删除只在详情弹窗里提供，列表页不再放置入口 -->
         </div>
+
+        <!-- 底部类型条 -->
+        <div class="card-foot">{{ item.type.toUpperCase() }}</div>
       </article>
 
       <div v-if="galleryList.length === 0" class="empty-state">
@@ -195,15 +210,23 @@ const route = useRoute();
 const router = useRouter();
 
 /**
- * 侧栏点进来的深链：/gallery?id=N 时自动弹出那一条的详情。
+ * 深链：/gallery?id=N 或 /gallery?src=... 时自动弹出对应项的详情。
  *
- * 不需要「按 id 查单条」的接口：侧栏取的是最新 3 条，而列表第一页最少也有 4 条
- * （页大小最小是 4），所以目标必定已经在 galleryList 里。
+ * 两种定位方式的原因：侧栏的列表条目有主键，用 id；而首页主展示走的是
+ * /home/random，那个接口不下发 id（只回 src/标题/描述/上传者），只能用 src 定位。
+ *
+ * 不需要「按 id 查单条」的接口：目标必须已经在当前页的 galleryList 里。
+ * 找不到就静默不开 —— 主展示的资源可能不落在第一页，这不是错误。
  */
 const openDetailFromQuery = () => {
-  const wanted = route.query.id;
-  if (wanted == null || wanted === "") return;
-  const item = galleryList.value.find((row) => String(row.id) === String(wanted));
+  const wantedId = route.query.id;
+  const wantedSrc = route.query.src;
+  const hasId = wantedId != null && wantedId !== "";
+  if (!hasId && !wantedSrc) return;
+
+  const item = hasId
+    ? galleryList.value.find((row) => String(row.id) === String(wantedId))
+    : galleryList.value.find((row) => row.src === wantedSrc);
   if (item) openDetailModal(item);
 };
 
@@ -211,7 +234,7 @@ const openDetailFromQuery = () => {
 watch(galleryList, openDetailFromQuery, { immediate: true });
 
 // 已经在 /gallery 时再点侧栏另一条：路由没变、组件不重挂载，只有 query 变
-watch(() => route.query.id, openDetailFromQuery);
+watch(() => [route.query.id, route.query.src], openDetailFromQuery);
 
 /**
  * 关掉详情要把 id 从地址里撤掉。不撤的话再点侧栏同一条，query 没变，
@@ -219,9 +242,10 @@ watch(() => route.query.id, openDetailFromQuery);
  */
 const closeDetailAndClearQuery = () => {
   closeDetail();
-  if (route.query.id == null) return;
+  if (route.query.id == null && route.query.src == null) return;
   const rest = { ...route.query };
   delete rest.id;
+  delete rest.src;
   router.replace({ path: route.path, query: rest });
 };
 </script>

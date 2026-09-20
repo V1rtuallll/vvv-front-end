@@ -69,7 +69,12 @@ describe("useHomeContent", () => {
   it("随机配置下首次加载走 /home/random，不再请求详情接口", async () => {
     const api = await mountHome();
 
-    expect(getRandomMain).toHaveBeenCalledWith({ type: "photo" });
+    // 首次加载也要带上 exclude：下方 Random Gallery 那一栏 + 配置里这条自己，
+    // 不排的话同一条会在上下两处同时出现
+    expect(getRandomMain).toHaveBeenCalledWith({
+      type: "photo",
+      exclude: "https://example.test/configured.png",
+    });
     expect(getFullMediaItem).not.toHaveBeenCalled();
     expect(api.mainItem.value.src).toBe(RANDOM_SRC);
     expect(api.mainItem.value.title).toBe("随机标题");

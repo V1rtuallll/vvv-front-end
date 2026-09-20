@@ -20,21 +20,82 @@
   box-sizing: border-box;
 }
 
-/* 1. 大展示 */
-/* 大展示容器 - 动态底部 padding 模拟“推开” */
+/* 1. 大展示。卡面与拼图卡同一套：点阵底板 + 近白卡片 + 灰蓝描边，
+   只是底板宽度收到和大展示一致、只陈列一条 */
+.memory-plate {
+  max-width: 1200px;
+  margin: 0 auto 60px;
+  padding: 22px;
+  background-color: #e9f2f9;
+  background-image: radial-gradient(circle, #b6d3e6 1px, transparent 1.4px);
+  background-size: 4px 4px;
+  border: 1px solid #b9c4cc;
+}
+
 .main-showcase {
   position: relative;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto 60px;
-  border-radius: 30px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 0 50px rgba(79, 195, 247, 0.4);
-  transition: padding-bottom 0.6s ease;
+  background: #f8f8f8;
+  border: 1px solid #b9c4cc;
+}
+
+/* 顶部条：左标题、右状态徽章（主展示没有主键，这里放真实的随机状态位） */
+.memory-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #b9c4cc;
+}
+
+.memory-head-title {
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5a5a78;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-head-badge {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 3px;
+  background: #8b8bb0;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+}
+
+/* 底部标签条 */
+.memory-foot {
+  flex: none;
+  padding: 8px 12px;
+  background: #b9c6d4;
+  border-top: 1px solid #9aa9b8;
+  text-align: center;
+  font-family: "Michroma", "Eurostile", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(60, 80, 100, 0.55);
 }
 
 .showcase-media-wrapper {
   position: relative;
+  /* 高度回归自然：固定画框（aspect-ratio）虽然能根治跳动，但竖图两侧会留大片空白，
+     观感太差，已撤掉。现在换成「换素材时把高度平滑推过去」——
+     跳动的根因（height: auto 之间瞬时切换）由 index.vue 里的 onMediaReady 处理，
+     这里只负责给它一个可过渡的声明 */
+  transition: height 0.3s ease;
 }
 
 .showcase-media {
@@ -44,35 +105,57 @@
   object-fit: cover;
   display: block;
 }
-/* 弹出时给容器加底部 padding */
-.main-showcase.show-info {
-  padding-bottom: 150px; /* 栏高 80px + 20px 缓冲 */
-}
-/* 底部弹出栏：矮 + 左右布局 */
-.showcase-info-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 95px; /* 矮小设计 */
-  background: rgba(1, 87, 155, 0.85);
-  backdrop-filter: blur(10px);
-  padding: 10px 30px;
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+
+/* 动作区：换一个 / 播停 / 详情，排在头像右边同一行 */
+.memory-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
+  flex: none;
 }
 
-/* 从下方滑入动画 */
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.5s ease;
+/* 图标按钮：方形，与「换一个」同高 */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  font-size: 1rem;
+  color: #0277bd;
+  background: #ffffff;
+  border: 1px solid #0277bd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.slide-down-enter-from,
-.slide-down-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
+.icon-btn:hover {
+  color: #ffffff;
+  background: #0277bd;
+}
+
+/* 详情用文字按钮，和「换一个」同尺寸；配色退一档，避免和主操作抢视线 */
+.detail-btn {
+  background: #ffffff;
+  color: #0277bd;
+  border-color: #0277bd;
+}
+
+.detail-btn:hover {
+  background: #e9f2f9;
+  color: #01579b;
+}
+
+/* 信息栏：排在媒体下方常显的一条，内部是「左上传信息 + 右标题描述」的左右分栏。
+   卡面是浅色的，文字改走深色，粉色只留头像描边和用户名两处重点 */
+.showcase-info-bottom {
+  background: #e9f2f9;
+  border-top: 1px solid #b9c4cc;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
 }
 
 /* 容器：左右分栏 */
@@ -94,10 +177,9 @@
 }
 
 .uploader-avatar {
-  width: 100px;
-  height: 100px;
-  border: 3px solid #ff69b4;
-  box-shadow: 0 0 15px #ff1493;
+  width: 72px;
+  height: 72px;
+  border: 2px solid #ff69b4;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -108,16 +190,14 @@
 }
 
 .uploader-name {
-  color: #ff69b4;
+  color: #c2185b;
   font-weight: bold;
   font-size: 1.2rem;
-  text-shadow: 0 0 14px rgba(79, 195, 247, 0.4); /* 双层粉色光晕 */
 }
 
 .upload-time {
-  color: #bbbbff;
+  color: #7b8fa1;
   font-size: 0.9rem;
-  text-shadow: 0 0 6px rgba(79, 195, 247, 0.3);
 }
 /* 右半边：标题 + 描述 */
 .content-right {
@@ -127,8 +207,8 @@
 
 .showcase-title {
   font-size: 1.6rem;
+  color: #2f3b47;
   margin: 0 0 8px 0;
-  text-shadow: 0 0 14px rgba(79, 195, 247, 0.4); /* 三层渐变光晕 */
   line-height: 1.4;
   max-height: 4.8rem; /* 限制3行高度，超长淡出 */
   overflow: hidden;
@@ -143,7 +223,6 @@
 .showcase-desc {
   font-size: 1.05rem;
   margin: 0;
-  text-shadow: 0 0 14px rgba(79, 195, 247, 0.4);
   line-height: 1.5;
   max-height: 6rem; /* 限制4行 */
   overflow: hidden;
@@ -151,47 +230,56 @@
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   text-overflow: ellipsis;
-  color: #ddffff;
+  color: #54636f;
   word-break: break-word;
 }
+/* 换一个按钮：浅底上不能再用霓虹光晕，改成实心粉 */
 .change-btn {
-  margin-top: 12px;
+  flex: none;
   padding: 8px 18px;
-  background: rgba(255, 105, 180, 0.3);
-  border: 1px solid #ff69b4;
-  color: #ff69b4;
-  border-radius: 25px;
+  background: #ff69b4;
+  border: 1px solid #e0409a;
+  color: #ffffff;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.4s;
-  box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
-  text-shadow: 0 0 10px #ff1493;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease;
 }
 
 .change-btn:hover {
-  background: rgba(255, 105, 180, 0.6);
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 0 25px rgba(255, 105, 180, 0.8);
+  background: #e0409a;
 }
+/* 点阵底板：卡片陈列在整块浅色网版上，网点是这一块的辨识特征。
+   调疏密改 background-size，调点的粗细改 radial-gradient 的 1px / 1.4px，
+   调底色和网点色改下面两个色值 */
+.gallery-plate {
+  max-width: 1400px;
+  margin: 0 auto 100px;
+  padding: 22px;
+  background-color: #e9f2f9;
+  background-image: radial-gradient(circle, #b6d3e6 1px, transparent 1.4px);
+  background-size: 4px 4px;
+  border: 1px solid #b9c4cc;
+}
+
 /* 随机拼图区：多张卡并排。上面的大展示（Random Memory）才是只显示一个的那个 */
 .gallery-masonry {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto 100px;
 }
 
 /* 卡片：顶部条（标题 + 编号）+ 媒体 + 常显信息栏 + 底部标签条。
-   版式取自 00 年代设计门户的商品卡（原站是表格布局，按视觉复刻，不搬素材） */
+   版式与配色取自 00 年代设计门户的商品卡：近白卡面 + 灰蓝细描边 + 藕荷色编号徽章。
+   原站是表格布局、卡片本体是位图，这里按视觉复刻，不搬素材 */
 .masonry-item {
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   aspect-ratio: 4 / 5;
-  background: #0277bd;
-  border: 1px solid rgba(179, 229, 252, 0.28);
+  background: #f8f8f8;
+  border: 1px solid #b9c4cc;
 }
 
 /* 顶部条 */
@@ -202,8 +290,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 6px 10px;
-  background: #01579b;
-  border-bottom: 1px solid rgba(179, 229, 252, 0.25);
+  background: #f8f8f8;
+  border-bottom: 1px solid #b9c4cc;
 }
 
 .masonry-head-title {
@@ -211,35 +299,36 @@
   font-size: 0.66rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #e1f5fe;
+  color: #5a5a78;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 右侧编号胶囊 */
+/* 右侧编号徽章。原站是小圆角矩形，不是胶囊 */
 .masonry-head-id {
   flex: none;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(3, 169, 244, 0.35);
+  border-radius: 3px;
+  background: #8b8bb0;
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.58rem;
   letter-spacing: 0.1em;
-  color: #e1f5fe;
+  color: #ffffff;
 }
 
-/* 底部标签条 */
+/* 底部标签条。原站是灰蓝底 + 白字压深描边 */
 .masonry-foot {
   flex: none;
   padding: 6px 10px;
-  background: #0288d1;
-  border-top: 1px solid rgba(179, 229, 252, 0.25);
+  background: #b9c6d4;
+  border-top: 1px solid #9aa9b8;
   text-align: center;
   font-family: "Michroma", "Eurostile", sans-serif;
   font-size: 0.6rem;
   letter-spacing: 0.2em;
-  color: #e1f5fe;
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(60, 80, 100, 0.55);
 }
 
 .masonry-media {
@@ -272,27 +361,33 @@
   text-align: center;
 }
 
-/* 信息栏。以前是悬浮才从底部滑出，现在常显、直接排在媒体下方 */
+/* 信息栏。以前是悬浮才从底部滑出，现在常显、直接排在媒体下方。
+   卡面是浅色的，文字改走深色，粉色只留头像描边和用户名两处重点 */
 .gallery-info-bottom {
   flex: none;
   position: relative;
   padding: 10px 12px;
-  background: rgba(1, 87, 155, 0.85);
+  background: #e9f2f9;
+  border-top: 1px solid #b9c4cc;
   display: flex;
   flex-direction: column;
 }
 
-/* 内部容器：上头像+用户名，下标题+描述 */
+/* 内部容器：头像+用户名 与 标题+描述 并排一行（左信息 / 右正文），
+   和大展示的 .showcase-info-bottom 同一套分栏 */
 .gallery-info-bottom .info-container {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
 }
 
-/* 上半部分：头像 + 用户名 + 时间 */
+/* 左栏：头像 + 用户名 + 时间。按内容自然宽度，不受父级 250px 下限影响 */
 .gallery-info-bottom .uploader-left {
+  flex: none;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -302,7 +397,8 @@
   width: 55px;
   height: 55px;
   border: 2px solid #ff69b4;
-  box-shadow: 0 0 12px #ff1493;
+  /* 浅底上用不着父级那条霓虹光晕 */
+  box-shadow: none;
 }
 
 .gallery-info-bottom .uploader-text {
@@ -311,38 +407,36 @@
 }
 
 .gallery-info-bottom .uploader-name {
-  color: #ff69b4;
+  color: #c2185b;
   font-weight: bold;
   font-size: 1.15rem;
-  text-shadow: 0 0 8px #ff1493;
 }
 
 .gallery-info-bottom .upload-time {
-  color: #cceeff;
+  color: #7b8fa1;
   font-size: 0.85rem;
 }
 
-/* 下半部分：标题 + 描述（居中偏左，不挤右边） */
+/* 右栏：标题 + 描述。吃掉左栏剩下的宽度，右对齐（沿用 .content-right 的既有约定） */
 .gallery-info-bottom .content-right {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-left: 10px; /* 轻微左移，避免太靠右 */
+  padding-left: 10px;
 }
 
 .gallery-info-bottom .showcase-title {
   font-size: 1.35rem;
-  color: #ff69b4;
+  color: #2f3b47;
   margin: 0 0 6px;
-  text-shadow: 0 0 10px #ff00ff;
   line-height: 1.3;
 }
 
 .gallery-info-bottom .showcase-desc {
   font-size: 0.95rem;
-  color: #ddffff;
-  text-shadow: 0 0 6px #4fc3f7;
+  color: #54636f;
   line-height: 1.4;
   max-height: 5em;
   overflow: hidden;
@@ -363,10 +457,10 @@
   opacity: 0;
 }
 
-/* 空状态 */
+/* 空状态。底板是浅色的，这里不能再用霓虹青 */
 .empty-masonry {
   text-align: center;
-  color: #4fc3f7;
+  color: #5a5a78;
   font-size: 1.3rem;
   padding: 100px 0;
   opacity: 0.8;
@@ -377,14 +471,22 @@
    主展示信息栏在窄屏改为常规流式布局，不再依赖绝对定位和底部 padding。
 */
 @media (max-width: 1024px) {
-  .main-showcase {
-    border-radius: 24px;
+  .memory-plate,
+  .gallery-plate {
+    padding: 16px;
+  }
+
+  .memory-plate {
+    margin-bottom: 44px;
+  }
+
+  .gallery-plate {
+    margin-bottom: 70px;
   }
 
   .gallery-masonry {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
-    margin-bottom: 70px;
   }
 }
 
@@ -395,23 +497,16 @@
     letter-spacing: 0.1em;
   }
 
-  .main-showcase {
-    border-radius: 18px;
+  .memory-plate {
+    padding: 12px;
     margin-bottom: 36px;
-  }
-
-  .main-showcase.show-info {
-    padding-bottom: 0;
   }
 
   .showcase-media {
     max-height: 60vh;
   }
 
-  /* 信息栏由绝对定位改为常规流式，跟随媒体下方排列 */
   .showcase-info-bottom {
-    position: static;
-    height: auto;
     padding: 12px 16px;
   }
 
@@ -446,10 +541,14 @@
     max-height: 5rem;
   }
 
+  .gallery-plate {
+    padding: 12px;
+    margin-bottom: 48px;
+  }
+
   .gallery-masonry {
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
-    margin-bottom: 48px;
   }
 
   .gallery-info-bottom {
@@ -483,8 +582,8 @@
     letter-spacing: 0.06em;
   }
 
-  .main-showcase {
-    border-radius: 14px;
+  .memory-plate {
+    padding: 8px;
     margin-bottom: 24px;
   }
 
@@ -512,22 +611,50 @@
     padding: 10px 18px;
   }
 
-  .gallery-masonry {
-    gap: 10px;
+  .gallery-plate {
+    padding: 8px;
     margin-bottom: 32px;
   }
 
+  .gallery-masonry {
+    gap: 10px;
+  }
+
   .gallery-info-bottom .uploader-avatar.small {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
+  }
+
+  /* 面板只有 144px 宽，头像那一行尽量收紧；用户名再长就截断，不许把面板撑出横向滚动 */
+  .gallery-info-bottom .uploader-left {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .gallery-info-bottom .uploader-text {
+    min-width: 0;
   }
 
   .gallery-info-bottom .uploader-name {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .gallery-info-bottom .showcase-title {
     font-size: 0.95rem;
+  }
+
+  /* 两列拼图时面板只有 140 多像素宽，左右分栏会被挤到溢出，改回上下两行 */
+  .gallery-info-bottom .info-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .gallery-info-bottom .content-right {
+    padding-left: 0;
   }
 
   /* 两列拼图时卡片很窄，面板内只保留标题与上传者，避免面板高度超过卡片被裁切 */

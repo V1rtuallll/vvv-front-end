@@ -373,4 +373,36 @@ describe("useGalleryBgm 与侧栏的协调", () => {
     expect(player.pause).toHaveBeenCalledTimes(1); // 第二次让位确实空转，没重复接管
     expect(player.play).toHaveBeenCalledTimes(1); // 仍然恢复侧栏
   });
+  it("pause 保留进度、resume 从原处接着放，不是 stop 那种销毁重来", () => {
+    const el = fakeElement();
+    const bgm = useGalleryBgm(() => el);
+
+    bgm.playSource({ src: "https://cdn/a.mp3", type: "audio" });
+    expect(bgm.paused.value).toBe(false);
+
+    bgm.toggle();
+    expect(bgm.paused.value).toBe(true);
+    expect(el.pause).toHaveBeenCalled();
+    // 关键区别：元素还在，activeBgm 没被清空 —— stop() 会把它清掉
+    expect(bgm.activeBgm.value).not.toBeNull();
+
+    const playCalls = el.play.mock.calls.length;
+    bgm.toggle();
+    expect(bgm.paused.value).toBe(false);
+    expect(el.play.mock.calls.length).toBe(playCalls + 1);
+    expect(bgm.activeBgm.value).not.toBeNull();
+  });
+
+  it("换一条项起播时，暂停态会被重置", () => {
+    const el = fakeElement();
+    const bgm = useGalleryBgm(() => el);
+
+    bgm.playSource({ src: "https://cdn/a.mp3", type: "audio" }, 1);
+    bgm.pause();
+    expect(bgm.paused.value).toBe(true);
+
+    bgm.playSource({ src: "https://cdn/b.mp3", type: "audio" }, 2);
+    expect(bgm.paused.value).toBe(false);
+  });
+
 });

@@ -52,6 +52,8 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   const activeBgm = ref(null);
   /** 当前正在播的项的 id。同一条项重复打开时靠它避免从头再放一遍 */
   const activeId = ref(null);
+  /** 手动暂停中。与 stop() 的区别：元素还在、进度还在，resume 是从原处接着放 */
+  const paused = ref(false);
   let element = null;
 
   const releaseElement = () => {
@@ -83,6 +85,7 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     releaseElement();
     activeBgm.value = null;
     activeId.value = null;
+    paused.value = false;
     // 自己不再发声，就把「当前发声者」这个槽位也让出去
     if (soundingInstance === api) soundingInstance = null;
     // 谁开的窗口谁关 —— 没开过的实例不许解停侧栏
@@ -124,12 +127,36 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     element = el;
     activeBgm.value = source;
     activeId.value = id;
+    paused.value = false;
 
     // 起播失败只意味着没声音，不该影响看图。浏览器的自动播放策略、
     // 地址 404、OSS 挂掉，全都静默降级在这里
     const started = el.play();
     if (started && typeof started.catch === "function") started.catch(() => {});
   };
+
+  /**
+   * 暂停 / 继续。
+   *
+   * 与 `stop()` 的区别很关键：`stop()` 会 `releaseElement()` **销毁**媒体元素，
+   * 再播只能从头开始；这里只是 `element.pause()`，进度保留，resume 从原处接着放。
+   * 详情弹窗左下角那个开关要的是后者。
+   */
+  const pause = () => {
+    if (!element || paused.value) return;
+    element.pause();
+    paused.value = true;
+  };
+
+  const resume = () => {
+    if (!element || !paused.value) return;
+    paused.value = false;
+    // 和 playSource 一样：起播失败只意味着没声音，静默降级
+    const started = element.play();
+    if (started && typeof started.catch === "function") started.catch(() => {});
+  };
+
+  const toggle = () => (paused.value ? resume() : pause());
 
   const play = (item) => {
     const source = resolveBgm(item);
@@ -140,6 +167,6 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   // 对外对象同时也是「当前发声者」槽位里的把手：stop() 靠它判断自己是不是
   // 正占着那个槽位。`stop` / `playSource` 在源码顺序上先于它，但它们都在本函数
   // 返回之后才被调用，那时 api 已经就位
-  const api = { activeBgm, activeId, play, playSource, stop };
+  const api = { activeBgm, activeId, paused, play, playSource, stop, pause, resume, toggle };
   return api;
 }

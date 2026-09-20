@@ -1,9 +1,45 @@
+import fs from 'node:fs'
+
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import path from 'path'
+
+/**
+ * 把 public/music/ 的曲库变成一个虚拟模块 `virtual:music-manifest`。
+ *
+ * 曲库原先是一份写死在 useAudioPlayer.js 里的数组 —— 往 public/music/ 丢新歌
+ * 不生效，必须回来改代码。这里改成构建期扫目录，加歌只要放文件。
+ *
+ * ⚠️ 不要让插件往 public/ 里写 manifest.json 再让前端 fetch：
+ * Vite 的 public 静态中间件在**服务启动时就快照了目录列表**，插件在启动之后
+ * 写的文件它看不见，请求会落到 SPA 回退、返回 index.html，前端 res.json()
+ * 直接抛错。虚拟模块走的是模块图，没有这个时序问题，也不用把清单塞进仓库。
+ *
+ * @returns {import('vite').Plugin}
+ */
+function musicManifest() {
+  const virtualId = 'virtual:music-manifest'
+  const resolvedId = `\0${virtualId}`
+  const dir = path.resolve(__dirname, 'public/music')
+  const exts = ['.mp3', '.flac', '.m4a', '.ogg', '.wav']
+
+  const scan = () =>
+    fs.existsSync(dir)
+      ? fs
+          .readdirSync(dir)
+          .filter((name) => exts.includes(path.extname(name).toLowerCase()))
+          .sort()
+      : []
+
+  return {
+    name: 'music-manifest',
+    resolveId: (id) => (id === virtualId ? resolvedId : null),
+    load: (id) => (id === resolvedId ? `export default ${JSON.stringify(scan())}` : null),
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,6 +50,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       vueDevTools(),
+      musicManifest(),
     ],
     server: {
       port: Number(env.VITE_DEV_SERVER_PORT || 3001),

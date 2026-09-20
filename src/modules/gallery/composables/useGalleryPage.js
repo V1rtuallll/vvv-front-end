@@ -30,7 +30,7 @@ const isSameId = (left, right) => left != null && right != null && String(left) 
 export function useGalleryPage() {
   const authStore = useAuthStore();
   const page = ref(1);
-  const limit = ref(6);
+  const limit = ref(4);
   const total = ref(0);
   const totalPages = computed(() => Math.ceil(total.value / limit.value));
   const galleryList = ref([]);
