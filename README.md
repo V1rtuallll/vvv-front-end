@@ -93,6 +93,6 @@ pnpm build
 
 `.env.development` 和 `.env.production` 已提交，均不包含密钥。
 
-每个分支代表一套完整网站版本。push 和 PR 只执行 CI 构建；部署由 GitHub Actions 手动选择分支执行。前后端接口联动时，两个仓库应使用同名分支，并分别通过 CI 后再发布。
+每个分支代表一套完整网站版本。push 和 PR 只执行 CI 构建；部署由 GitHub Actions 手动选择分支执行。分支名按大版本对应：后端用大版本名（如 `V1rtualSS`），前端样式分支为 `大版本名_样式名`（如 `V1rtualSS_sky`）。前后端接口联动时，前端样式分支对应后端大版本分支，两边分别通过 CI 后再发布。
 
 发布细节见 [CICD规范.md](CICD规范.md) 和 [skills/v1rtual-frontend-cicd](skills/v1rtual-frontend-cicd/SKILL.md)。

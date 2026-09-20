@@ -12,14 +12,14 @@ Deploy this repository's Vue/Vite application as an immutable `dist` release ser
 - Every branch push and pull request runs `.github/workflows/ci.yml`; CI builds `dist` but never changes the server.
 - `.github/workflows/deploy.yml` is manual only. When asked to deploy, use the currently checked-out branch: `branch="$(git branch --show-current)"`; push it first, then run `gh workflow run deploy.yml --ref "$branch"`.
 - Do not deploy an uncommitted working tree. GitHub Actions checks out the pushed commit selected by `--ref`.
-- The backend is a separate repository and has its own deployment workflow. Deploy it separately when both halves of a site branch must change.
+- The backend is a separate repository and has its own deployment workflow. It carries the bare major name (`V1rtualSS`) that this repository's style branches (`V1rtualSS_sky`) belong to. Deploy both separately when the site and its API must change together.
 - Upload `dist` to `/tmp`, verify it, copy it into a revisioned release directory, then atomically update `current`. Retain the three newest releases. Never delete `current` before a verified replacement exists.
 
 ## Branch Rules
 
-A branch represents one complete site version. A new branch is deployable only after it contains `.github/workflows/deploy.yml`; branch from `main` or a current site branch so it inherits the workflow. A push to any branch runs CI automatically. Selecting a branch from the Actions "Run workflow" menu deploys only that branch's frontend and does not deploy the backend.
+A branch represents one complete site version. Branch names carry the backend version: `<major>` is the backend branch, and a frontend variant appends a style suffix, so `V1rtualSS_sky` is a frontend style on backend `V1rtualSS`; a bare major name is that version's default style. A new branch is deployable only after it contains `.github/workflows/deploy.yml`; branch from `main` or a current site branch so it inherits the workflow. A push to any branch runs CI automatically. Selecting a branch from the Actions "Run workflow" menu deploys only that branch's frontend and does not deploy the backend.
 
-Before a release, confirm the same branch exists and is pushed in the backend repository when its matching API is also required. For an explicit deployment request only, wait for CI to pass, dispatch the workflow, watch its run, and verify `https://v1rtual.top/`.
+Before a release, confirm the corresponding backend branch (`V1rtualSS` for `V1rtualSS_sky`) exists and is pushed when its matching API is also required. For an explicit deployment request only, wait for CI to pass, dispatch the workflow, watch its run, and verify `https://v1rtual.top/`.
 
 ## Server Contract
 
