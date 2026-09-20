@@ -519,16 +519,25 @@
   line-height: 1.5;
 }
 
-/* 贴纸网格 */
-.friends-grid {
+/* 最新三条画廊。沿用原贴纸网格的位置与观感，内容换成真实上传的图 */
+.gallery-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-top: 15px;
 }
 
-.friends-grid img {
+.gallery-grid a {
+  display: block;
+  text-decoration: none;
+}
+
+.gallery-grid img {
+  display: block;
   width: 100%;
+  /* 固定成方格，三条高度才齐；object-fit 保证竖图横图都不变形 */
+  aspect-ratio: 1;
+  object-fit: cover;
   border-radius: 10px;
   border: 2px solid #ff69b4;
   box-shadow: 0 0 15px rgba(255, 105, 180, 0.6);
@@ -536,10 +545,24 @@
   animation: neon-flicker 5s infinite ease-in-out;
 }
 
-.friends-grid img:hover {
+.gallery-grid img:hover {
   transform: scale(1.15) rotate(5deg);
   box-shadow: 0 0 25px rgba(255, 0, 255, 0.9);
   z-index: 10;
+}
+
+/* 视频与音乐没有可当缩略图的图，用类型名占住同一个格子 */
+.gallery-grid .gallery-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  color: #ff69b4;
+  font-family: "Orbitron", "Rajdhani", monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border: 2px dashed rgba(255, 105, 180, 0.6);
+  border-radius: 10px;
 }
 
 /* ==== 新增动画钥匙 ==== */

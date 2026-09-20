@@ -100,14 +100,14 @@
             <span class="top-summary">{{ blog.summary }}</span>
           </li>
         </ul>
-        <h3>Imgs</h3>
-        <div class="friends-grid">
-          <img src="/stickers/skull1.gif" alt="sticker" />
-          <img src="/stickers/heart2.gif" alt="sticker" />
-          <img src="/stickers/green_stars.gif" alt="sticker" />
+        <h3>Gallery</h3>
+        <div class="gallery-grid">
+          <router-link v-for="item in latestGallery" :key="item.id" to="/gallery">
+            <img v-if="isImage(item)" :src="item.src" :alt="item.title || '画廊'" />
+            <!-- 视频与音乐没有能当缩略图的图，用类型占住同一个格子 -->
+            <span v-else class="gallery-type">{{ item.type }}</span>
+          </router-link>
         </div>
-        <br />
-        <span>我称此为，原初之地版本。</span>
       </aside>
     </div>
 
@@ -142,6 +142,7 @@ import { useRoute } from "vue-router";
 
 import { useDrawer } from "@/components/layout/useDrawer";
 import { useLatestBlogs } from "@/modules/blog/composables/useLatestBlogs";
+import { useLatestGallery } from "@/modules/gallery/composables/useLatestGallery";
 import { useAudioPlayer } from "@/modules/player/composables/useAudioPlayer";
 import { getUserCount } from "@/modules/user/api/userApi";
 
@@ -149,6 +150,10 @@ const userCountEl = ref(null);
 const route = useRoute();
 const { openDrawer, closeDrawer, toggleDrawer } = useDrawer();
 const { blogs: latestBlogs } = useLatestBlogs();
+const { items: latestGallery } = useLatestGallery();
+
+// 画廊列表混合了图片、视频与音乐，只有前两种能直接当缩略图用
+const isImage = (item) => item.type === "photo" || item.type === "gif";
 const { audioEl, playPauseBtn, prevBtn, nextBtn, progressBar, volumeSlider, trackName, volumeDisplay } = useAudioPlayer();
 
 // 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上。

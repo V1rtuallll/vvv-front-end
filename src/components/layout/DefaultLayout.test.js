@@ -10,11 +10,16 @@ vi.mock("@/modules/blog/api/blogApi", () => ({
   getLatestBlogs: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
+vi.mock("@/modules/gallery/api/galleryApi", () => ({
+  getGalleryPage: vi.fn().mockResolvedValue({ data: { list: [], total: 0 } }),
+}));
+
 // 刻意不 mock useAudioPlayer。原文件把它整体换成了空 ref，那恰好会掩盖
 // 「给侧栏加 v-if 导致播放器全端失效」这个回归 —— 空 ref 让播放器的
 // onMounted 逻辑永远不会真正执行。已实测：真实 composable 在 jsdom 里
 // 挂载正常，不会抛异常，因此这里直接用真的，守卫用例才有意义。
 import { getLatestBlogs } from "@/modules/blog/api/blogApi";
+import { getGalleryPage } from "@/modules/gallery/api/galleryApi";
 import DefaultLayout from "@/components/layout/DefaultLayout.vue";
 
 const stubs = {
@@ -173,10 +178,55 @@ describe("右侧榜单", () => {
   it("右栏区块有标题 Blogs，且没有硬编码的假数据", async () => {
     const wrapper = await mountLayout();
     await flush();
-
     expect(wrapper.findAll(".right h3").map((h) => h.text())).toContain("Blogs");
     expect(wrapper.find(".right .top-list").text()).not.toContain("DarkAngel");
     expect(wrapper.find(".right .top-list").text()).not.toContain("BloodRose");
+  });
+});
+
+describe("右栏最新画廊", () => {
+  beforeEach(() => {
+    getGalleryPage.mockResolvedValue({
+      data: {
+        list: [
+          { id: 3, type: "photo", title: "第三张", src: "https://cdn/3.png" },
+          { id: 2, type: "gif", title: "第二张", src: "https://cdn/2.gif" },
+          { id: 1, type: "video", title: "第一支", src: "https://cdn/1.mp4" },
+        ],
+        total: 3,
+      },
+    });
+  });
+
+  it("按最新 3 条取画廊列表的第一页", async () => {
+    await mountLayout();
+    await flush();
+
+    expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 3 });
+  });
+
+  it("三条都指向画廊页；图片当缩略图，视频音乐用类型占位", async () => {
+    const wrapper = await mountLayout();
+    await flush();
+
+    const cells = wrapper.findAll(".right .gallery-grid a");
+    expect(cells).toHaveLength(3);
+    expect(cells.map((cell) => cell.attributes("href"))).toEqual(["/gallery", "/gallery", "/gallery"]);
+    expect(cells[0].find("img").attributes("src")).toBe("https://cdn/3.png");
+    expect(cells[0].find("img").attributes("alt")).toBe("第三张");
+    // 视频的 src 直接塞进 img 会得到一个破图，所以这一格必须是文本
+    expect(cells[2].find("img").exists()).toBe(false);
+    expect(cells[2].find(".gallery-type").text()).toBe("video");
+  });
+
+  it("Imgs 贴纸与那行小字已经撤掉", async () => {
+    const wrapper = await mountLayout();
+    await flush();
+
+    const right = wrapper.find(".right");
+    expect(right.find(".friends-grid").exists()).toBe(false);
+    expect(right.text()).not.toContain("我称此为");
+    expect(wrapper.findAll(".right h3").map((h) => h.text())).not.toContain("Imgs");
   });
 });
 
