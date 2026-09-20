@@ -55,6 +55,29 @@ describe("GalleryUploadDialog 的背景音乐", () => {
     expect(wrapper.emitted("publish")[0][0].bgm).toBe(null);
   });
 
+  /**
+   * 后端规则 3：music / video 项配 BGM 会被整条请求 400 拒掉。
+   * 上传路径上这个代价比别处大 —— 文件根本没传上去，用户得自己找原因再试。
+   */
+  it("选了视频文件时不显示选曲面板", async () => {
+    const wrapper = mountDialog();
+    await pickFile(wrapper, new File(["x"], "b.mp4", { type: "video/mp4" }));
+
+    expect(wrapper.find(".bgm-stub").exists()).toBe(false);
+  });
+
+  /** 换了文件就是新的一份表单：留下的曲子没有面板显示，也没有入口取消 */
+  it("换成视频文件后不会带出上一次选的曲子", async () => {
+    const wrapper = mountDialog();
+    await pickFile(wrapper, PNG());
+    await wrapper.find(".bgm-stub").trigger("click");
+
+    await pickFile(wrapper, new File(["x"], "b.mp4", { type: "video/mp4" }));
+    await wrapper.find(".crt-btn").trigger("click");
+
+    expect(wrapper.emitted("publish")[0][0].bgm).toBe(null);
+  });
+
   /** 重新打开时带着上一次的曲子，用户会以为它默认就是配好的 */
   it("重新打开是一个干净的表单，不带上一次的曲子", async () => {
     const wrapper = mountDialog();

@@ -5,6 +5,7 @@ import GalleryEditDialog from "@/views/gallery/components/GalleryEditDialog.vue"
 
 const ITEM = {
   id: 1,
+  type: "photo",
   title: "旧标题",
   description: "旧描述",
   src: "https://example.test/imgs/9f3c1a2b-4d5e.png",
@@ -154,6 +155,22 @@ describe("GalleryEditDialog 的背景音乐", () => {
     bgmSrc: "https://cdn.example.test/music/old.mp3",
     bgmType: "audio",
   };
+
+  /**
+   * 后端规则 3：music / video 项配 BGM 会被整条请求 400 拒掉，编辑会整个失败。
+   * 选择器只在这些项上收起来，保存根本发不出这套组合。
+   */
+  it("音乐与视频项不显示选曲面板", () => {
+    const picker = (type) => mountDialog({ type }).findComponent({ name: "GalleryBgmPicker" });
+
+    expect(picker("music").exists()).toBe(false);
+    expect(picker("video").exists()).toBe(false);
+  });
+
+  /** 图文项是配 BGM 的场景本身，面板当然要在 */
+  it("图文项显示选曲面板", () => {
+    expect(mountDialog().findComponent({ name: "GalleryBgmPicker" }).exists()).toBe(true);
+  });
 
   it("打开时回填当前配的曲子", () => {
     const wrapper = mountDialog(WITH_BGM);

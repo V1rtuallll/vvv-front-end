@@ -30,7 +30,9 @@
           <textarea v-model="description" class="crt-input" placeholder="写点描述"></textarea>
         </label>
 
-        <GalleryBgmPicker v-model="bgm" />
+        <!-- 只有图片能配 BGM：后端规则 3 会给音乐/视频项整条请求回 400，
+             而上传路径上那意味着文件根本没传上去 -->
+        <GalleryBgmPicker v-if="kind === 'image'" v-model="bgm" />
       </template>
 
       <div class="modal-actions">
@@ -110,6 +112,10 @@ const onPickFile = (event) => {
   // 标题留空就由服务端用文件名兜底，这里不预填，用户想改自己写
   title.value = "";
   description.value = "";
+  // 换了文件就是新的一份表单：BGM 跟着标题与描述一起清掉。
+  // 不清的话「图片配了曲 → 换成视频」会留下一份选不中也没有入口取消的 BGM，
+  // 发表时被后端整条拒掉，用户还找不到东西可删
+  bgm.value = null;
 };
 
 const publish = () => {

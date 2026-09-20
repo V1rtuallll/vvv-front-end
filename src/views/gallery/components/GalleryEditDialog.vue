@@ -34,7 +34,8 @@
         <textarea v-model="form.description" rows="3" class="field-input field-textarea"></textarea>
       </label>
 
-      <GalleryBgmPicker v-model="bgm" />
+      <!-- 只有图文项能配 BGM：后端规则 3 会给 music / video 项整条请求回 400 -->
+      <GalleryBgmPicker v-if="item?.type === 'photo' || item?.type === 'gif'" v-model="bgm" />
 
       <div class="modal-actions">
         <button class="save-btn" :disabled="saving" @click="submit">{{ saving ? "保存中..." : "保存" }}</button>
