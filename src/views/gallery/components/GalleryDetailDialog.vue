@@ -121,8 +121,17 @@ const { play: playBgm, stop: stopBgm } = useGalleryBgm();
 watch(
   () => props.item,
   (item) => {
-    // 没有可播的曲子时 play 自己会退化成 stop，这里不必先判一次
-    if (item) playBgm(item);
+    // 只给「自己声明了 BGM」的项起隐藏元素。
+    //
+    // **音乐/视频项不能进这一支**：上面几行就是它们自己的可见播放器，
+    // 再起一个隐藏元素就是同一个文件两路解码 —— 视频项两边都 autoplay，
+    // 用户听到的是叠音，而且隐藏那个没有控件、停不掉。
+    // （这不是 G7 那个场景：给图片挑一段视频当 BGM 时 `bgmSrc` 在、
+    // 可见元素是 `<img>`，行为是正确的。）
+    //
+    // ⚠️ 别把这条判断挪进 `resolveBgm` —— 选择器要靠它对音乐/视频**候选**
+    // 返回「它自己的 src」才能取到地址，去掉会直接打坏选曲。
+    if (item?.bgmSrc) playBgm(item);
     else stopBgm();
   },
   { immediate: true },

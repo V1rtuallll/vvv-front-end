@@ -210,6 +210,23 @@ describe("GalleryDetailDialog 的背景音乐", () => {
     expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: WITH_BGM.id }));
   });
 
+  /** 音乐项自己的 `<audio controls>` 就在同一屏；再起一个隐藏元素是同一个文件两路解码 */
+  it("音乐项不起隐藏播放", () => {
+    mountDialog({ item: { ...ITEM, type: "music", src: "https://cdn.example.test/music/b.mp3" } });
+
+    expect(bgmSpies.play).not.toHaveBeenCalled();
+    // 这种项走的是 else 分支：上一首的隐藏元素若还在，必须在这里被收掉
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
+  /** 视频项两边都 autoplay，叠音；隐藏那个没有控件，用户停不掉 */
+  it("视频项不起隐藏播放", () => {
+    mountDialog({ item: { ...ITEM, type: "video", src: "https://cdn.example.test/video/c.mp4" } });
+
+    expect(bgmSpies.play).not.toHaveBeenCalled();
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
   /** 弹窗没了音乐还在响，用户找不到地方关它 */
   it("关闭时停掉背景音乐", async () => {
     const wrapper = mountDialog({ item: WITH_BGM });
