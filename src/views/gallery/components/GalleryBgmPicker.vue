@@ -62,16 +62,17 @@ const currentName = computed(() => props.modelValue?.src ?? "未设置");
 const shortName = (src) => String(src ?? "").split("?")[0].split("/").pop() || "（未知文件）";
 
 /**
- * 候选项的说明文字。
+ * 候选项的说明文字：类型 · 标题。
  *
- * 图文项要标出它会贡献哪一首：它自己是一张图，选它得到的却是它配的那首曲子，
- * 不写清楚的话用户不知道选了会发生什么。
+ * 图文项这一支曾经还缀着「（配的是 某某文件）」。那个名字取自上传时的对象键，
+ * 多是一串 UUID，既认不出来又把标题挤没了。选图文项会得到它配的那一首，
+ * 这件事在 `choose` 里由试听与最终发出的曲子体现，标签上不再展开。
  */
 const labelOf = (item) => {
   const own = item.title || shortName(item.src);
   if (item.type === "music") return `音乐 · ${own}`;
   if (item.type === "video") return `视频 · ${own}`;
-  return `图文项 · ${own}（配的是 ${shortName(resolveBgm(item)?.src)}）`;
+  return `图文项 · ${own}`;
 };
 
 const loadCandidates = async () => {

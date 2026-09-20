@@ -70,16 +70,19 @@ describe("GalleryBgmPicker 的候选列表", () => {
   });
 
   /**
-   * 图文项要标出它会贡献哪一首。
+   * 图文项只显示自己的标题，不缀它配的那首曲子的文件名。
    *
-   * 它自己是一张图，选它得到的却是它配的那首曲子 —— 不写清楚的话
-   * 用户根本不知道选了会发生什么。
+   * 那个名字取自对象键，多是一串 UUID，既认不出来又把标题挤没了。
+   * 选图文项会得到它配的那一首 —— 这件事在点「试听」或「选它」之后就体现出来，
+   * 不必在标签上提前展开。
    */
-  it("图文项标出它会贡献哪一首曲子", async () => {
+  it("图文项只显示标题，不缀资源名", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
 
-    expect(wrapper.findAll(".bgm-item")[2].text()).toContain("配的是 a.mp3");
+    const row = wrapper.findAll(".bgm-item")[2].text();
+    expect(row).toContain("配过曲子的图");
+    expect(row).not.toContain("a.mp3");
   });
 
   it("没有可用资源时给出说明，而不是空白一片", async () => {
