@@ -172,6 +172,21 @@ describe("GalleryBgmPicker 的试听", () => {
     expect(bgmSpies.play).not.toHaveBeenCalled();
   });
 
+  /**
+   * 收起面板会把「停止」按钮连同整个面板一起摘掉。
+   * 声音不能留着而控件没了：那时用户没有任何入口能把它停掉。
+   */
+  it("收起面板时停止试听", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+    bgmSpies.stop.mockClear();
+
+    await wrapper.find(".bgm-toggle-btn").trigger("click");
+
+    expect(wrapper.find(".bgm-panel").exists()).toBe(false);
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
   /** 弹窗关掉试听的声音不能留在后台响 */
   it("组件卸载时停止试听", async () => {
     const wrapper = mountPicker();

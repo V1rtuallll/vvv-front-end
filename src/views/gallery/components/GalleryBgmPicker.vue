@@ -89,8 +89,14 @@ const loadCandidates = async () => {
 
 const toggleOpen = () => {
   open.value = !open.value;
+  if (!open.value) {
+    // 收起会把面板连同「停止」按钮一起摘掉：声音不能留着而控件没了。
+    // 与 choose / clear / onBeforeUnmount 走的是同一步
+    bgm.stop();
+    return;
+  }
   // 只在第一次展开时拉：每次打开编辑弹窗都请求一次是白花的
-  if (open.value && candidates.value.length === 0) loadCandidates();
+  if (candidates.value.length === 0) loadCandidates();
 };
 
 const isAuditioning = (item) =>
