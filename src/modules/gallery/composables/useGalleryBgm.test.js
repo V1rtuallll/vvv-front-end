@@ -256,4 +256,39 @@ describe("useGalleryBgm 与侧栏的协调", () => {
 
     expect(player.play).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * **同一实例内换过项，第一次开的窗口仍然算数。**
+   *
+   * 详情弹窗从一条带 BGM 的项换到下一条时，`playSource` 会第二次让位；但侧栏
+   * 已经是被本实例按下去的，这一让是空转，`pauseForBgm()` 返回 `false`。若把
+   * 这个 `false` 直接赋回 `openedWindow`（少了 sticky-OR），本实例就「忘了」
+   * 自己开过窗口，`stop()` 便不再解停侧栏 —— 用户关掉弹窗后侧栏音乐**静默消失**，
+   * 正是 `9e4ae7b` 修过的那一类缺陷。所以这里断言换项之后的停止仍然恢复侧栏。
+   *
+   * `pause()` 必须真翻转 `paused`：无状态的替身会让第二次让位走成「真的接管」
+   * 分支，这条用例就绕开了 sticky-OR，测不到它。
+   */
+  it("同一实例内换过项之后停止，仍然恢复侧栏", () => {
+    const player = {
+      paused: false,
+      pause: vi.fn(() => {
+        player.paused = true;
+      }),
+      play: vi.fn(() => {
+        player.paused = false;
+        return Promise.resolve();
+      }),
+    };
+    registerPlayerAudio(player);
+
+    const bgm = useGalleryBgm((tag) => fakeElement(tag));
+
+    bgm.play(PHOTO_WITH_BGM); // 第一次让位：接管侧栏
+    bgm.playSource({ src: "https://cdn.example.test/music/next.mp3", type: "audio" }); // 换项：第二次让位空转
+    bgm.stop();
+
+    expect(player.pause).toHaveBeenCalledTimes(1); // 第二次让位确实空转，没重复接管
+    expect(player.play).toHaveBeenCalledTimes(1); // 仍然恢复侧栏
+  });
 });

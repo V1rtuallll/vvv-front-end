@@ -63,8 +63,12 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   let openedWindow = false;
 
   const stop = () => {
-    // 没在播就什么都不做：这里会调 resumeAfterBgm，多调一次会把它原本的
-    // 「让位之前是否在播」状态冲掉
+    // 没在播就什么都不做：一道便宜的空跑早退。
+    //
+    // 它**不是**侧栏的保护伞 —— 侧栏现在由下面的 openedWindow 守着：只有开过
+    // 窗口（即本实例正持有曲目）的实例才会走到 resumeAfterBgm，而 activeBgm
+    // 非空正是「持有曲目」的条件。去掉这道 return 不改变任何可观察行为，
+    // 留着只是为了不白跑 releaseElement 和清状态这一串。
     if (activeBgm.value === null) return;
     releaseElement();
     activeBgm.value = null;
