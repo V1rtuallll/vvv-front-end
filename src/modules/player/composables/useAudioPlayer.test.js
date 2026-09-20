@@ -56,6 +56,33 @@ describe("侧栏播放器为详情 BGM 让位", () => {
     expect(player.play).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * 让位期间被叫停多次是正常路径：Task 11 换项时会再调一次 `pauseForBgm`，
+   * Task 13 的试听又是另一个实例。
+   *
+   * 第二次调用看到的「已暂停」**正是我们自己刚干的** —— 那时若把「原本在播」
+   * 写成 false，关弹窗时侧栏就再也不响了：用户的歌静默消失，而页面不报错。
+   *
+   * 这里的替身要让 `pause()` 真的翻转 `paused`，否则模拟不出「被自己暂停过」
+   * 这个状态，用例就会永远绿灯。
+   */
+  it("连着让位两次，关掉详情后仍然恢复", () => {
+    const player = fakePlayer(false);
+    player.pause = vi.fn(() => {
+      player.paused = true;
+    });
+    registerPlayerAudio(player);
+
+    pauseForBgm();
+    pauseForBgm();
+
+    expect(player.pause).toHaveBeenCalledTimes(1);
+
+    resumeAfterBgm();
+
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
+
   it("播放器还没挂载时两个函数都不抛异常", () => {
     expect(() => {
       pauseForBgm();

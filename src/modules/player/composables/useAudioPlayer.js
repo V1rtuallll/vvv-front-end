@@ -47,13 +47,21 @@ export function registerPlayerAudio(audio) {
   playerAudio = audio;
 }
 
-/** 详情弹窗要播自己的 BGM，先让侧栏闭嘴 */
+/**
+ * 详情弹窗要播自己的 BGM，先让侧栏闭嘴。
+ *
+ * **必须是幂等的。** 同一段让位期间可能被叫停多次：Task 11 的 `playSource`
+ * 换项时会再调一次，Task 13 的试听又是另一个实例。第二次调用时侧栏**正是被
+ * 我们自己暂停的**，`audio.paused` 为真 —— 这一支**绝不能**去写
+ * `wasPlayingBeforeBgm`。写了就把「原本在播」这个意图覆写成 false，
+ * 关弹窗时 `resumeAfterBgm` 直接早返回，用户的歌**静默消失**且不会自己回来。
+ *
+ * 标志的写入责任是单一的：只有真正暂停的那一支置 `true`，
+ * 只有 `resumeAfterBgm` 置 `false`。
+ */
 export function pauseForBgm() {
   const audio = playerAudio;
-  if (!audio || audio.paused) {
-    wasPlayingBeforeBgm = false;
-    return;
-  }
+  if (!audio || audio.paused) return;
   wasPlayingBeforeBgm = true;
   audio.pause();
 }
