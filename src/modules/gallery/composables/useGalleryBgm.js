@@ -50,6 +50,18 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     element = null;
   };
 
+  /**
+   * 本实例有没有真的把侧栏接管过来。
+   *
+   * `pauseForBgm` 只在侧栏**本来在播**时才接管并返回 `true`。侧栏已经被
+   * 别的实例让位时（详情弹窗在播，选择器里又试听），本实例的让位是空转 ——
+   * 它**没开过窗口，就无权关**。否则关掉编辑弹窗会把侧栏解停，而详情弹窗的
+   * BGM 还在播，两路音频一起响。
+   *
+   * 用 sticky-OR 累积：同一实例内多次换项，第一次接管就算数。
+   */
+  let openedWindow = false;
+
   const stop = () => {
     // 没在播就什么都不做：这里会调 resumeAfterBgm，多调一次会把它原本的
     // 「让位之前是否在播」状态冲掉
@@ -57,7 +69,11 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     releaseElement();
     activeBgm.value = null;
     activeId.value = null;
-    resumeAfterBgm();
+    // 谁开的窗口谁关 —— 没开过的实例不许解停侧栏
+    if (openedWindow) {
+      openedWindow = false;
+      resumeAfterBgm();
+    }
   };
 
   /**
@@ -70,8 +86,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     if (activeId.value !== null && String(activeId.value) === String(id)) return;
 
     releaseElement();
-    // 先让侧栏闭嘴，再起自己的
-    pauseForBgm();
+    // 先让侧栏闭嘴，再起自己的。记下是不是**我们**把它按下去的 ——
+    // 记错了，stop() 就会去解停一个不是我们开的窗口
+    openedWindow = pauseForBgm() || openedWindow;
 
     const el = createElement(source.type === "video" ? "video" : "audio");
     el.loop = true;

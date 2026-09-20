@@ -215,4 +215,45 @@ describe("useGalleryBgm 与侧栏的协调", () => {
     expect(player.pause).not.toHaveBeenCalled();
     expect(player.play).not.toHaveBeenCalled();
   });
+
+  /**
+   * **谁开的窗口谁关。**
+   *
+   * 侧栏已经被**另一个实例**让位时（详情弹窗在播），本实例（编辑弹窗里的
+   * 选择器试听）的让位是空转 —— 它没开过窗口，就无权去关。少了这一条，
+   * 关掉编辑弹窗会把侧栏解停，而详情弹窗的 BGM 还在播，**两路音频一起响**。
+   *
+   * 不用 `mountBgm`：那会再登记一个新侧栏元素。真实应用里两个实例
+   * 共用同一个侧栏，所以这里只手写一个有状态的替身、只登记一次。
+   * `pause()` 必须真翻转 `paused`，否则模拟不出「侧栏已被别人按下去」。
+   */
+  it("侧栏已被别的实例让位时，本实例停止不解停侧栏", () => {
+    const player = {
+      paused: false,
+      pause: vi.fn(() => {
+        player.paused = true;
+      }),
+      play: vi.fn(() => {
+        player.paused = false;
+        return Promise.resolve();
+      }),
+    };
+    registerPlayerAudio(player);
+
+    const newBgm = () => useGalleryBgm((tag) => fakeElement(tag));
+
+    const dialog = newBgm();
+    dialog.play(PHOTO_WITH_BGM); // 详情弹窗接管侧栏
+    expect(player.pause).toHaveBeenCalledTimes(1);
+
+    const picker = newBgm();
+    picker.playSource({ src: "https://cdn.example.test/music/new.mp3", type: "audio" });
+    picker.stop(); // 关掉编辑弹窗 —— 不该解停侧栏
+
+    expect(player.play).not.toHaveBeenCalled();
+
+    dialog.stop(); // 详情弹窗关闭 —— 这时才该恢复
+
+    expect(player.play).toHaveBeenCalledTimes(1);
+  });
 });

@@ -58,12 +58,17 @@ export function registerPlayerAudio(audio) {
  *
  * 标志的写入责任是单一的：只有真正暂停的那一支置 `true`，
  * 只有 `resumeAfterBgm` 置 `false`。
+ *
+ * @returns 本次调用**是否真的接管了侧栏**。侧栏本来就没在播时为 `false` ——
+ *          这时调用方没有开过让位窗口，也就无权去关它。多个 composable 实例
+ *          共用这一个标志，所以「谁开的窗口谁关」必须靠这个返回值来区分。
  */
 export function pauseForBgm() {
   const audio = playerAudio;
-  if (!audio || audio.paused) return;
+  if (!audio || audio.paused) return false;
   wasPlayingBeforeBgm = true;
   audio.pause();
+  return true;
 }
 
 /** 详情弹窗关了，把侧栏还原成原来的样子 */
