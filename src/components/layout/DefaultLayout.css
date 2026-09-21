@@ -1378,6 +1378,37 @@
   overflow: hidden;
 }
 
+/* 点阵底板：整块面板四边向中心淡出，与主面板、侧栏的边带是同一套观感。
+   画在伪元素上而不是容器背景 —— mask 会连子元素一起遮，加在容器上文字会没 */
+.music-player::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    rgba(2, 119, 189, 0.4) 1px,
+    transparent 1.3px
+  );
+  background-size: 8px 8px;
+  /* 半径取元素宽高的一半：左右与上下边的中点正好落在完全不透明处，中心一段留白 */
+  -webkit-mask-image: radial-gradient(
+    ellipse 50% 50% at center,
+    transparent 25%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 50% 50% at center,
+    transparent 25%,
+    #000 100%
+  );
+}
+
+/* 内容压在点阵之上。非定位的块级元素排在定位伪元素之下，所以这条不能省 */
+.music-player > * {
+  position: relative;
+}
+
 /* 信息条：和顶部导航条同构 */
 .mp-head {
   position: relative;
@@ -1394,34 +1425,6 @@
 
 /* 渐变点阵底，和顶部 tab 栏同款。
    同样画在 ::before 上——mask 会连子元素一起遮，直接加在容器上文字会没 */
-.mp-head::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
-    circle,
-    rgba(2, 119, 189, 0.4) 1px,
-    transparent 1.3px
-  );
-  background-size: 8px 8px;
-  /* 四边向中心淡出。一个椭圆径向渐变就能同时表达四个方向：
-     半径取元素宽高的一半，于是左右/上下边的中点正好落在 100%，
-     中心一段完全透明 —— 与面板边带是同一套观感。
-     原先只写了「从上往下」，点阵是单侧压下来的 */
-  -webkit-mask-image: radial-gradient(
-    ellipse 50% 50% at center,
-    transparent 25%,
-    #000 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 50% 50% at center,
-    transparent 25%,
-    #000 100%
-  );
-}
-
 .mp-head > span {
   position: relative;
   z-index: 1;
