@@ -165,19 +165,29 @@ watch(
 const isExpanded = (threadId) => props.expandedThreads.has(String(threadId));
 
 /**
+ * OSS 上存的文件名是机器生成的标识：UUID、纯十六进制串或时间戳。
+ * 这种名字原样显示对用户没有信息量，一律换中性占位。
+ */
+const isMachineName = (name) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(name)
+  || /^[0-9a-f]{16,}$/i.test(name)
+  || /^\d+$/.test(name);
+
+/**
  * 当前背景音乐的曲名。
  *
  * 优先用后端算好的 `bgmTitle`（GalleryItemVO 上一直有这个字段，只是前端从没读过）；
  * 取不到时退回从地址末段还原文件名 —— 要去掉扩展名。
  *
  * ⚠️ 退路只对「文件名本身可读」的曲子管用。OSS 上存的是 UUID 文件名
- * （如 a18778e1-f6a9-....mp3），退回来就是一串乱码，所以后端字段是主路径。
+ * （如 a18778e1-f6a9-....mp3），退回来读不出任何东西，此时显示占位而不是那串标识。
  */
 const bgmName = computed(() => {
   if (!activeBgm.value) return "无背景音乐";
   if (props.item?.bgmTitle) return props.item.bgmTitle;
   const file = decodeURIComponent(activeBgm.value.src.split("/").pop() || "");
-  return file.replace(/\.[^.]+$/, "") || "背景音乐";
+  const name = file.replace(/\.[^.]+$/, "");
+  return !name || isMachineName(name) ? "背景音乐" : name;
 });
 
 /**

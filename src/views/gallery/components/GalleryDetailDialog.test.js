@@ -7,11 +7,12 @@ import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.
 // useGalleryBgm 换成替身：这一层要断言的是「弹窗什么时候让它播、什么时候让它停」，
 // 播放本身（建元素、循环、音量、与侧栏协调）由 useGalleryBgm.test.js 负责。
 // 而真实实现会在 jsdom 里建真的媒体元素，那既没解码器、也不是本文件的被测对象。
-const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn() }));
+// activeBgm 由各用例按需设置：曲名兜底那组要断言「拿不到曲名时显示什么」
+const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn(), activeBgm: { value: null } }));
 
 vi.mock("@/modules/gallery/composables/useGalleryBgm", () => ({
   useGalleryBgm: () => ({
-    activeBgm: { value: null },
+    activeBgm: bgmSpies.activeBgm,
     activeId: { value: null },
     play: bgmSpies.play,
     playSource: vi.fn(),
@@ -274,5 +275,53 @@ describe("GalleryDetailDialog 的背景音乐", () => {
     wrapper.unmount();
 
     expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+});
+
+describe("GalleryDetailDialog 显示的曲名", () => {
+  const WITH_OSS_SRC = {
+    ...ITEM,
+    bgmSrc: "https://cdn.example.test/music/a18778e1-f6a9-4902-b967-a86ebcca8858.mp3",
+    bgmType: "audio",
+  };
+
+  beforeEach(() => {
+    bgmSpies.activeBgm.value = null;
+  });
+
+  /** OSS 上存的是 UUID 文件名，摆给用户看等于什么都没说 */
+  it("只有 UUID 文件名时显示中性占位", () => {
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src: WITH_OSS_SRC.bgmSrc };
+
+    const wrapper = mountDialog({ item: WITH_OSS_SRC });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("背景音乐");
+  });
+
+  it("文件名是时间戳这类机器名时同样显示占位", () => {
+    const src = "https://cdn.example.test/music/1758412800000.mp3";
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src };
+
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmSrc: src } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("背景音乐");
+  });
+
+  it("后端给了 bgmTitle 就用它", () => {
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src: WITH_OSS_SRC.bgmSrc };
+
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmTitle: "夏夜" } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("夏夜");
+  });
+
+  /** 占位只针对机器名；上传者自己起的可读文件名照常显示 */
+  it("地址末段是可读文件名时照常显示", () => {
+    const src = "https://cdn.example.test/music/夏夜.mp3";
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src };
+
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmSrc: src } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("夏夜");
   });
 });

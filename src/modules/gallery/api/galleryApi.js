@@ -1,6 +1,8 @@
 import request from "@/utils/request";
 
 export const getGalleryPage = (params) => request.get("/gallery/list", { params });
+// 按主键或地址取单条：深链的目标可能不在当前页，列表接口翻不到。查不到时后端回 404
+export const getGalleryItem = (params) => request.get("/gallery/item", { params });
 // 一次请求一个文件。onUploadProgress 驱动进度条，signal 用于取消。
 export const uploadGalleryFile = (formData, onUploadProgress, signal) =>
   request.post("/gallery/upload", formData, { onUploadProgress, signal });

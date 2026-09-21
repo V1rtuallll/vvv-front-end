@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { watch } from "vue";
+import { onBeforeUnmount, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import GalleryDetailDialog from "./components/GalleryDetailDialog.vue";
@@ -146,6 +146,7 @@ import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import { getGalleryItem } from "@/modules/gallery/api/galleryApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const {
@@ -215,26 +216,90 @@ const router = useRouter();
  * 两种定位方式的原因：侧栏的列表条目有主键，用 id；而首页主展示走的是
  * /home/random，那个接口不下发 id（只回 src/标题/描述/上传者），只能用 src 定位。
  *
- * 不需要「按 id 查单条」的接口：目标必须已经在当前页的 galleryList 里。
- * 找不到就静默不开 —— 主展示的资源可能不落在第一页，这不是错误。
+ * 目标不在当前页时（默认一页只有 4 条）按 id / src 单独查一次，所以多远的深链都打得开。
+ * 查不到的情况存在且合法：主展示的资源可能从没进过画廊，此时静默不开，只把地址里的 query 清掉。
  */
-const openDetailFromQuery = () => {
-  const wantedId = route.query.id;
-  const wantedSrc = route.query.src;
-  const hasId = wantedId != null && wantedId !== "";
-  if (!hasId && !wantedSrc) return;
 
-  const item = hasId
-    ? galleryList.value.find((row) => String(row.id) === String(wantedId))
-    : galleryList.value.find((row) => row.src === wantedSrc);
-  if (item) openDetailModal(item);
+/** 已经处理过的深链标识；地址里的 query 清掉后复位，同一条链接之后还能再点开一次 */
+let handledDeepLink = null;
+/** 在途深链请求的序号：后来的请求让先前的响应作废 */
+let deepLinkToken = 0;
+let galleryUnmounted = false;
+
+/** 当前地址里的深链目标；没有时返回 null */
+const deepLinkOf = () => {
+  const { id, src } = route.query;
+  if (id != null && id !== "") return { key: `id:${id}`, params: { id } };
+  if (src != null && src !== "") return { key: `src:${src}`, params: { src } };
+  return null;
 };
 
-// 首屏要等列表加载完才找得到目标，所以盯着 galleryList 而不是挂在 onMounted 上
+/** 详情里正在看的那一条的主键，统一转成字符串比较（后端 ID 是 Long，序列化后可能是数字或字符串） */
+const viewingId = () => (currentItem.value?.id == null ? null : String(currentItem.value.id));
+
+/** 把 id / src 从地址里撤掉，其余 query 原样保留 */
+const clearDeepLinkQuery = () => {
+  if (route.query.id == null && route.query.src == null) return;
+  const rest = { ...route.query };
+  delete rest.id;
+  delete rest.src;
+  router.replace({ path: route.path, query: rest });
+};
+
+const openDetailFromQuery = async () => {
+  const link = deepLinkOf();
+  if (!link) {
+    // 地址里已经没有深链了，下一条链接（哪怕是同一个 id）重新开始处理
+    handledDeepLink = null;
+    return;
+  }
+  // 同一条链接只消费一次：列表重载会再触发本函数，不能在用户已经看过之后再弹一次
+  if (link.key === handledDeepLink) return;
+  handledDeepLink = link.key;
+
+  // 快路径：目标就在当前页，不用发请求
+  const local = link.params.id != null
+    ? galleryList.value.find((row) => String(row.id) === String(link.params.id))
+    : galleryList.value.find((row) => row.src === link.params.src);
+  if (local) {
+    clearDeepLinkQuery();
+    openDetailModal(local);
+    return;
+  }
+
+  // 不在当前页，按 id / src 单独查一次。这次响应回来时用户可能已经看过别的东西了，
+  // 所以记下发起时的状态，回来再比一次
+  const token = ++deepLinkToken;
+  const viewingWhenStarted = viewingId();
+  let row = null;
+  try {
+    row = (await getGalleryItem(link.params))?.data ?? null;
+  } catch {
+    // 后端回 404 表示目标不在画廊里，静默处理：提示由 request.js 负责，页面不再补一条
+  }
+
+  if (galleryUnmounted || token !== deepLinkToken) return;
+
+  // 地址里的深链换成了另一条（或已经清掉）就什么都不做，免得把后进来的那条一起收掉
+  if (deepLinkOf()?.key !== link.key) return;
+
+  // 查不到、或者用户期间已经改看别的条目时不弹窗；但无论如何都要把地址里这条 query 收掉，
+  // 否则之后每次列表重载都会再拿它弹一次
+  const openable = row != null && viewingId() === viewingWhenStarted;
+  clearDeepLinkQuery();
+  if (openable) openDetailModal(row);
+};
+
+// query 在挂载前就已经在地址里（从侧栏点进来）时用 immediate 先消费掉；
+// 列表随后落地的这次触发会被 handledDeepLink 拦下
 watch(galleryList, openDetailFromQuery, { immediate: true });
 
 // 已经在 /gallery 时再点侧栏另一条：路由没变、组件不重挂载，只有 query 变
 watch(() => [route.query.id, route.query.src], openDetailFromQuery);
+
+onBeforeUnmount(() => {
+  galleryUnmounted = true;
+});
 
 /**
  * 关掉详情要把 id 从地址里撤掉。不撤的话再点侧栏同一条，query 没变，
@@ -242,11 +307,7 @@ watch(() => [route.query.id, route.query.src], openDetailFromQuery);
  */
 const closeDetailAndClearQuery = () => {
   closeDetail();
-  if (route.query.id == null && route.query.src == null) return;
-  const rest = { ...route.query };
-  delete rest.id;
-  delete rest.src;
-  router.replace({ path: route.path, query: rest });
+  clearDeepLinkQuery();
 };
 </script>
 
