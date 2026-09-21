@@ -34,17 +34,33 @@ function headingText(inline) {
   return text;
 }
 
-// 标题的 id 直接取纯文本，不做 github 风格的 slug：正文里的目录是手写的 [文字](#文字)，
-// 浏览器匹配锚点前会把 href 上的百分号编码解开，id="第一节" 正好对上
-// href="#%E7%AC%AC%E4%B8%80%E8%8A%82"。
-// 文字完全相同的标题沿用同一个 id，不做去重后缀：手写的 #文字 只会定位到第一个匹配。
+/**
+ * 标题的 id：github 风格的 slug。
+ *
+ * 正文里的目录是手写的锚点链接，写法就是 github 那一套 —— 点号冒号引号括号一律去掉、
+ * 空格变连字符、字母大小写保留。例如 `## 1.4 输入前置管线：processUserInput`
+ * 配的是 `[1.4 …](#14-输入前置管线processUserInput)`。id 按同一规则生成，两边才对得上。
+ *
+ * 只保留字母、数字、空白与连字符，其余一律删除：标点（`.` `：` `（` `「` `—` `/`）
+ * 与数学符号（`=` `<` `>`）在 github 的规则里都不进 slug。
+ * 空白逐个换成 `-` 而不是合并连续空白：`工具接口 = harness` 删掉 `=` 后还剩两个空格，
+ * 要正好得到 `工具接口--harness` 那样的两个连字符。
+ *
+ * ⚠️ 不做小写化。github 会转小写，但正文目录里的 `processUserInput`、`SDKMessage`
+ * 都保留着原样 —— 跟着目录走才对得上，转了反而脱节。
+ */
+function headingSlug(text) {
+  return text.replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s/g, "-");
+}
+
+// 文字完全相同的标题沿用同一个 id，不做去重后缀：手写的锚点只会定位到第一个匹配。
 md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
   const inline = tokens[idx + 1];
   const text = inline && inline.type === "inline" ? headingText(inline) : "";
+  const slug = headingSlug(text);
 
-  // id 传原文即可：属性值里的 & < > " 由 renderToken 内部的 renderAttrs 负责转义。
-  // 空标题（`##` 后面没有文字）不写 id，避免渲染出光秃秃的 id 属性。
-  if (text) tokens[idx].attrSet("id", text);
+  // 空标题（`##` 后面没有文字、或只有行内标记）不写 id，避免渲染出光秃秃的 id 属性
+  if (slug) tokens[idx].attrSet("id", slug);
 
   return self.renderToken(tokens, idx, options);
 };
