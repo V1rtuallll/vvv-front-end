@@ -1406,8 +1406,20 @@
     transparent 1.3px
   );
   background-size: 8px 8px;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  /* 四边向中心淡出。一个椭圆径向渐变就能同时表达四个方向：
+     半径取元素宽高的一半，于是左右/上下边的中点正好落在 100%，
+     中心一段完全透明 —— 与面板边带是同一套观感。
+     原先只写了「从上往下」，点阵是单侧压下来的 */
+  -webkit-mask-image: radial-gradient(
+    ellipse 50% 50% at center,
+    transparent 25%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 50% 50% at center,
+    transparent 25%,
+    #000 100%
+  );
 }
 
 .mp-head > span {
