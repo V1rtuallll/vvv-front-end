@@ -4,3 +4,6 @@ coverage
 
 # macOS 文件夹元数据
 .DS_Store
+
+# 本地排查用的截图，不进仓库
+.debug-shots/
