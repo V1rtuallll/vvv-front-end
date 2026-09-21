@@ -37,6 +37,21 @@ export function resolveBgm(item) {
 let soundingInstance = null;
 
 /**
+ * 当前正在发声的媒体元素；`null` 表示没有。
+ *
+ * 放在模块级而不是 `api` 里，理由和 useAudioPlayer 的 `playerAudio` 一样：
+ * 这个元素是 `document.createElement` 建的、**从不进 DOM**，外面既查不到也拿不到，
+ * 而提示音要压低它就必须拿到它。全站同一时刻只有一个实例出声（见上一条注释），
+ * 所以一个槽位就够。空闲时归 `null`，调用方不会碰到已经销毁的元素。
+ */
+let activeElement = null;
+
+/** 正在发声的媒体元素；没有或已释放时为 `null`。 */
+export function getActiveBgmElement() {
+  return activeElement;
+}
+
+/**
  * 详情弹窗的背景音乐播放。
  *
  * 播放规则（D5）：
@@ -60,6 +75,7 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     if (!element) return;
     element.pause();
     element = null;
+    activeElement = null;
   };
 
   /**
@@ -125,6 +141,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     el.loop = true;
     el.src = source.src;
     element = el;
+    // 登记在最后：上面两次释放（自己的旧元素、仲裁停掉的那个实例）都会把槽位
+    // 清空，此刻写进去的才是真正在响的这一个
+    activeElement = el;
     activeBgm.value = source;
     activeId.value = id;
     paused.value = false;

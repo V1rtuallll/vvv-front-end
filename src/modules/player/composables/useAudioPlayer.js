@@ -127,6 +127,16 @@ export function useAudioPlayer() {
     // 把元素交给模块级的让位逻辑：详情弹窗打开时要靠它把侧栏暂停下来
     registerPlayerAudio(audio);
     audio.volume = 0.3;
+
+    // 播放/暂停按钮里的图标。这里只切 class、不写文本：原来是写 "▶" / "■"，
+    // 这些几何字符在 iOS/Safari 上会被渲染成彩色 emoji
+    const playIcon = playButton.querySelector(".ui-icon");
+    const setPlayingIcon = (playing) => {
+      if (!playIcon) return;
+      playIcon.classList.toggle("ui-icon-pause", playing);
+      playIcon.classList.toggle("ui-icon-play", !playing);
+    };
+
     const formatTrackName = (filename) => {
       // 曲库现在 mp3 与 flac 混着，必须按扩展名整段去，不能只 replace(".mp3")
       const name = filename.replace(/\.[^.]+$/, "");
@@ -138,11 +148,11 @@ export function useAudioPlayer() {
       audio.src = `/music/${shuffledPlaylist[index]}`;
       trackNameElement.textContent = formatTrackName(shuffledPlaylist[index]);
       progress.value = 0;
-      playButton.textContent = "▶";
+      setPlayingIcon(false);
     };
     const playSong = () => {
       audio.play().catch((error) => console.warn("音频播放失败", error));
-      playButton.textContent = "■";
+      setPlayingIcon(true);
     };
     const switchSong = (direction, autoPlay = false) => {
       currentIndex = (currentIndex + direction + shuffledPlaylist.length) % shuffledPlaylist.length;
@@ -164,7 +174,7 @@ export function useAudioPlayer() {
       if (audio.paused) playSong();
       else {
         audio.pause();
-        playButton.textContent = "▶";
+        setPlayingIcon(false);
       }
     });
     previousButton.addEventListener("click", () => switchSong(-1, true));

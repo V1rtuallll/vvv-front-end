@@ -341,6 +341,16 @@
   mask-image: url("/icons/pause.svg");
 }
 
+.ui-icon-prev {
+  -webkit-mask-image: url("/icons/prev.svg");
+  mask-image: url("/icons/prev.svg");
+}
+
+.ui-icon-next {
+  -webkit-mask-image: url("/icons/next.svg");
+  mask-image: url("/icons/next.svg");
+}
+
 /* 详情弹窗右栏里的背景音乐开关 */
 .bgm-toggle {
   flex: none;

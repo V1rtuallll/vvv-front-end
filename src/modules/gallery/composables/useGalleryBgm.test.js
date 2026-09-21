@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resolveBgm, useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
+import { getActiveBgmElement, resolveBgm, useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 import { pauseForBgm, registerPlayerAudio } from "@/modules/player/composables/useAudioPlayer";
 
 const PHOTO_WITH_BGM = {
@@ -405,4 +405,64 @@ describe("useGalleryBgm 与侧栏的协调", () => {
     expect(bgm.paused.value).toBe(false);
   });
 
+});
+
+/**
+ * 正在发声的元素要交得出去。
+ *
+ * 提示音响时要压低它，而这个元素是 createElement 建的、**从不进 DOM** ——
+ * 页面上的选择器查不到，只能由这里交出来。交出去的必须是在响的那一个，
+ * 且释放之后归 `null`：调用方不该碰到已经销毁的元素。
+ */
+describe("正在发声的元素", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("起播时交出当前元素，停止后收回", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM);
+    expect(getActiveBgmElement()).toBe(created[0]);
+
+    bgm.stop();
+    expect(getActiveBgmElement()).toBe(null);
+  });
+
+  /** 换项会销毁旧元素：槽位里留着它，调用方就会去写一个已经释放的元素 */
+  it("换项时换上新元素，不留旧元素", () => {
+    const { bgm, created } = mountBgm();
+    bgm.play(PHOTO_WITH_BGM);
+    bgm.play({ id: 9, type: "music", src: "https://cdn.example.test/music/z.mp3" });
+
+    expect(getActiveBgmElement()).toBe(created[1]);
+
+    bgm.stop();
+    expect(getActiveBgmElement()).toBe(null);
+  });
+
+  /** 打开没有 BGM 的项等于停止，槽位要空掉 */
+  it("打开没有 BGM 的项之后槽位为空", () => {
+    const { bgm } = mountBgm();
+    bgm.play(PHOTO_WITH_BGM);
+
+    bgm.play(PLAIN_PHOTO);
+
+    expect(getActiveBgmElement()).toBe(null);
+  });
+
+  /**
+   * 暂停只停声音，元素与进度都还在。该不该压低由调用方按 `paused` 判断 ——
+   * 这里不替它筛，否则调用方拿不到「暂停中的那一个」也就无法判断。
+   */
+  it("暂停（保留进度）时仍然交出元素", () => {
+    const { bgm, created } = mountBgm();
+    bgm.play(PHOTO_WITH_BGM);
+
+    bgm.pause();
+    expect(getActiveBgmElement()).toBe(created[0]);
+
+    bgm.stop();
+    expect(getActiveBgmElement()).toBe(null);
+  });
 });
