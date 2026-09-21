@@ -1,5 +1,5 @@
 <template>
-  <div class="vf-layout">
+  <div class="vf-layout" :class="{ 'is-scrolled': isScrolled }">
     <header class="vf-header">
       <!-- 背景扭曲滤镜的定义，只声明不渲染，供 CSS 的 filter: url(#header-warp) 引用。
            改 baseFrequency 调波纹疏密，改 scale 调扭曲幅度 -->
@@ -169,10 +169,18 @@
           <!-- 装饰波浪条：取自 stickers/loop1.gif 首帧，逆时针转 90° 后横向拉伸 -->
           <div class="mp-wave" aria-hidden="true"></div>
 
+          <!-- 按钮里放矢量图标而不是 ◀ ▶ 这类几何字符：同样的字符在 iOS/Safari
+               上会被当成 emoji 渲染成彩色字。图标类名由 useAudioPlayer 切换 -->
           <div class="player-controls">
-            <button ref="prevBtn" type="button" aria-label="上一首">◀◀</button>
-            <button ref="playPauseBtn" type="button" aria-label="播放或暂停">▶</button>
-            <button ref="nextBtn" type="button" aria-label="下一首">▶▶</button>
+            <button ref="prevBtn" type="button" aria-label="上一首">
+              <span class="ui-icon ui-icon-prev"></span>
+            </button>
+            <button ref="playPauseBtn" type="button" aria-label="播放或暂停">
+              <span class="ui-icon ui-icon-play"></span>
+            </button>
+            <button ref="nextBtn" type="button" aria-label="下一首">
+              <span class="ui-icon ui-icon-next"></span>
+            </button>
           </div>
 
           <div class="volume-control">
@@ -208,17 +216,16 @@
                 {{ blog.title }}
                 <span class="top-summary">{{ blog.summary }}</span>
               </span>
-              <!-- 右列：编号 + 阅读/评论。与下面的画廊列表同一套 -->
-              <span class="top-side">
-                <span class="top-id"
-                  >ID #{{ String(blog.id).padStart(3, "0") }}</span
-                >
-                <span class="top-stats">
-                  <span class="ui-icon ui-icon-eye"></span>
-                  {{ blog.views || 0 }}
-                  <span class="ui-icon ui-icon-comment"></span>
-                  {{ blog.commentCount || 0 }}
-                </span>
+              <!-- 编号挂右上角、阅读/评论挂左下角，两者各自占一格。
+                   以前共用一个右边列，编号会被长摘要挤到卡片外 -->
+              <span class="top-id"
+                >ID #{{ String(blog.id).padStart(3, "0") }}</span
+              >
+              <span class="top-stats">
+                <span class="ui-icon ui-icon-eye"></span>
+                {{ blog.views || 0 }}
+                <span class="ui-icon ui-icon-comment"></span>
+                {{ blog.commentCount || 0 }}
               </span>
             </router-link>
           </li>
@@ -297,7 +304,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { useAuthStore } from "@/stores/auth";
@@ -345,6 +352,31 @@ const { audioEl, playPauseBtn, prevBtn, nextBtn, progressBar, volumeSlider, trac
 // 抽屉里点导航即跳转，跳转后必须收起，否则遮罩会留在新页面上。
 // 点击当前路由的链接不会改变 fullPath，watch 不触发，因此收起同时挂在 .vf-nav 的 click 上
 watch(() => route.fullPath, closeDrawer);
+
+// 移动端的抽屉按钮固定在视口右上角，会一直压住滚到那里的内容 —— 实测会盖住首页
+// 展示区的「换一个」按钮。滚过 80px 后给它降透明度（只是变淡，按钮仍可点、
+// 触摸区不变），hover / 键盘聚焦 / 抽屉打开时由 CSS 恢复不透明。
+// scroll 事件触发很密，用 rAF 节流：一帧最多写一次状态
+const SCROLL_THRESHOLD = 80;
+const isScrolled = ref(false);
+let scrollFrame = 0;
+
+const onScroll = () => {
+  if (scrollFrame) return;
+  scrollFrame = requestAnimationFrame(() => {
+    scrollFrame = 0;
+    isScrolled.value = window.scrollY > SCROLL_THRESHOLD;
+  });
+};
+
+onMounted(() => {
+  window.addEventListener("scroll", onScroll, { passive: true });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", onScroll);
+  if (scrollFrame) cancelAnimationFrame(scrollFrame);
+});
 
 onMounted(async () => {
   loadUserStats();

@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -206,6 +209,34 @@ describe("右侧榜单", () => {
     expect(wrapper.find(".right .top-list").text()).not.toContain("DarkAngel");
     expect(wrapper.find(".right .top-list").text()).not.toContain("BloodRose");
   });
+
+  // 编号与统计各自占一格：编号在右上角，统计在左下角。
+  // 曾经两者共用一个右列容器，长摘要撑破网格后整个右列被顶到卡片外
+  it("编号与统计是链接的直接子项，不共用右列容器", async () => {
+    const wrapper = await mountLayout();
+    await flush();
+
+    const link = wrapper.find(".right .top-list .top-link");
+    expect(link.find(".top-side").exists()).toBe(false);
+
+    const direct = Array.from(link.element.children).map((el) => el.classList);
+    expect(direct.some((c) => c.contains("top-id"))).toBe(true);
+    expect(direct.some((c) => c.contains("top-stats"))).toBe(true);
+  });
+
+  // jsdom 不做布局，溢出与否量不出来，这条守的是那次修复本身：
+  // 中间列不声明 min-width: 0，摘要里整段没有空格的连续字符会按最小宽度
+  // 把网格撑开，第三列（编号）就跑到卡片外
+  it("卡片中间列声明了 min-width: 0，长串摘要撑不破网格", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/components/layout/DefaultLayout.css"),
+      "utf8"
+    );
+    const rule = css.match(/\.right \.top-list \.top-link-text \{[^}]*\}/);
+
+    expect(rule).not.toBeNull();
+    expect(rule[0]).toContain("min-width: 0");
+  });
 });
 
 describe("右栏最新画廊", () => {
@@ -276,6 +307,18 @@ describe("播放器元素常驻", () => {
     expect(wrapper.find(".vf-navbar-tabs a").exists()).toBe(true);
   });
 
+  // ◀ ▶ ■ 这类几何字符在 iOS/Safari 上会被渲染成彩色 emoji
+  it("三个控制按钮用矢量图标，里面没有字符", async () => {
+    const wrapper = await mountLayout();
+
+    const controls = wrapper.find(".player-controls");
+    expect(controls.findAll("button")).toHaveLength(3);
+    expect(controls.text()).toBe("");
+    expect(controls.find(".ui-icon-prev").exists()).toBe(true);
+    expect(controls.find(".ui-icon-play").exists()).toBe(true);
+    expect(controls.find(".ui-icon-next").exists()).toBe(true);
+  });
+
   describe("侧栏底部 ID 卡", () => {
     it("未登录时大小不变，显示空头像和登录/注册入口", () => {
       const wrapper = mount(DefaultLayout, { global: { stubs, plugins: [router] } });
@@ -326,5 +369,62 @@ describe("播放器元素常驻", () => {
       // 登录态不该再出现登录/注册入口
       expect(card.find(".id-card-actions").exists()).toBe(false);
     });
+  });
+});
+
+/**
+ * 抽屉按钮固定在视口右上角，不滚时它盖住的是页头，无所谓；一滚起来它就一直
+ * 压着滚到那里的内容（实测会盖住首页展示区的「换一个」按钮）。滚过阈值后
+ * 给布局加 is-scrolled，由 CSS 把按钮调淡。
+ */
+describe("抽屉按钮的滚动淡出", () => {
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+  /** jsdom 里 scrollY 是只读的 getter，要摆值只能重新定义 */
+  const setScrollY = (value) =>
+    Object.defineProperty(window, "scrollY", { configurable: true, writable: true, value });
+
+  const scrollTo = async (value) => {
+    setScrollY(value);
+    window.dispatchEvent(new Event("scroll"));
+    // 状态写在 rAF 回调里，等这一帧跑完再看 DOM
+    await nextFrame();
+    await flush();
+  };
+
+  it("滚过阈值加上 is-scrolled，回到顶部再移除", async () => {
+    const wrapper = await mountLayout();
+    const layout = wrapper.find(".vf-layout");
+
+    await scrollTo(0);
+    expect(layout.classes()).not.toContain("is-scrolled");
+
+    await scrollTo(120);
+    expect(layout.classes()).toContain("is-scrolled");
+
+    await scrollTo(0);
+    expect(layout.classes()).not.toContain("is-scrolled");
+  });
+
+  it("没到阈值不淡出", async () => {
+    const wrapper = await mountLayout();
+
+    await scrollTo(40);
+
+    expect(wrapper.find(".vf-layout").classes()).not.toContain("is-scrolled");
+  });
+
+  it("卸载时移除 window 上的 scroll 监听", async () => {
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    await mountLayout();
+    // 等播放器的异步挂载跑完再卸：它 onMounted 里先 await nextTick()，
+    // 抢在那一拍之前卸载会让它去读已经为 null 的 ref
+    await flush();
+
+    wrapper.unmount();
+    // 已经卸过了，别让 afterEach 再卸一次
+    wrapper = undefined;
+
+    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function));
   });
 });
