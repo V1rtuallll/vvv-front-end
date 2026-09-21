@@ -85,13 +85,16 @@
   border-radius: 10px;
 }
 
-/* 预览面板模仿详情页的正文区，让作者看到的面板与访客看到的一致 */
+/* 预览面板模仿详情页的 .vf-main 卡面：白底 + 灰蓝描边，让作者看到的面板与访客看到的一致。
+   正文色是 #000000，面板底色偏暗时预览不可读，所以这里的白底是必须的，
+   取值与后台 About 配置的 .preview-frame 一致 */
 .preview-pane {
   max-height: 640px;
   padding: 20px 24px;
   overflow-y: auto;
-  background: rgba(10, 0, 20, 0.85);
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
 }
 
 @media (max-width: 900px) {
