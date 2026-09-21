@@ -121,8 +121,9 @@ pnpm test:coverage  # 带覆盖率报告
 
 - **移动端拦截已在 2026-09-13 移除**（commit `504ad91`）：后端 `MobileBlockFilter`、
   `config/WebConfig.java` 与 `index.html` 里的内联脚本都不在了，手机端可正常访问。
-  残留的化石不影响功能：`SecurityConfig` 白名单里还留着 `"/mobile-blocked.html"`，
-  `ApiErrorController` 的 javadoc 还提到 `MobileBlockFilter`。
+  2026-09-21 又清掉了当时漏下的残留（后端 `static/mobile-blocked.html`、`SecurityConfig`
+  白名单里那条、`ApiErrorController` javadoc 的引用），**两端现在都是零残留** ——
+  再看到 `mobile-blocked` 或 `MobileBlockFilter`，那是新引入的，不是历史遗留。
 - 首页两处信息栏（主展示 `.showcase-info-bottom`、拼图卡 `.gallery-info-bottom`）都是**常显**，
   不依赖 hover，也不再是绝对定位的弹出栏 —— 全项目已无 `@mouseenter` / `@mouseleave`。
   连带结果：`utils/responsive.js` 的 `supportsHover` 目前没有调用方。
