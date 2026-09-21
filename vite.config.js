@@ -67,7 +67,9 @@ export default defineConfig(({ mode }) => {
         : undefined,
     },
 
-    base: '',  // 打包时静态资源路径正确
+    // base 保持默认的 '/'，不要写成 '' —— 相对路径会生成 ./assets/…，
+    // 在 /blog/detail/1 这类深层路由下被解析成 /blog/detail/assets/…，静态资源 404、整页白屏。
+    // 首页与无尾斜杠的一级路由解析结果恰好正确，所以只有直接访问或刷新深层路由才会暴露。
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'), // @ 指向 src
