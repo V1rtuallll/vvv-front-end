@@ -4,6 +4,9 @@
 }
 
 .editor-header {
+  /* 面板左右各 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -50,6 +53,9 @@
 
 .editor-pane,
 .preview-pane {
+  /* 同上：左右两个面板都落在点阵边带里 */
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
 }
