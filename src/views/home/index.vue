@@ -50,7 +50,10 @@
         <!-- 信息栏：常显，不再依赖 hover。左上传信息 + 右标题描述，连同「换一个」都排在一行 -->
         <div class="showcase-info-bottom">
           <div class="info-container">
-            <!-- 左半边：上传人信息 + 换一个按钮 -->
+            <!-- 左半边：上传人信息 + 换一个按钮。
+                 这里是「服务端说了什么就显示什么」：配置里的 src 定位不到素材时
+                 （兜底 URL / 已删除）服务端不下发上传者，只显示占位符。
+                 占位符读起来就是占位符，不能换成具体的人名和时间 —— 那是替服务端断言事实 -->
             <div class="uploader-left">
               <img
                 :src="mainItem.uploaderAvatar || '/default-avatar.gif'"
@@ -59,10 +62,10 @@
               />
               <div class="uploader-text">
                 <span class="uploader-name"
-                  >@{{ mainItem.uploaderUsername || "V1rtual" }}</span
+                  >@{{ mainItem.uploaderUsername || "神秘人" }}</span
                 >
                 <span class="upload-time">{{
-                  mainItem.uploadTime || "刚刚上传"
+                  mainItem.uploadTime || "未知时间"
                 }}</span>
               </div>
               <!-- 动作区：换一个 / 视频播停 / 背景音乐播停 / 进详情 -->
@@ -185,8 +188,9 @@
                   class="uploader-avatar small"
                 />
                 <div class="uploader-text">
+                  <!-- 用户名与画廊、博客同一套占位符：服务端没给就是未知，不填具体人名 -->
                   <span class="uploader-name"
-                    >@{{ item.uploaderUsername || "V1rtual" }}</span
+                    >@{{ item.uploaderUsername || "神秘人" }}</span
                   >
                   <span class="upload-time">{{
                     formatShortDate(item.createdAt)

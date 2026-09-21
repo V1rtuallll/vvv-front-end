@@ -70,15 +70,19 @@ export function useHomeContent() {
       const configRes = await getHomeConfig();
       const data = configRes.data;
       pickType.value = data.main.type;
+      // 上传者三项照搬服务端：配置里的 src 能定位到素材时服务端会给，定位不到就不给。
+      // 这里不做兜底 —— 编造出来的是「具体的人名和时间」，首屏会先显示它们，
+      // 第二次请求再失败的话还会一直留在页面上，等于替服务端断言了一件它没说过的事。
+      // 缺省时由页面显示「未知」，那读起来是占位符而不是事实
       mainItem.value = {
         type: data.main.type,
         src: data.main.src,
         title: data.main.title,
         description: data.main.desc,
         alt: data.main.alt || "V1rtual",
-        uploaderAvatar: data.main.uploaderAvatar || "/default-avatar.gif",
-        uploaderUsername: data.main.uploaderUsername || "V1rtual",
-        uploadTime: data.main.uploadTime || "刚刚上传",
+        uploaderAvatar: data.main.uploaderAvatar,
+        uploaderUsername: data.main.uploaderUsername,
+        uploadTime: data.main.uploadTime,
         random: data.main.random,
       };
       galleryItems.value = data.galleryItems || [];

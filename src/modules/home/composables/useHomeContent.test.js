@@ -91,6 +91,42 @@ describe("useHomeContent", () => {
     expect(api.mainItem.value.title).toBe("详情标题");
   });
 
+  it("配置里带的上传者信息直接采用，第二次请求失败也不会丢", async () => {
+    getHomeConfig.mockResolvedValue(
+      configPayload({
+        random: 0,
+        uploaderAvatar: "https://example.test/avatar.png",
+        uploaderUsername: "小甜",
+        uploadTime: "2026-09-12 10:00",
+      }),
+    );
+    // 配置里的 src 定位不到素材时后端返回 404，第二次请求整条失败
+    getFullMediaItem.mockRejectedValue(new Error("未找到该资源"));
+
+    const api = await mountHome();
+
+    expect(api.mainItem.value.uploaderUsername).toBe("小甜");
+    expect(api.mainItem.value.uploaderAvatar).toBe("https://example.test/avatar.png");
+    expect(api.mainItem.value.uploadTime).toBe("2026-09-12 10:00");
+  });
+
+  /**
+   * 上传者是「关于某条真实上传」的事实，服务端没给就得留空。
+   * 以前这里兜底成 V1rtual / 刚刚上传：首屏先显示编造值，
+   * 第二次请求再失败的话它们会一直留在页面上。
+   */
+  it("服务端没给上传者时保持缺省，不编造具体的人名和时间", async () => {
+    getHomeConfig.mockResolvedValue(configPayload({ random: 0 }));
+    getFullMediaItem.mockRejectedValue(new Error("未找到该资源"));
+
+    const api = await mountHome();
+
+    expect(api.mainItem.value.src).toBe(CONFIGURED_SRC);
+    expect(api.mainItem.value.uploaderUsername).toBeUndefined();
+    expect(api.mainItem.value.uploaderAvatar).toBeUndefined();
+    expect(api.mainItem.value.uploadTime).toBeUndefined();
+  });
+
   it("换一个时把当前 src 作为 exclude 传给后端", async () => {
     const api = await mountHome();
     getRandomMain.mockResolvedValue({ data: { src: "https://example.test/next.png" } });

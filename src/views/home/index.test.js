@@ -122,6 +122,28 @@ describe("Home 页面信息栏", () => {
     // 按钮和头像、用户名同在 .uploader-left 里，不另起一行
     expect(wrapper.find(".uploader-left .change-btn").exists()).toBe(true);
   });
+
+  /**
+   * 服务端没下发上传者时只能显示占位符。
+   * 这里曾经是 `|| "V1rtual"` / `|| "刚刚上传"`，等于替服务端编了一条上传事实。
+   */
+  it("没有上传者信息时显示占位符，不冒充具体的人名和时间", () => {
+    stubHover(true);
+    useHomeContent().mainItem.value = {
+      ...useHomeContent().mainItem.value,
+      uploaderUsername: undefined,
+      uploaderAvatar: undefined,
+      uploadTime: undefined,
+    };
+
+    const wrapper = mount(HomePage);
+    const info = wrapper.find(".showcase-info-bottom");
+
+    expect(info.find(".uploader-name").text()).toBe("@神秘人");
+    expect(info.find(".upload-time").text()).toBe("未知时间");
+    // 上传者信息缺一块也不会掉出动作按钮
+    expect(info.find(".change-btn").exists()).toBe(true);
+  });
 });
 
 describe("Home 主展示媒体", () => {
