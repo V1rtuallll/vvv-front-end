@@ -60,12 +60,15 @@ defineProps({
   grid-area: head;
 }
 
+/* 封面框按 4:3 定高，不再跟着原图走。文章封面多为正方形，
+   若让图片按自身高度参与行高计算，整行会被撑到图片高度（260px 列宽下就是 260px），
+   正文列只有两行摘要时就空出一大块。改成固定框后整行由正文撑，图片裁切填满左边那格 */
 .blog-card-cover {
   grid-area: cover;
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 180px;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   border-right: 1px solid #b9c4cc;
 }
@@ -184,7 +187,8 @@ defineProps({
 
   .blog-card-cover {
     height: 180px;
-    min-height: 0;
+    /* 单列时封面自占一行，用固定高度，不套 4:3 的框 */
+    aspect-ratio: auto;
     border-right: none;
     border-bottom: 1px solid #b9c4cc;
   }
