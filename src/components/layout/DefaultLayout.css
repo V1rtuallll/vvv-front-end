@@ -1378,6 +1378,33 @@
   overflow: hidden;
 }
 
+/* 左、右、下三条边带，与信息条上那条同一套（同样的点距、颜色与带宽）。
+   上边由 .mp-head::before 负责，这里不重复，否则两层叠在一起会变浓。
+   三条用 mask 并集实现：各自从所在边向内 26px 淡出，中间整片留白 */
+.music-player::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    rgba(2, 119, 189, 0.4) 1px,
+    transparent 1.3px
+  );
+  background-size: 8px 8px;
+  -webkit-mask-image: linear-gradient(to right, #000 0px, transparent 26px),
+    linear-gradient(to left, #000 0px, transparent 26px),
+    linear-gradient(to top, #000 0px, transparent 26px);
+  mask-image: linear-gradient(to right, #000 0px, transparent 26px),
+    linear-gradient(to left, #000 0px, transparent 26px),
+    linear-gradient(to top, #000 0px, transparent 26px);
+}
+
+/* 内容压在点阵之上。非定位的块级元素排在定位伪元素之下，所以这条不能省 */
+.music-player > * {
+  position: relative;
+}
+
 /* 信息条：和顶部导航条同构 */
 .mp-head {
   position: relative;
