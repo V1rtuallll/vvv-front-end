@@ -11,6 +11,9 @@
   gap: 16px;
   padding: 20px 0 26px;
   border-bottom: 1px solid #b9c4cc;
+  /* 同上：面板边带的点阵会盖住标题文字，抬一层压住它 */
+  position: relative;
+  z-index: 1;
 }
 
 .blog-title {

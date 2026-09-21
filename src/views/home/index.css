@@ -9,6 +9,9 @@
   color: #4fc3f7;
   text-shadow: 0 0 14px rgba(79, 195, 247, 0.4);
   letter-spacing: 0.15em;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，标题要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .home-wrapper {
@@ -30,6 +33,9 @@
   background-image: radial-gradient(circle, #b6d3e6 1px, transparent 1.4px);
   background-size: 4px 4px;
   border: 1px solid #b9c4cc;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，底板要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .main-showcase {
@@ -271,6 +277,9 @@
   background-image: radial-gradient(circle, #b6d3e6 1px, transparent 1.4px);
   background-size: 4px 4px;
   border: 1px solid #b9c4cc;
+  /* 同上：底板与其中拼图卡都要压在面板边带的点阵之上 */
+  position: relative;
+  z-index: 1;
 }
 
 /* 随机拼图区：多张卡并排。上面的大展示（Random Memory）才是只显示一个的那个 */

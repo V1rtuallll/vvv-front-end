@@ -50,6 +50,9 @@ defineProps({
   background: #ffffff;
   border: 1px solid #b9c4cc;
   transition: border-color 0.25s ease;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，卡片要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .blog-card:hover {

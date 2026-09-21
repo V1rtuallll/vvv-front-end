@@ -118,6 +118,9 @@ const totalComments = computed(() =>
   margin: 40px 0 60px;
   padding-top: 26px;
   border-top: 1px solid rgba(0, 255, 255, 0.25);
+  /* 同上：面板边带的点阵会盖住评论列表，抬一层压住它 */
+  position: relative;
+  z-index: 1;
 }
 
 .comments-title {

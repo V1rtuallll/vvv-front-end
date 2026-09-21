@@ -19,6 +19,10 @@
   width: 100%;
   max-width: 800px;
   background: #ffffff;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，卡面要正 z-index 才压得住。
+     外层 .pure-black-register 是页面根元素，不能带 z-index（同 DefaultLayout.css 的说明） */
+  position: relative;
+  z-index: 1;
 }
 
 /* 内容区：纯黑，文字自己发光 */

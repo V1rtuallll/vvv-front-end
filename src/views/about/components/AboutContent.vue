@@ -68,6 +68,9 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   gap: 32px;
   padding-bottom: 28px;
   border-bottom: 1px solid #b9c4cc;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，这块要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .about-avatar {
@@ -115,6 +118,9 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   margin: 28px 0 0;
   padding: 0;
   list-style: none;
+  /* 同上：标签牌落在面板边带里，抬一层压住点阵 */
+  position: relative;
+  z-index: 1;
 }
 
 .about-tag {
@@ -134,6 +140,9 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   margin: 28px 0 0;
   padding: 0;
   list-style: none;
+  /* 同上：链接行落在面板边带里，抬一层压住点阵 */
+  position: relative;
+  z-index: 1;
 }
 
 .about-link {

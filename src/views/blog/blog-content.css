@@ -10,6 +10,9 @@
   font-size: 1.02rem;
   line-height: 1.9;
   word-break: break-word;
+  /* 面板左右 140px 的边带铺着蓝色点阵，伪元素排在内容之后绘制，正文要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .blog-content p {

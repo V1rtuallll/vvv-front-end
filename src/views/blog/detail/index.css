@@ -7,6 +7,9 @@
 .blog-detail-back {
   display: inline-block;
   margin-bottom: 18px;
+  /* 面板左右边带的点阵排在内容之后绘制，返回按钮要正 z-index 才压得住 */
+  position: relative;
+  z-index: 1;
 }
 
 .blog-loading,
@@ -20,6 +23,9 @@
 .blog-detail-header {
   padding: 20px 0 24px;
   border-bottom: 1px solid rgba(0, 255, 255, 0.25);
+  /* 同上：标题与作者行会被面板边带的点阵盖住，抬一层压住它 */
+  position: relative;
+  z-index: 1;
 }
 
 .blog-detail-title {

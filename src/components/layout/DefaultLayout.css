@@ -601,7 +601,16 @@
   );
 }
 
-.sidebar > *,
+/* 侧栏内容要压住自己的点阵：::after 排在内容之后绘制，只有 position: relative
+   盖不住它，得给正 z-index 才能把内容提到伪元素之上。
+   主面板这边不能照做 —— 各页根元素里挂着 position: fixed 的弹窗
+   （画廊/详情页的 ConfirmDialog 等），z-index 会把弹窗关进这个 stacking context，
+   被吸顶导航（z-index 40）盖住。主面板的卡片各自在自己的样式里提 z-index */
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
 .vf-main > * {
   position: relative;
 }
