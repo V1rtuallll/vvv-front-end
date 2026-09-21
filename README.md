@@ -8,13 +8,13 @@ V1rtual 个人网站前端。`V1rtualSS` 是当前站点版本分支，`main` �
 ## 当前版本预览
 
 <p align="center">
-  <img width="49%" alt="首页" src="https://github.com/user-attachments/assets/08e599c7-8cd7-444c-8b2c-8499e28dc25f" />
-  <img width="49%" alt="Gallery" src="https://github.com/user-attachments/assets/6f6888b8-3528-4431-abe3-cd28971c574f" />
+  <img width="49%" alt="首页 · Random Memory" src="docs/images/home-memory.jpg" />
+  <img width="49%" alt="首页 · Random Gallery" src="docs/images/home-gallery.jpg" />
 </p>
 
 <p align="center">
-  <img width="49%" alt="个人资料" src="https://github.com/user-attachments/assets/11d832ed-a2a9-4bb4-8db7-502ff8d4d56e" />
-  <img width="49%" alt="管理后台" src="https://github.com/user-attachments/assets/dff94273-a28f-477a-a819-4f593e41cc3f" />
+  <img width="49%" alt="博客列表" src="docs/images/blog.jpg" />
+  <img width="49%" alt="Gallery" src="docs/images/gallery.jpg" />
 </p>
 
 ## 功能
@@ -23,9 +23,10 @@ V1rtual 个人网站前端。`V1rtualSS` 是当前站点版本分支，`main` �
 - Gallery 的媒体浏览、上传、点赞和评论。
 - 登录、个人资料、头像、用户名与密码维护。
 - 管理员资源上传、OSS 同步、首页与媒体资源管理。
+- 博客文章的阅读、目录锚点与正文渲染。
 - 全局音效和站内音乐播放器。
 
-当前页面按桌面端设计；移动端会显示访问提示。
+页面按响应式设计，桌面端与移动端均可访问。
 
 ## 技术栈
 
@@ -34,30 +35,40 @@ V1rtual 个人网站前端。`V1rtualSS` 是当前站点版本分支，`main` �
 | Framework | Vue 3 |
 | Build | Vite 7 |
 | Routing | Vue Router 4 |
-| State | Pinia |
-| UI | Element Plus |
+| State | Pinia（`persistedstate` 负责持久化） |
 | HTTP | Axios |
-| Media | Vue Cropper |
+| Markdown | markdown-it |
+| Test | Vitest + @vue/test-utils |
+
+`package.json` 里的 `element-plus` 与 `cropperjs` / `vue-cropper` / `vue-cropperjs` 在 `src/` 下**零引用**，是遗留依赖；头像上传走的是原生 `<input type="file">`。不要假设它们可用。
 
 ## 目录
 
 ```text
 src/
-├── components/       # 默认布局与消息提示
+├── components/       # 消息提示、确认弹窗、上传队列、安全 HTML 渲染
+│   └── layout/       # DefaultLayout 及其抽屉逻辑
 ├── modules/          # 按能力划分的 API 与 composable
+│   ├── about/        # About 页面内容
 │   ├── admin/        # 管理端资源与首页配置
-│   ├── auth/         # 登录
+│   ├── auth/         # 注册与登录
+│   ├── blog/         # 博客文章与互动
 │   ├── gallery/      # Gallery 媒体与互动
 │   ├── home/         # 首页内容
 │   ├── player/       # 全局音乐播放器
+│   ├── upload/       # 上传队列
 │   └── user/         # 用户资料与访客计数
 ├── shared/auth/      # 站点所有者判断
-├── views/            # 页面编排
-│   ├── admin/components/    # 管理端表单、资源浏览与编辑弹窗
-│   └── gallery/components/  # 上传、详情与用户资料弹窗
+├── views/            # 页面编排（about / admin / blog / gallery / home / login / profile / register）
+│   ├── blog/editor/          # 博客编辑器与其预览
+│   ├── admin/components/     # 管理端表单、资源浏览与编辑弹窗
+│   ├── blog/components/      # 卡片、评论区与配图选择
+│   └── gallery/components/   # 上传、编辑、详情、BGM 与用户资料弹窗
 ├── router/           # 路由生成与守卫
 ├── stores/           # 登录状态
-└── utils/            # 请求、日期、主题工具
+├── styles/           # CRT 主题
+├── test/             # Vitest 全局 setup
+└── utils/            # 请求、日期、Markdown、消毒、主题等工具
 ```
 
 ## 页面与请求边界
@@ -83,6 +94,12 @@ pnpm build
 ```
 
 该命令用于生产构建验证。
+
+```bash
+pnpm test
+```
+
+单元测试跑在 Vitest + jsdom 上，测试文件与被测文件同目录，命名 `<名字>.test.js`。纯样式、颜色、文案改动不需要配测试。
 
 ## 环境与发布
 
