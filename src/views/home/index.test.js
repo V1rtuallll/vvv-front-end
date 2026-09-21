@@ -43,6 +43,9 @@ vi.mock("@/modules/home/composables/useHomeContent", async () => {
   };
 });
 
+vi.mock("vue-router", () => ({ useRouter: vi.fn() }));
+
+import { useRouter } from "vue-router";
 import { useHomeContent } from "@/modules/home/composables/useHomeContent";
 import HomePage from "@/views/home/index.vue";
 
@@ -164,5 +167,30 @@ describe("Home 主展示媒体", () => {
     // 显式断言「没有被静音」—— 去掉 muted 是刻意的，别被顺手加回来
     expect(el.muted === true || el.hasAttribute("muted")).toBe(false);
     expect(el.hasAttribute("controls") || el.controls === true).toBe(true);
+  });
+});
+
+describe("Home 拼图卡进详情", () => {
+  it("点击拼图卡跳转到画廊详情，带上该条目的 id", async () => {
+    stubHover(true);
+    const push = vi.fn();
+    useRouter.mockReturnValue({ push });
+
+    const wrapper = mount(HomePage);
+    // 点第二张卡：断言取的是条目自己的主键，不是列表序号
+    await wrapper.findAll(".masonry-item")[1].trigger("click");
+
+    expect(push).toHaveBeenCalledWith({ path: "/gallery", query: { id: 2 } });
+  });
+
+  it("键盘 Enter 与点击等价", async () => {
+    stubHover(true);
+    const push = vi.fn();
+    useRouter.mockReturnValue({ push });
+
+    const wrapper = mount(HomePage);
+    await wrapper.findAll(".masonry-item")[0].trigger("keydown.enter");
+
+    expect(push).toHaveBeenCalledWith({ path: "/gallery", query: { id: 1 } });
   });
 });

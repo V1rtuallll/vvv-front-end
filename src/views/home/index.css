@@ -168,10 +168,12 @@
   gap: 30px;
 }
 
-/* 左半边：上传人信息 */
+/* 左半边：上传人信息。
+   允许换行：宽度不够时把动作区整行推到下一行，而不是顶出卡片右边缘 */
 .uploader-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   min-width: 250px;
 }
@@ -187,17 +189,26 @@
 .uploader-text {
   display: flex;
   flex-direction: column;
+  /* 覆盖 flex 项的 min-width: auto，否则文字按 min-content 撑住，左栏压不下去 */
+  min-width: 0;
 }
 
+/* 用户名与时间：左栏被压缩时按省略号收窄，不再把动作区顶出卡片 */
 .uploader-name {
   color: #c2185b;
   font-weight: bold;
   font-size: 1.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .upload-time {
   color: #7b8fa1;
   font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* 右半边：标题 + 描述 */
 .content-right {
@@ -280,6 +291,14 @@
   aspect-ratio: 4 / 5;
   background: #f8f8f8;
   border: 1px solid #b9c4cc;
+  /* 整块可点，进画廊详情 */
+  cursor: pointer;
+}
+
+/* 卡片可聚焦，Tab 过去要看得见焦点落在哪 */
+.masonry-item:focus-visible {
+  outline: 2px solid #0277bd;
+  outline-offset: -2px;
 }
 
 /* 顶部条 */
@@ -384,11 +403,13 @@
   gap: 14px;
 }
 
-/* 左栏：头像 + 用户名 + 时间。按内容自然宽度，不受父级 250px 下限影响 */
+/* 左栏：头像 + 用户名 + 时间。按内容自然宽度，不受父级 250px 下限影响。
+   父级基类开了换行，这里要拉回单行 —— 卡片里的用户名靠截断收窄，掉到第二行会顶高信息栏 */
 .gallery-info-bottom .uploader-left {
   flex: none;
   min-width: 0;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 12px;
 }
@@ -522,6 +543,13 @@
     gap: 10px;
   }
 
+  /* 动作区独占一整行：按钮组不再和头像/文字抢宽，避免被卡片右边缘裁掉。
+     按钮自身也可换行，超窄屏下仍收在卡片内 */
+  .memory-actions {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+
   .uploader-avatar {
     width: 72px;
     height: 72px;
@@ -549,6 +577,17 @@
   .gallery-masonry {
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
+  }
+
+  /* 卡片不再锁 4:5：这一档信息栏常显、占高上百像素，锁死比例会把媒体挤成几像素。
+     放开比例、媒体给固定高度，卡片高度改为由内容决定 */
+  .masonry-item {
+    aspect-ratio: auto;
+  }
+
+  .masonry-media {
+    flex: none;
+    height: 140px;
   }
 
   .gallery-info-bottom {
@@ -618,6 +657,11 @@
 
   .gallery-masonry {
     gap: 10px;
+  }
+
+  /* 两列时卡片只有 140 多像素宽，媒体再收一档，卡片总高不至于失控 */
+  .masonry-media {
+    height: 120px;
   }
 
   .gallery-info-bottom .uploader-avatar.small {

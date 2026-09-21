@@ -142,6 +142,11 @@
           v-for="(item, index) in galleryItems"
           :key="index"
           class="masonry-item"
+          role="button"
+          tabindex="0"
+          @click="openItemDetail(item)"
+          @keydown.enter="openItemDetail(item)"
+          @keydown.space.prevent="openItemDetail(item)"
         >
           <!-- 顶部条：左边标题、右边编号。版式取自 00 年代设计门户的卡片。
                编号用后端下发的真实主键，不用列表序号 —— 随机列表每次重排，
@@ -306,6 +311,14 @@ const detailQuery = computed(() => (mainItem.value?.src ? { src: mainItem.value.
 const goDetail = () => {
   if (!detailQuery.value) return;
   router.push({ path: "/gallery", query: detailQuery.value });
+};
+
+/**
+ * 拼图卡进详情：卡片带后端下发的真实主键，走侧栏「最新画廊」同一条 /gallery?id=N 深链。
+ * 主展示那条没有主键、只能退到 src 定位，两者不共用。
+ */
+const openItemDetail = (item) => {
+  router.push({ path: "/gallery", query: { id: item.id } });
 };
 </script>
 <style src="./index.css" scoped></style>
