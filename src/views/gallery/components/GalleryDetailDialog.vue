@@ -176,21 +176,30 @@ const isMachineName = (name) =>
   || /^[0-9a-f]{16,}$/i.test(name)
   || /^\d+$/.test(name);
 
+/** 从地址末段还原可读文件名：去掉扩展名，认不出可读内容时给占位。 */
+const nameFromSrc = (src) => {
+  const file = decodeURIComponent(src.split("/").pop() || "");
+  const name = file.replace(/\.[^.]+$/, "");
+  return !name || isMachineName(name) ? "背景音乐" : name;
+};
+
 /**
- * 当前背景音乐的曲名。
+ * 当前背景音乐的名字，带类型前缀：「视频 · 夏夜」。
  *
- * 优先用后端算好的 `bgmTitle`（GalleryItemVO 上一直有这个字段，只是前端从没读过）；
- * 取不到时退回从地址末段还原文件名 —— 要去掉扩展名。
+ * 前缀不是装饰：一条项配的曲子可能是音频也可能是视频（见 bgmType），
+ * 只写名字看不出放的是哪一种。
+ *
+ * 名字优先用后端算好的 `bgmTitle`（GalleryItemVO 上一直有这个字段，只是前端从没读过）；
+ * 取不到时退回从地址末段还原文件名。
  *
  * ⚠️ 退路只对「文件名本身可读」的曲子管用。OSS 上存的是 UUID 文件名
  * （如 a18778e1-f6a9-....mp3），退回来读不出任何东西，此时显示占位而不是那串标识。
  */
 const bgmName = computed(() => {
   if (!activeBgm.value) return "无背景音乐";
-  if (props.item?.bgmTitle) return props.item.bgmTitle;
-  const file = decodeURIComponent(activeBgm.value.src.split("/").pop() || "");
-  const name = file.replace(/\.[^.]+$/, "");
-  return !name || isMachineName(name) ? "背景音乐" : name;
+
+  const type = props.item?.bgmType === "video" ? "视频" : "音频";
+  return `${type} · ${props.item?.bgmTitle || nameFromSrc(activeBgm.value.src)}`;
 });
 
 /**

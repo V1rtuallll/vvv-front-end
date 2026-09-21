@@ -338,7 +338,7 @@ describe("GalleryDetailDialog 显示的曲名", () => {
 
     const wrapper = mountDialog({ item: WITH_OSS_SRC });
 
-    expect(wrapper.find(".bgm-name").text()).toBe("背景音乐");
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 背景音乐");
   });
 
   it("文件名是时间戳这类机器名时同样显示占位", () => {
@@ -347,7 +347,7 @@ describe("GalleryDetailDialog 显示的曲名", () => {
 
     const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmSrc: src } });
 
-    expect(wrapper.find(".bgm-name").text()).toBe("背景音乐");
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 背景音乐");
   });
 
   it("后端给了 bgmTitle 就用它", () => {
@@ -355,7 +355,7 @@ describe("GalleryDetailDialog 显示的曲名", () => {
 
     const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmTitle: "夏夜" } });
 
-    expect(wrapper.find(".bgm-name").text()).toBe("夏夜");
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 夏夜");
   });
 
   /** 占位只针对机器名；上传者自己起的可读文件名照常显示 */
@@ -365,6 +365,15 @@ describe("GalleryDetailDialog 显示的曲名", () => {
 
     const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmSrc: src } });
 
-    expect(wrapper.find(".bgm-name").text()).toBe("夏夜");
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 夏夜");
+  });
+
+  /** 曲子可能是视频，前缀跟着 bgmType 走，否则看不出放的是哪一种 */
+  it("视频当背景音乐时前缀标成视频", () => {
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src: WITH_OSS_SRC.bgmSrc };
+
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmType: "video", bgmTitle: "夏夜" } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("视频 · 夏夜");
   });
 });
