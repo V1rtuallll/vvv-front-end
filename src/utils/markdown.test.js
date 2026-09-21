@@ -5,7 +5,8 @@ import { sanitizeHtml } from "@/utils/sanitizeHtml";
 
 describe("renderMarkdown", () => {
   it("把 Markdown 渲染成 HTML", () => {
-    expect(renderMarkdown("# 标题")).toContain("<h1>标题</h1>");
+    // 标题带 id —— 正文里的手写目录靠它定位，细则见下方「renderMarkdown 的标题 id」
+    expect(renderMarkdown("# 标题")).toContain('<h1 id="标题">标题</h1>');
   });
 
   it("原生 HTML 能穿过渲染，video 不会被转义成文字", () => {
@@ -55,5 +56,55 @@ describe("renderMarkdown", () => {
 
     expect(out).not.toContain("<script");
     expect(out).toContain("alert(1)");
+  });
+});
+
+describe("renderMarkdown 的标题 id", () => {
+  it("id 取标题的纯文本，行内标记不进入 id", () => {
+    expect(renderMarkdown("## **粗体**")).toContain('<h2 id="粗体">');
+    expect(renderMarkdown("## `code` 文本")).toContain('<h2 id="code 文本">');
+    expect(renderMarkdown("## 标题[链接](/x)")).toContain('<h2 id="标题链接">');
+    expect(renderMarkdown("## ![图](/a.png)")).toContain('<h2 id="图">');
+  });
+
+  it("h1 到 h6 都带 id", () => {
+    for (let level = 1; level <= 6; level++) {
+      const marks = "#".repeat(level);
+
+      expect(renderMarkdown(`${marks} 标题`)).toContain(`<h${level} id="标题">`);
+    }
+  });
+
+  it("id 里的 & 与引号按属性上下文转义，解回来仍是标题原文", () => {
+    const out = renderMarkdown('## a & "b"');
+    const doc = new DOMParser().parseFromString(out, "text/html");
+
+    expect(out).toContain("&amp;");
+    expect(doc.querySelector("h2").getAttribute("id")).toBe('a & "b"');
+  });
+
+  it("文字相同的标题沿用同一个 id，不加去重后缀", () => {
+    // 手写的 #小结 本来就只会定位到第一个匹配，加后缀反而让链接与标题对不上
+    const out = renderMarkdown("## 小结\n\n## 小结");
+
+    expect(out.match(/id="小结"/g)).toHaveLength(2);
+    expect(out).not.toContain("小结-1");
+  });
+
+  it("没有文字的标题不写 id", () => {
+    expect(renderMarkdown("##")).not.toContain("id");
+  });
+
+  it("手写目录的锚点与标题 id 对得上", () => {
+    // 端到端：目录链接与标题在同一份文档里，两者都要过消毒还能对上
+    const safe = sanitizeHtml(renderMarkdown("[第一节](#第一节)\n\n## 第一节"));
+    const doc = new DOMParser().parseFromString(safe, "text/html");
+
+    const href = doc.querySelector("a").getAttribute("href");
+    const id = doc.querySelector("h2").getAttribute("id");
+
+    // href 渲染成了百分号编码，浏览器匹配锚点前会解回来
+    expect(href).not.toBe("#第一节");
+    expect(decodeURIComponent(href)).toBe(`#${id}`);
   });
 });

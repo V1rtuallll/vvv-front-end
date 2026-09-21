@@ -191,6 +191,23 @@ describe("sanitizeHtml 的白名单", () => {
   it("剥掉白名单标签上不认识的属性", () => {
     expect(sanitizeHtml('<p class="x" id="y" data-z="1">正文</p>')).toBe("<p>正文</p>");
   });
+
+  it("标题保留 id，其他属性照旧剥掉", () => {
+    expect(sanitizeHtml('<h2 id="x" class="y">标题</h2>')).toBe('<h2 id="x">标题</h2>');
+  });
+
+  it("h1 到 h6 都保留 id", () => {
+    for (let level = 1; level <= 6; level++) {
+      const html = `<h${level} id="x">标题</h${level}>`;
+
+      expect(sanitizeHtml(html)).toBe(html);
+    }
+  });
+
+  it("标题以外的标签仍然丢掉 id", () => {
+    expect(sanitizeHtml('<blockquote id="x">引</blockquote>')).toBe("<blockquote>引</blockquote>");
+    expect(sanitizeHtml('<section id="x">正文</section>')).toBe("正文");
+  });
 });
 
 describe("sanitizeHtml 的输入处理", () => {

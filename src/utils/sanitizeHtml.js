@@ -35,6 +35,9 @@ const ALLOWED_ATTRS = {
   img: ["src", "alt", "title"],
   video: ["src", "poster", "controls", "preload", "loop", "muted", "playsinline", "width", "height"],
   source: ["src", "type"],
+  // 标题只放行 id：正文里的手写目录靠 [文字](#文字) 定位，而 id 由 markdown.js 生成。
+  // class / style 之类仍然会被剥掉。
+  h1: ["id"], h2: ["id"], h3: ["id"], h4: ["id"], h5: ["id"], h6: ["id"],
 };
 
 const SAFE_LINK_PROTOCOLS = ["http:", "https:", "mailto:"];

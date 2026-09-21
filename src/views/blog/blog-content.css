@@ -27,6 +27,10 @@
   font-family: "Orbitron", "Rajdhani", monospace;
   font-weight: normal;
   letter-spacing: 1px;
+  /* 目录锚点跳转时给吸顶导航留出高度。.vf-navbar 是 position: sticky，
+     不留这一条的话，标题会被停在视口正中上方、压在导航底下，
+     看起来和「没跳」一样 */
+  scroll-margin-top: 80px;
 }
 
 .blog-content a {
