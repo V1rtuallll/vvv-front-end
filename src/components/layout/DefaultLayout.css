@@ -1392,14 +1392,16 @@
   );
   background-size: 8px 8px;
   /* 半径取元素宽高的一半：左右与上下边的中点正好落在完全不透明处，中心一段留白 */
+  /* 留白要够大。面板只有两百多像素见方，按边带那种「两端各 140px」折算过来
+     就是几乎整块铺满 —— 中心必须空出一大片，只在四边留一圈，观感才和边带一致 */
   -webkit-mask-image: radial-gradient(
     ellipse 50% 50% at center,
-    transparent 25%,
+    transparent 62%,
     #000 100%
   );
   mask-image: radial-gradient(
     ellipse 50% 50% at center,
-    transparent 25%,
+    transparent 62%,
     #000 100%
   );
 }
