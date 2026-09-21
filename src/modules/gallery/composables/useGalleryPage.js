@@ -83,9 +83,26 @@ export function useGalleryPage() {
     }
   };
 
+  // 详情弹窗只拿到 currentItem 与评论线程，失败标记随 currentItem 一起带进去。
+  // currentItem 为空（详情已经关掉）时没有可标记的对象，直接跳过
+  const setCommentsLoadFailed = (failed) => {
+    if (currentItem.value) currentItem.value.commentsLoadFailed = failed;
+  };
+
+  /**
+   * 取某个资源的评论：打开详情、发评论、点赞评论三处都会走到这里。
+   * 失败时不抛异常、也不清空列表 —— 已经取到的评论是有效数据，一次刷新失败就抹掉，
+   * 等于把「没取到」当成「没有评论」展示给用户。失败只做标记，由弹窗说明情况，
+   * 提示由 request.js 负责。
+   */
   const loadComments = async (id) => {
-    const res = await getGalleryComments(id);
-    comments.value = normalizeComments(res.data);
+    try {
+      const res = await getGalleryComments(id);
+      comments.value = normalizeComments(res.data);
+      setCommentsLoadFailed(false);
+    } catch {
+      setCommentsLoadFailed(true);
+    }
   };
 
   /**
@@ -142,18 +159,19 @@ export function useGalleryPage() {
     }
   };
 
+  /**
+   * 打开某人的资料弹窗。
+   * 详情读不到时只保留调用方给出的 username，并标记 loadFailed：查不到资料不等于
+   * 这个人的字段就是空值，按默认值补齐会被界面当成服务器返回的事实展示出来
+   * （创建时间尤其明显，填当前时间会读成「今天注册」）。
+   * 提示由 request.js 负责，这里只决定弹窗拿到什么。
+   */
   const openUserProfile = async (_userId, username) => {
     try {
       const res = await getPublicUser(username);
       selectedUser.value = res.data || { username };
     } catch {
-      selectedUser.value = {
-        username,
-        avatar: "/default-avatar.gif",
-        sex: "SECRET",
-        description: "无",
-        createdAt: new Date(),
-      };
+      selectedUser.value = { username, loadFailed: true };
     }
     showUserProfile.value = true;
   };
@@ -319,12 +337,9 @@ export function useGalleryPage() {
   };
 
   const openDetailModal = async (item) => {
-    currentItem.value = { ...item, isLiked: false };
-    try {
-      await loadComments(item.id);
-    } catch {
-      comments.value = [];
-    }
+    // 评论是每次打开单独取的，失败标记跟着这一次打开一起归零
+    currentItem.value = { ...item, isLiked: false, commentsLoadFailed: false };
+    await loadComments(item.id);
   };
 
   const postComment = async () => {
@@ -341,6 +356,8 @@ export function useGalleryPage() {
       });
       newComment.value = "";
       cancelReply();
+      // 评论已经发出去了：刷新失败由 loadComments 在详情上标记，
+      // 不能把后面的计数与展开一起吞掉
       await loadComments(currentItem.value.id);
       // 展开回复所在的线程，否则用户看不到自己刚发的那条
       if (parentThreadId != null) expandedThreads.value.add(parentThreadId);

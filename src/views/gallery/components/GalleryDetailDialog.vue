@@ -65,6 +65,9 @@
             </div>
           </div>
           <div class="comment-list">
+            <!-- 评论取不到时说明情况：空列表既可能是「确实没有评论」，也可能是这次没取到，
+                 两者不能共用一句「没有评论」。上次取到的评论仍留在下面，不因刷新失败清掉 -->
+            <div v-if="commentsLoadFailed" class="comment-error">评论加载失败</div>
             <article
               v-for="entry in displayComments"
               :key="entry.id"
@@ -97,7 +100,7 @@
                 >删除</button>
               </div>
             </article>
-            <div v-if="displayComments.length === 0" class="no-comment">There's no comment.</div>
+            <div v-if="!commentsLoadFailed && displayComments.length === 0" class="no-comment">There's no comment.</div>
           </div>
         </div>
       </div>
@@ -202,9 +205,18 @@ const displayComments = computed(() =>
       : []),
   ]));
 
-/** 标题里的评论数含折叠中的回复 */
-const totalComments = computed(() =>
-  props.threads.reduce((sum, thread) => sum + 1 + (thread.replies?.length ?? 0), 0));
+/** 评论取不到。标记由页面放在 currentItem 上带进来，弹窗不自己判断请求结果 */
+const commentsLoadFailed = computed(() => Boolean(props.item?.commentsLoadFailed));
+
+/**
+ * 标题里的评论数含折叠中的回复。
+ * 评论取不到时列表本身就不可信，退回这一条自带的计数：顶着一个 0 去说「评论加载失败」，
+ * 等于把「没取到」说成「没有」，也会和卡片上的评论数对不上。
+ */
+const totalComments = computed(() => {
+  if (commentsLoadFailed.value) return props.item?.commentCount ?? 0;
+  return props.threads.reduce((sum, thread) => sum + 1 + (thread.replies?.length ?? 0), 0);
+});
 
 // useGalleryPage 的 drag 逻辑只监听 mousemove / mouseup，触屏设备不会触发。
 // 这里补一条触摸路径，调整方式与桌面端保持一致：最小 60px，最大不超过视口高度的一半。
@@ -331,6 +343,8 @@ onBeforeUnmount(() => stopBgm());
 .comment-like-count { color: #c2185b; cursor: pointer; }
 .eternal-liked { color: #c2185b; cursor: default; }
 .no-comment { padding: 60px 20px; color: #54636f; text-align: center; }
+/* 评论取不到时的说明，与「确实没有评论」区分开：带边框的块，看起来是列表里的一条状态 */
+.comment-error { padding: 16px; margin-bottom: 18px; color: #2f3b47; text-align: center; background: #e9f2f9; border: 1px solid #b9c4cc; border-radius: 4px; }
 @media (max-width: 1100px) { .detail-modal { flex-direction: column; height: 96vh; } .detail-left { flex: 0 0 55%; height: 55%; } .detail-right { flex: 1; height: 45%; } }
 
 /* ==== 窄屏适配 ====

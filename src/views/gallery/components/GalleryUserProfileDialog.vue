@@ -5,13 +5,18 @@
         <div class="crt-scanlines"></div>
         <div class="crt-content">
           <h2 class="crt-title">{{ user?.username || "?" }}</h2>
-          <div class="avatar-section"><img :src="user?.avatar || '/default-avatar.gif'" alt="头像" class="crt-avatar" /></div>
-          <div class="info-display">
-            <p class="user-info">ID：{{ user?.id }}</p>
-            <p class="user-info">性别：{{ displayGender(user?.sex) }}</p>
-            <p class="user-info">描述：{{ user?.description || "未设置" }}</p>
-            <p class="user-info">创建时间：{{ formatDate(user?.createdAt || user?.createTime) }}</p>
-          </div>
+          <!-- 资料读不到时只说明情况：这一层没有可展示的事实，填上默认头像与
+               「未设置」「未知时间」会把空值显示成服务器返回的内容 -->
+          <p v-if="user?.loadFailed" class="profile-error">用户信息加载失败</p>
+          <template v-else>
+            <div class="avatar-section"><img :src="user?.avatar || '/default-avatar.gif'" alt="头像" class="crt-avatar" /></div>
+            <div class="info-display">
+              <p class="user-info">ID：{{ user?.id }}</p>
+              <p class="user-info">性别：{{ displayGender(user?.sex) }}</p>
+              <p class="user-info">描述：{{ user?.description || "未设置" }}</p>
+              <p class="user-info">创建时间：{{ formatDate(user?.createdAt || user?.createTime) }}</p>
+            </div>
+          </template>
           <button @click="$emit('close')" class="crt-mini-btn close-profile-btn">关闭</button>
         </div>
       </div>
@@ -41,6 +46,8 @@ defineEmits(["close"]);
 .crt-avatar { width: 160px; height: 160px; object-fit: cover; border: 2px solid #ff69b4; border-radius: 50%; }
 .info-display { margin: 50px 0; }
 .user-info { margin: 25px 0; color: #2f3b47; font-size: 1.5rem; word-break: break-word; }
+/* 读不到资料时的说明占的就是信息区那块位置，字号与信息行一致 */
+.profile-error { margin: 50px 0; color: #2f3b47; font-size: 1.5rem; word-break: break-word; }
 .close-profile-btn { margin-top: 40px; min-height: 44px; padding: 10px 24px; }
 
 /* ==== 窄屏适配 ====
@@ -56,6 +63,7 @@ defineEmits(["close"]);
   .crt-avatar { width: 110px; height: 110px; border-width: 3px; }
   .info-display { margin: 24px 0; }
   .user-info { margin: 14px 0; font-size: 1.1rem; }
+  .profile-error { margin: 24px 0; font-size: 1.1rem; }
   .close-profile-btn { margin-top: 24px; }
 }
 
@@ -67,5 +75,6 @@ defineEmits(["close"]);
   .crt-title { font-size: 1.5rem; }
   .crt-avatar { width: 92px; height: 92px; }
   .user-info { font-size: 1rem; }
+  .profile-error { font-size: 1rem; }
 }
 </style>

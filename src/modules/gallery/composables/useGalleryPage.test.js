@@ -31,11 +31,13 @@ import {
   getGalleryComments,
   getGalleryPage,
   getUploadLimit,
+  likeGalleryComment,
   postGalleryComment,
   replaceGalleryFile,
   uploadGalleryFile,
   updateGallery,
 } from "@/modules/gallery/api/galleryApi";
+import { getPublicUser } from "@/modules/user/api/userApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const ME = 7;
@@ -468,6 +470,92 @@ describe("useGalleryPage 的评论回复", () => {
   });
 });
 
+describe("useGalleryPage 的评论加载失败", () => {
+  const COMMENT = { id: 1, username: "甲", parentId: null, content: "你好", createdAt: "2026-01-01T10:00:00" };
+
+  async function openItem() {
+    const api = await mountGallery();
+    await api.openDetailModal(api.galleryList.value[0]);
+    return api;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    postGalleryComment.mockResolvedValue({ data: {} });
+    likeGalleryComment.mockResolvedValue({ data: {} });
+  });
+
+  /**
+   * 取不到评论不等于这条资源没有评论。当成空列表往下传，
+   * 弹窗会顶着一句「没有评论」和卡片上的评论数自相矛盾。
+   */
+  it("打开详情时评论取不到，标记失败而不是当成空列表", async () => {
+    getGalleryComments.mockRejectedValue(new Error("boom"));
+
+    const api = await openItem();
+
+    expect(api.currentItem.value.commentsLoadFailed).toBe(true);
+    expect(api.comments.value).toEqual([]);
+  });
+
+  it("服务端确实返回空列表时不算失败", async () => {
+    const api = await openItem();
+
+    expect(api.currentItem.value.commentsLoadFailed).toBe(false);
+  });
+
+  it("取不到评论时不重复弹提示（request.js 已经弹过后端消息）", async () => {
+    getGalleryComments.mockRejectedValue(new Error("boom"));
+
+    await openItem();
+
+    expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+
+  /** 失败一次之后重新打开并取到评论，标记要跟着这一次的结果回到假 */
+  it("重新打开时按这一次的结果重置失败标记", async () => {
+    getGalleryComments.mockRejectedValue(new Error("boom"));
+    const api = await openItem();
+    expect(api.currentItem.value.commentsLoadFailed).toBe(true);
+
+    getGalleryComments.mockResolvedValue({ data: [{ ...COMMENT }] });
+    await api.openDetailModal(api.galleryList.value[0]);
+
+    expect(api.currentItem.value.commentsLoadFailed).toBe(false);
+    expect(api.comments.value).toHaveLength(1);
+  });
+
+  /** 已经取到的评论是有效数据，一次刷新失败就清掉，等于又把它当成「没有评论」 */
+  it("点赞后的刷新失败保留已经取到的评论，只标记失败", async () => {
+    getGalleryComments.mockResolvedValue({ data: [{ ...COMMENT }] });
+    const api = await openItem();
+
+    getGalleryComments.mockRejectedValue(new Error("boom"));
+    await api.likeComment(api.comments.value[0]);
+
+    expect(api.comments.value).toHaveLength(1);
+    expect(api.currentItem.value.commentsLoadFailed).toBe(true);
+  });
+
+  /** 评论已经发出去了，刷新失败不能把计数与输入框的状态一起吞掉 */
+  it("发评论后的刷新失败，评论照常计数并标记失败", async () => {
+    const api = await openItem();
+    api.newComment.value = "新评论";
+
+    getGalleryComments.mockRejectedValue(new Error("boom"));
+    await api.postComment();
+
+    expect(postGalleryComment).toHaveBeenCalled();
+    expect(api.newComment.value).toBe("");
+    expect(api.currentItem.value.commentCount).toBe(3);
+    expect(api.currentItem.value.commentsLoadFailed).toBe(true);
+  });
+});
+
 describe("useGalleryPage 的上传队列", () => {
   const picked = (name = "a.png", size = 10) => ({ name, size, type: "image/png" });
 
@@ -652,5 +740,61 @@ describe("useGalleryPage 的上传队列", () => {
     const sent = uploadGalleryFile.mock.calls[0][0];
     expect(sent.has("bgmSrc")).toBe(false);
     expect(sent.has("bgmType")).toBe(false);
+  });
+});
+
+describe("useGalleryPage 的用户资料弹窗", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [], total: 0 } });
+  });
+
+  it("读到资料时用服务端返回的内容，并打开弹窗", async () => {
+    const profile = { id: 3, username: "甲", sex: "FEMALE", description: "你好", createdAt: "2025-01-02T03:04:05" };
+    getPublicUser.mockResolvedValue({ data: profile });
+    const api = await mountGallery();
+
+    await api.openUserProfile(3, "甲");
+
+    expect(getPublicUser).toHaveBeenCalledWith("甲");
+    expect(api.selectedUser.value).toEqual(profile);
+    expect(api.showUserProfile.value).toBe(true);
+  });
+
+  /**
+   * 查不到资料不等于这个人的字段是空值。按默认值补齐会被界面当成服务器返回的事实：
+   * 创建时间填成当前时间会读成「今天注册」，性别与描述也会显示成确有其事的样子。
+   */
+  it("读不到资料时不编造任何字段", async () => {
+    getPublicUser.mockRejectedValue(new Error("boom"));
+    const api = await mountGallery();
+
+    await api.openUserProfile(9, "查无此人");
+
+    expect(api.selectedUser.value).toEqual({ username: "查无此人", loadFailed: true });
+    expect(api.selectedUser.value.createdAt).toBeUndefined();
+    expect(api.selectedUser.value.sex).toBeUndefined();
+    expect(api.selectedUser.value.description).toBeUndefined();
+    expect(api.selectedUser.value.avatar).toBeUndefined();
+  });
+
+  it("读不到资料时弹窗照常打开，由弹窗说明情况", async () => {
+    getPublicUser.mockRejectedValue(new Error("boom"));
+    const api = await mountGallery();
+
+    await api.openUserProfile(9, "查无此人");
+
+    expect(api.showUserProfile.value).toBe(true);
+  });
+
+  it("读不到资料时不重复弹提示（request.js 已经弹过后端消息）", async () => {
+    getPublicUser.mockRejectedValue(new Error("boom"));
+    const api = await mountGallery();
+
+    await api.openUserProfile(9, "查无此人");
+
+    expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 });

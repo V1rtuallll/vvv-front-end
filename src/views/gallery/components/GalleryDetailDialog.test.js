@@ -195,6 +195,49 @@ describe("GalleryDetailDialog 的回复", () => {
   });
 });
 
+describe("GalleryDetailDialog 的评论加载失败", () => {
+  const THREAD = {
+    id: 1, username: "甲", content: "上次取到的评论", likes: 0,
+    createdAt: "2026-01-01T10:00:00", replies: [],
+  };
+
+  /**
+   * 取不到评论不等于这条资源没有评论。空列表把失败渲染成事实，
+   * 还会和卡片上的评论数对不上。
+   */
+  it("取不到评论时说明失败，不说没有评论", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, commentsLoadFailed: true, commentCount: 2 } });
+    const text = wrapper.text();
+
+    expect(text).toContain("评论加载失败");
+    expect(text).not.toContain("There's no comment.");
+  });
+
+  /** 服务端确实返回了空列表时，「没有评论」是事实，照常显示 */
+  it("确实没有评论时照常显示没有评论", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, commentsLoadFailed: false } });
+
+    expect(wrapper.find(".no-comment").text()).toBe("There's no comment.");
+    expect(wrapper.find(".comment-error").exists()).toBe(false);
+  });
+
+  /** 刷新失败时上一次取到的评论还在，不能为了说明失败把它们藏起来 */
+  it("取不到评论但还有上次的评论时，评论照常显示", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, commentsLoadFailed: true }, threads: [THREAD] });
+
+    expect(wrapper.findAll(".comment-item")).toHaveLength(1);
+    expect(wrapper.find(".comment-error").exists()).toBe(true);
+    expect(wrapper.find(".no-comment").exists()).toBe(false);
+  });
+
+  /** 列表不可信时退回这一条自带的计数，不能顶着 0 去说加载失败 */
+  it("取不到评论时标题用这一条自带的评论数", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, commentsLoadFailed: true, commentCount: 2 } });
+
+    expect(wrapper.find(".comments-scrollable h3").text()).toBe("Comments(2)");
+  });
+});
+
 describe("GalleryDetailDialog 的背景音乐", () => {
   const WITH_BGM = {
     ...ITEM,
