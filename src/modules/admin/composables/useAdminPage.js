@@ -17,7 +17,12 @@ export function useAdminPage() {
   // 与画廊上传共用同一套状态模型：每个文件一个请求、最多 3 个并发、可重试可取消。
   // 后端的管理上传接口只读 file，队列多带的 title/description/clientUploadId 会被忽略。
   const uploadQueue = useUploadQueue(uploadAdminResource, { maxConcurrent: 3 });
-  const homeConfig = ref({ main: { type: "video", src: "", title: "", desc: "", random: false }, gallery: [], pinnedBlogId: null });
+  // 默认状态只在读取失败时使用。homeConfig 会被整体回传（读取时整体赋值、保存时整体展开），
+  // 每个键都会原样发回后端：pinnedBlogId 已下线（无读取方，回传只会把列冲成 NULL），不要再加回来。
+  // galleryItems 是后端契约里的键名（读取与保存同名，见 HomeConfigSaveVO / HomeConfigResponseVO）。
+  // 键缺失或值为 null 时，后端保存会对 null 做 writeValueAsString，把字面量 "null" 存进 gallery_json，
+  // 首页解析不出配置条目；默认值用 [] 表示没有配置条目。
+  const homeConfig = ref({ main: { type: "video", src: "", title: "", desc: "", random: false }, galleryItems: [] });
   const availableFiles = ref([]);
   const availableFilesByType = ref({});
   const resourceFilter = ref({ type: "" });
