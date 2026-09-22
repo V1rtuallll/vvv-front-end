@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { flushPromises, mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,6 +36,9 @@ import DefaultLayout from "@/components/layout/DefaultLayout.vue";
 // 需要登录态的用例自己在 mount 前重新 mockReturnValue
 beforeEach(() => {
   useAuthStore.mockReturnValue({ isLoggedIn: false, user: null });
+  // 音量 store 给一个真的：它只有一个数字、没有任何副作用，替身换掉的只是
+  // 一份需要跟着改的假货。auth 是另一回事 —— 它的 action 会发请求，必须挡掉
+  setActivePinia(createPinia());
 });
 
 const stubs = {

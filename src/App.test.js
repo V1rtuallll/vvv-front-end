@@ -1,16 +1,24 @@
 import { flushPromises, mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/App.vue";
+import {
+  DUCK_FACTOR,
+  registerMediaElement,
+  setVolume,
+} from "@/modules/player/composables/mediaVolume";
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 
 /**
  * 全局音效与背景音乐音量的互动。
  *
  * 这里钉的是一条用户听得见的回归：响音效时会把**正在响的**音源压低，音效结束后
- * 还原。音源有两路 —— 侧栏播放器与画廊详情弹窗的 BGM —— 各自的音量互相独立。
- * 还原的目标音量必须是**压低之前**记下的那一个：一旦在某次响音效时重新去读
- * 当前音量，读到的可能已经是压低后的值，音乐就再也回不到原来的响度。
+ * 还原。音源有两路 —— 侧栏播放器与画廊详情弹窗的 BGM。
+ *
+ * 压低与还原的目标都取自**全局音量**：压低是它的十分之一，还原是它本身。
+ * 所以下面这些用例先摆好全局音量，再断言元素跟着它走 —— 元素自己原先是多少
+ * 不再决定压低的目标。
  */
 
 /** 本次调用 play() 过的元素，按顺序 */
@@ -96,6 +104,8 @@ function manualAnimationFrames() {
 beforeEach(() => {
   played.length = 0;
   mutedAtPlay.clear();
+  // 音量 store 用真的：压低要读它、还原要读它，换成替身就测不到「实时」这件事
+  setActivePinia(createPinia());
   // jsdom 不实现 HTMLMediaElement 的 play / pause，两个都桩掉，
   // 否则 jsdom 会往输出里打 “Not implemented” 噪音
   vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(function () {
@@ -123,32 +133,36 @@ afterEach(() => {
 describe("全局音效与背景音乐音量", () => {
   /**
    * 连着来两条提示时，第二个音效会 pause() 打断第一个 —— 而 pause() **不会**
-   * 触发第一个音效的 onended，那一刻音量还停在压低值上。
-   * 若此时重新读「原音量」，就会把压低后的值记成原音量，
-   * 音乐之后只恢复到那个值：用户听到的是背景音乐永久变轻，刷新页面才回来。
+   * 触发第一个音效的 onended。
+   *
+   * 这种交错里最容易出的错是「把压低后的音量当成原音量」：音乐之后只回到那个值，
+   * 每响一次就轻一点，直到刷新页面。压低只写元素、不写全局音量，所以音乐最后
+   * 回到的一定是全局音量。
    */
   it("连着响两次音效之后，音乐仍能恢复到原来的音量", () => {
+    setVolume(0.3);
     const music = mountMusicPlayer(0.3);
     mountApp();
 
     window.playGlobalRandomSound();
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     window.playGlobalRandomSound();
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     played[played.length - 1].onended();
 
     expect(music.volume).toBeCloseTo(0.3, 5);
   });
 
-  /** 音量取自音乐播放器当前值，不是写死的默认值 */
-  it("恢复的是音乐自己的音量", () => {
+  /** 音量取自全局音量层，不是写死的默认值 */
+  it("恢复的是全局音量，不是写死的默认值", () => {
+    setVolume(0.75);
     const music = mountMusicPlayer(0.75);
     mountApp();
 
     window.playGlobalRandomSound();
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.75 * DUCK_FACTOR, 5);
 
     played[played.length - 1].onended();
 
@@ -175,18 +189,21 @@ describe("全局音效与背景音乐音量", () => {
  */
 describe("画廊 BGM 与侧栏一起让路", () => {
   it("两路音源同时响时都被压低", () => {
+    setVolume(0.3);
+    // BGM 元素自己的音量（1）已经不影响压低的目标：压低看的是全局音量
     const music = mountMusicPlayer(0.3);
     const bgmElement = mountGalleryBgm(1);
     mountApp();
 
     window.playGlobalRandomSound();
 
-    expect(music.volume).toBeCloseTo(0.1, 5);
-    expect(bgmElement.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
+    expect(bgmElement.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
   });
 
-  /** 音量各记各的：压低一共用一个槽位的话，两路会互相用对方的原音量还原 */
-  it("两路各自还原成压低前的音量", () => {
+  /** 两路共用同一个全局音量，还原时也就不会互相用到对方的旧值 */
+  it("两路都还原到全局音量", () => {
+    setVolume(0.75);
     const music = mountMusicPlayer(0.75);
     const bgmElement = mountGalleryBgm(0.6);
     mountApp();
@@ -195,21 +212,22 @@ describe("画廊 BGM 与侧栏一起让路", () => {
     played[played.length - 1].onended();
 
     expect(music.volume).toBeCloseTo(0.75, 5);
-    expect(bgmElement.volume).toBeCloseTo(0.6, 5);
+    expect(bgmElement.volume).toBeCloseTo(0.75, 5);
   });
 
   /** 压低只针对正在响的音源：暂停中的元素连音量都不该被写 */
-  it("暂停中的画廊 BGM 不被压低，也不留下压低前的记录", () => {
+  it("暂停中的画廊 BGM 不被压低，也不进压低名单", () => {
+    setVolume(0.3);
     const music = mountMusicPlayer(0.3);
     const bgmElement = mountGalleryBgm(0.8, { playing: false });
     mountApp();
 
     window.playGlobalRandomSound();
     expect(bgmElement.volume).toBe(0.8);
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     // 音效结束前它开始播了，此刻的音量与被跳过的 0.8 无关：
-    // 若那个值被记下来，这次还原会把它写回去
+    // 若那个值进了名单，这次还原会把它写回去
     bgmElement.paused = false;
     bgmElement.volume = 0.2;
     played[played.length - 1].onended();
@@ -220,44 +238,46 @@ describe("画廊 BGM 与侧栏一起让路", () => {
 
   /** 与侧栏同一条回归：连着两条提示不能把 BGM 越压越轻 */
   it("连着两条音效，BGM 也只压低一次、还原一次", () => {
+    setVolume(0.3);
     const bgmElement = mountGalleryBgm(1);
     mountApp();
 
     window.playGlobalRandomSound();
-    expect(bgmElement.volume).toBeCloseTo(0.1, 5);
+    expect(bgmElement.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     window.playGlobalRandomSound();
-    expect(bgmElement.volume).toBeCloseTo(0.1, 5);
+    expect(bgmElement.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     played[played.length - 1].onended();
 
-    expect(bgmElement.volume).toBeCloseTo(1, 5);
+    expect(bgmElement.volume).toBeCloseTo(0.3, 5);
   });
 
   /**
    * 还原的**半路上**又来一个音效。
    *
-   * 还原动画要 500ms 才走完，这期间音量既不是压低值也不是原值（这里是 0.275）。
-   * 若还原一开始就作废记录、新音效重新读一次当前音量，音乐每响一次就轻一点 ——
-   * 与开头那条同属一类：**正在变化中的音量不能当「原音量」用**。
+   * 还原动画要 500ms 才走完，这期间音量既不是压低值也不是全局音量。
+   * 此刻来的音效必须把音乐重新压下去（它正往回升，提示音盖不住它），
+   * 而被取消的那轮还原不许在之后的帧里再把音量抬回去。
    */
-  it("还原还没走完时再响音效，音乐不会被算轻", () => {
+  it("还原还没走完时再响音效，音乐会被重新压低", () => {
+    setVolume(0.3);
     const music = mountMusicPlayer(0.3);
     const frames = manualAnimationFrames();
     mountApp();
 
     window.playGlobalRandomSound();
     frames.step(1000); // 压低动画走完
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     played[played.length - 1].onended(); // 音效结束，还原开始
     frames.step(250); // 还原走到一半
-    expect(music.volume).toBeGreaterThan(0.1);
+    expect(music.volume).toBeGreaterThan(0.3 * DUCK_FACTOR);
     expect(music.volume).toBeLessThan(0.3);
 
     window.playGlobalRandomSound(); // 半路上又来一个音效
     frames.step(1000);
-    expect(music.volume).toBeCloseTo(0.1, 5);
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
     // 被取消的那轮还原不该在之后的帧里把音量又抬回去
     expect(frames.step(1000)).toBe(0);
 
@@ -313,5 +333,45 @@ describe("首次交互的静音解锁", () => {
     await flushPromises();
 
     expect(wrapper.findAll("audio").every((audio) => audio.element.muted === false)).toBe(true);
+  });
+});
+
+/**
+ * 压低与还原读的都是**实时**的全局音量。
+ *
+ * 提示音压低期间用户照样能拖滑块（右栏一直在）。还原若回到「压低之前记下的那个
+ * 值」，滑块显示的与实际出声的从此永久对不上，只能靠刷新页面恢复 —— 全局音量
+ * 之后，这不再是一个理论上的时序问题：压低与滑块本来就作用在同一个数字上。
+ */
+describe("提示音压低与实时音量", () => {
+  it("restores to the live volume instead of the value captured before the duck", () => {
+    const music = mountMusicPlayer(0.3);
+    // 侧栏播放器挂载时会把自己交给全局音量层，这里的替身手动登记一次
+    registerMediaElement(music);
+    mountApp();
+
+    window.playGlobalRandomSound();
+    expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
+
+    // 压低期间用户拖了滑块。压低中的元素也只出压低后的那一档
+    setVolume(0.9);
+    expect(music.volume).toBeCloseTo(0.9 * DUCK_FACTOR, 5);
+
+    played[played.length - 1].onended();
+
+    expect(music.volume).toBeCloseTo(0.9, 5);
+  });
+
+  /** 压低的目标是「当前音量的十分之一」，不是写死的 0.1 */
+  it("scales the duck with the live volume instead of a fixed 0.1", () => {
+    setVolume(0.5);
+    // 元素自己的音量与全局无关：压低取的是全局那个数字
+    const music = mountMusicPlayer(0.2);
+    registerMediaElement(music);
+    mountApp();
+
+    window.playGlobalRandomSound();
+
+    expect(music.volume).toBeCloseTo(0.05, 5);
   });
 });

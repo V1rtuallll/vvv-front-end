@@ -1,13 +1,16 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { h } from "vue";
+import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { registerMediaElement } from "@/modules/player/composables/mediaVolume";
 import {
   pauseForBgm,
   registerPlayerAudio,
   resumeAfterBgm,
   useAudioPlayer,
 } from "@/modules/player/composables/useAudioPlayer";
+import { usePlayerStore } from "@/stores/player";
 
 /** 够用的替身：被测代码只碰 paused / pause / play 三样 */
 function fakePlayer(paused) {
@@ -49,6 +52,13 @@ function makePlaying(wrapper) {
     configurable: true,
   });
 }
+
+// 音量 store 用真的：它只有一个数字、没有副作用（测试里没装持久化插件，
+// 写不动 localStorage），vi.mock 掉它只会得到一份需要跟着改的假货。
+// 被测的是 useAudioPlayer 的接线，不是这个 store —— 后者另有专门的测试。
+beforeEach(() => {
+  setActivePinia(createPinia());
+});
 
 describe("侧栏播放器为详情 BGM 让位", () => {
   beforeEach(() => {
@@ -209,5 +219,47 @@ describe("播放器按钮图标", () => {
     await wrapper.find(".next").trigger("click");
 
     expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-pause");
+  });
+});
+
+/**
+ * 播放器的音量不再是自己内部的一个常量，而是全局音量层持有的那一个。
+ *
+ * 这里钉两条接线：挂载时按**当前**音量写一次（等下次拖滑块才生效的话，刷新后
+ * 新挂上的元素会以浏览器默认的 1.0 出声），以及滑块改的是全局那个数字 ——
+ * 拖动它必须连带改掉其它登记过的媒体，而不只是自己这一路。
+ */
+describe("播放器的音量来自全局音量层", () => {
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(() =>
+      Promise.resolve(),
+    );
+    vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  });
+
+  it("挂载时按当前音量写元素，滑块与读数也跟着对上", async () => {
+    usePlayerStore().volume = 0.6;
+
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(wrapper.find("audio").element.volume).toBeCloseTo(0.6);
+    expect(wrapper.find("input").element.valueAsNumber).toBe(60);
+    expect(wrapper.text()).toContain("Volume: 60%");
+  });
+
+  it("拖滑块改的是全局音量，其它登记过的媒体一起跟着变", async () => {
+    const other = { volume: 1, paused: true };
+    registerMediaElement(other);
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    const slider = wrapper.find("input");
+    slider.element.value = "75";
+    await slider.trigger("input");
+
+    expect(usePlayerStore().volume).toBeCloseTo(0.75);
+    expect(wrapper.find("audio").element.volume).toBeCloseTo(0.75);
+    expect(other.volume).toBeCloseTo(0.75);
   });
 });

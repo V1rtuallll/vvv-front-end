@@ -19,6 +19,12 @@
 import { ref, onMounted } from "vue";
 import VMessage from "@/components/VMessage.vue";
 import { getActiveBgmElement } from "@/modules/gallery/composables/useGalleryBgm";
+import {
+  DUCK_FACTOR,
+  clearDucked,
+  getVolume,
+  markDucked,
+} from "@/modules/player/composables/mediaVolume";
 const globalSounds = ref([]); // 全局9个音效
 let currentPlayingSound = null; // 当前正在播放的音效（用于停止上一个）
 const getMusicAudio = () => document.querySelector(".music-player audio"); // 实时获取音乐播放器audio
@@ -40,20 +46,14 @@ const getDuckTargets = () => {
 };
 
 /**
- * 元素 → 它被压低**之前**的音量。不在表里表示这个元素当前没有被压低。
+ * 当前正被压低的那几个元素。只记「谁」，不记「压低之前是多少」。
  *
- * 两路音源各记各的：它们的音量互相独立（侧栏是 0.3，画廊 BGM 按源文件音量），
- * 共用一个槽位的话，先还原的那一路会用到另一路的值。
- *
- * 值必须只在**第一次**压低时记下来，不能在每次响音效时重新读：
- * `pause()` 打断上一个音效**不会**触发它的 `onended`，那时音量还停在压低值上，
- * 若此刻重新读一次「原音量」，读到的就是压低后的值，音乐之后只会恢复到那个值 ——
- * 连着来两条提示，背景音乐就永久停在 10%，要刷新页面才回来。
- *
- * 记录留到**还原动画走完**才作废（见 smoothVolumeChange 的 onSettled）：还原的
- * 半路上再响一个音效，读到的同样是动画中途的音量，音乐每响一次就轻一点。
+ * 还原的目标读全局音量层就对了 —— 存一份值反而会失配：全局音量之后，压低期间
+ * 用户照样能拖滑块，写回那个过时的快照会让滑块显示的与实际出声的永久对不上，
+ * 只能刷新页面恢复。原来那张「元素 → 值」的表还要两路音源各记各的，现在两路
+ * 本来就共用同一个音量，集合就够了。
  */
-const volumeBeforeDuck = new Map();
+const duckedElements = new Set();
 
 /**
  * 元素 → 它身上正在跑的音量动画帧。开新动画前先把旧的取消：
@@ -65,37 +65,36 @@ const setGlobalSound = (el, index) => {
   if (el) globalSounds.value[index] = el;
 };
 
-/** 需要时把正在响的音源压低，并记住压低前的音量 */
+/** 需要时把正在响的音源压低 */
 const duckMusicVolume = () => {
   getDuckTargets().forEach((target) => {
     // 没在播的不碰、也不记：写音量会让它下次出声时莫名其妙地变轻
     if (target.paused) return;
-    // 已经压着了（或正在还原）就不再记一次。这一句是这段的全部要害：
-    // 响一连串音效时，上一个音效是被 pause() 打断的（onended 不触发、
-    // 音量还停在压低值上），此刻重新读一次「当前音量」，读到的就是压低后的值。
-    if (!volumeBeforeDuck.has(target)) {
-      volumeBeforeDuck.set(target, target.volume);
-    }
-    smoothVolumeChange(target, 0.1, 300);
+    // 已经压着了就不再压一次
+    if (duckedElements.has(target)) return;
+    duckedElements.add(target);
+    markDucked(target);
+    smoothVolumeChange(target, getVolume() * DUCK_FACTOR, 300);
   });
 };
 
-/** 把正在响的音源恢复到压低前的音量 */
+/** 把正在响的音源恢复到全局音量 */
 const restoreMusicVolume = () => {
-  volumeBeforeDuck.forEach((preDuckVolume, target) => {
+  duckedElements.forEach((target) => {
     // 压低期间被停掉的不再还原（用户按了暂停、关掉了带 BGM 的弹窗）：
     // 不写没在播的元素，记录也就此作废
     if (target.paused) {
-      volumeBeforeDuck.delete(target);
+      duckedElements.delete(target);
+      clearDucked(target);
       return;
     }
-    smoothVolumeChange(target, preDuckVolume, 500, () => {
-      // 还原动画真的走完才作废记录：半路上又响一个音效时，它读到的必须是
-      // 压低之前的音量，而不是动画中途的音量
-      if (volumeBeforeDuck.get(target) === preDuckVolume) {
-        volumeBeforeDuck.delete(target);
-      }
-    });
+    // 先从这个名单里划掉：还原动画跑着的时候它已经不算「压着」了，
+    // 这半秒里再来一个音效必须能把它重新压下去 —— 音乐正在往回升，
+    // 提示音盖不住它
+    duckedElements.delete(target);
+    // 还原到**实时**音量：压低期间用户可能拖过滑块，
+    // 回到「压低之前记下的那个值」会让滑块与实际出声永久失配
+    smoothVolumeChange(target, getVolume(), 500, () => clearDucked(target));
   });
 };
 

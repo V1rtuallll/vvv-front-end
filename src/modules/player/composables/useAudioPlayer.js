@@ -2,6 +2,7 @@ import { nextTick, onMounted, ref } from "vue";
 
 // eslint-disable-next-line import/no-unresolved -- 由 vite.config.js 的 musicManifest 插件提供
 import manifest from "virtual:music-manifest";
+import { getVolume, registerMediaElement, setVolume } from "@/modules/player/composables/mediaVolume";
 
 /**
  * 曲库清单的兜底名单。
@@ -126,7 +127,8 @@ export function useAudioPlayer() {
 
     // 把元素交给模块级的让位逻辑：详情弹窗打开时要靠它把侧栏暂停下来
     registerPlayerAudio(audio);
-    audio.volume = 0.3;
+    // 音量不再是这里的一个常量：登记进全局音量层，它会立刻按当前音量写一次
+    registerMediaElement(audio);
 
     // 播放/暂停按钮里的图标。这里只切 class、不写文本：原来是写 "▶" / "■"，
     // 这些几何字符在 iOS/Safari 上会被渲染成彩色 emoji
@@ -165,7 +167,8 @@ export function useAudioPlayer() {
       }
     };
     const updateVolumeDisplay = () => {
-      const volumePercent = Math.round(audio.volume * 100);
+      // 读全局音量而不是 audio.volume：提示音压低期间滑块不该跟着跳动
+      const volumePercent = Math.round(getVolume() * 100);
       volumeDisplayElement.textContent = `Volume: ${volumePercent}%`;
       volume.valueAsNumber = volumePercent;
     };
@@ -188,7 +191,9 @@ export function useAudioPlayer() {
       audio.currentTime = ((event.clientX - rect.left) / rect.width) * audio.duration;
     });
     volume.addEventListener("input", (event) => {
-      audio.volume = Math.max(0, Math.min(1, event.target.valueAsNumber / 100));
+      // 唯一的写入口。它会连同画廊的视频、BGM、首页主展示的视频一起改 ——
+      // 那些元素各自登记过自己，这里不必知道它们是谁
+      setVolume(event.target.valueAsNumber / 100);
       updateVolumeDisplay();
     });
     updateVolumeDisplay();
