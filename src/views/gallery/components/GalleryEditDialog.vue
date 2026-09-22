@@ -384,19 +384,23 @@ const submit = () => {
 /* position: relative 是给落点线那条绝对定位的伪元素当参照系的 */
 .media-row { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #e9f2f9; transition: background-color 0.15s ease; }
 
-/* 拖柄。点阵是站点的既有母题（侧栏标题条的小方块、卡片底板都是它）：
-   调点的疏密改 background-size，调点的粗细改 radial-gradient 的 1.2px / 1.5px */
+/* 拖柄。三道杠：线粗 2px、线间距 4px 写在 repeating-linear-gradient 的色标里（0 2px 是实线，
+   2px 6px 是空档，6px 为一个周期），线长与三条线的总高由 background-size 的 14px 14px 给出，
+   即 3 x 2px 实线 + 2 x 4px 空档；纵向值同时决定画几条，改线粗或间距时要一起改
+   （总高 = 3 x 线粗 + 2 x 间距）。background-repeat: no-repeat 只让这一块被画出，
+   去掉会沿纵向拼接出更多条横线 */
 .media-grip {
   flex: 0 0 auto;
   width: 22px;
   height: 44px;
-  background-image: radial-gradient(circle, #7b8fa1 1.2px, transparent 1.5px);
-  background-size: 6px 6px;
+  background-image: repeating-linear-gradient(to bottom, #7b8fa1 0 2px, transparent 2px 6px);
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
   background-position: center;
   border-radius: 4px;
   cursor: grab;
 }
-.media-grip:hover { background-image: radial-gradient(circle, #0277bd 1.2px, transparent 1.5px); }
+.media-grip:hover { background-image: repeating-linear-gradient(to bottom, #0277bd 0 2px, transparent 2px 6px); }
 .media-grip:active { cursor: grabbing; }
 
 /* 被拖起的那一行：淡下去，加一条虚线框表示它正在被搬动 */
