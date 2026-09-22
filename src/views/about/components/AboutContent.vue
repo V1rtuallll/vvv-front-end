@@ -25,7 +25,7 @@
       <li v-for="link in content.links" :key="link.url || link.name">
         <a class="about-link" :href="link.url" target="_blank" rel="noopener noreferrer">
           <img v-if="iconSrcFor(link)" class="about-link-icon" :src="iconSrcFor(link)" alt="" />
-          » {{ link.name }} ↗
+          » {{ link.name }}<span class="ui-icon ui-icon-external-link about-link-arrow" aria-hidden="true"></span>
         </a>
       </li>
     </ul>
@@ -158,6 +158,14 @@ const iconSrcFor = (link) => link.icon || brandIconFor(link.url);
   margin-right: 6px;
   vertical-align: middle;
   object-fit: contain;
+}
+
+/* 链接末尾那个外链小图标。尺寸压到比正文小一档，间距也只能给 margin ——
+   模板里它紧跟在名字后面，中间没有空白节点（有了会让链接的可点区域出现断层） */
+.about-link-arrow {
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 4px;
 }
 
 .about-link:hover {

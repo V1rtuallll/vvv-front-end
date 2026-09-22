@@ -351,6 +351,15 @@
   mask-image: url("/icons/next.svg");
 }
 
+/* 站外链接的尾巴。原先这里是字符「↗」(U+2197) —— 那个码位有 emoji 变体，
+   iOS/Safari 会把它渲染成一枚彩色 emoji，和站内其余图标的观感对不上。
+   换成 mask 图标之后还多一件事：mask 吃的是 currentColor，能跟着链接的 hover 变色，
+   而品牌图标是 <img>，做不到这一点 */
+.ui-icon-external-link {
+  -webkit-mask-image: url("/icons/external-link.svg");
+  mask-image: url("/icons/external-link.svg");
+}
+
 /* 详情弹窗右栏里的背景音乐开关 */
 .bgm-toggle {
   flex: none;

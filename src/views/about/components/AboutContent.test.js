@@ -79,7 +79,7 @@ describe("AboutContent 组件", () => {
 
     expect(wrapper.findAll(".about-link-icon")).toHaveLength(0);
     expect(wrapper.findAll(".about-link").map((link) => link.text()))
-      .toEqual(["» GitHub ↗", "» Blog ↗"]);
+      .toEqual(["» GitHub", "» Blog"]);
   });
 
   it("没填图标时按链接地址匹配品牌图标", () => {
@@ -106,7 +106,7 @@ describe("AboutContent 组件", () => {
     });
 
     expect(wrapper.findAll(".about-link-icon")).toHaveLength(0);
-    expect(wrapper.find(".about-link").text()).toBe("» 博客 ↗");
+    expect(wrapper.find(".about-link").text()).toBe("» 博客");
   });
 
   it("没填的区块整块不渲染，不留空标题", () => {
