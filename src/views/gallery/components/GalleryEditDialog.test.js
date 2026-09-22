@@ -207,6 +207,35 @@ describe("GalleryEditDialog 的媒体增删", () => {
 
     expect(input.element.value).toBe("");
   });
+
+  /**
+   * 每一行「换文件」列出的类型跟着这条作品的族。
+   *
+   * 跨族换文件会被服务端回 400（作品的类型由族决定，换类型要删除后重新上传）。
+   * 收窄之后用户拿到的是系统的文件过滤，而不是一条服务端文案 —— 后者要等他把
+   * 整个动作做完才发现做不成，而他本可以在选文件那一刻就知道。
+   */
+  it("换文件列出的类型跟着作品的族", () => {
+    const accepts = (type) =>
+      mountDialog(work([{ id: 1, src: `/a.${type}`, type }]))
+        .find(".media-file-input").attributes("accept");
+
+    expect(accepts("photo")).toBe(".jpg,.jpeg,.png,.webp,.bmp,.gif");
+    expect(accepts("gif")).toBe(".jpg,.jpeg,.png,.webp,.bmp,.gif");
+    expect(accepts("video")).toBe(".mp4,.webm,.avi,.mov,.mkv");
+    expect(accepts("music")).toBe(".mp3,.wav,.flac,.aac,.ogg");
+  });
+
+  /**
+   * 「添加媒体」不受这条限制：它不限于一行的替换，混族由服务端判。
+   * 这里收窄的话，用户会连「加一张同族的图」都选不出来。
+   */
+  it("添加媒体的清单仍是全量，不跟着作品的族收窄", () => {
+    const accept = mountDialog(work([PHOTO_A])).find(".media-add-input").attributes("accept");
+
+    expect(accept).toContain(".mp3");
+    expect(accept).toContain(".mp4");
+  });
 });
 
 describe("GalleryEditDialog 的排序", () => {
@@ -382,19 +411,25 @@ describe("GalleryEditDialog 的背景音乐", () => {
   };
 
   /**
-   * 后端规则 3：music / video 项配 BGM 会被整条请求 400 拒掉，编辑会整个失败。
-   * 选择器只在这些项上收起来，保存根本发不出这套组合。
+   * 后端规则 3：音乐项自己就是音源，配 BGM 会被整条请求 400 拒掉，编辑会整个失败。
+   * 选择器只在这一项上收起来，保存根本发不出这套组合。
    */
-  it("音乐与视频项不显示选曲面板", () => {
-    const picker = (type) => mountDialog({ type }).findComponent({ name: "GalleryBgmPicker" });
-
-    expect(picker("music").exists()).toBe(false);
-    expect(picker("video").exists()).toBe(false);
+  it("音乐项不显示选曲面板", () => {
+    expect(mountDialog({ type: "music" }).findComponent({ name: "GalleryBgmPicker" }).exists()).toBe(false);
   });
 
-  /** 图文项是配 BGM 的场景本身，面板当然要在 */
-  it("图文项显示选曲面板", () => {
-    expect(mountDialog(work([PHOTO_A])).findComponent({ name: "GalleryBgmPicker" }).exists()).toBe(true);
+  /**
+   * 视频项要显示选曲面板 —— 视频原声与 BGM 同时出声是明确的产品要求。
+   *
+   * 收起来会变成死胡同：新建时给视频配了 BGM，之后在编辑弹窗里既看不到、
+   * 也没有入口改或清，这个作品从此只能被删掉。
+   */
+  it("photo / gif / video 项显示选曲面板", () => {
+    const picker = (type) => mountDialog({ type }).findComponent({ name: "GalleryBgmPicker" });
+
+    expect(picker("photo").exists()).toBe(true);
+    expect(picker("gif").exists()).toBe(true);
+    expect(picker("video").exists()).toBe(true);
   });
 
   it("打开时回填当前配的曲子", () => {

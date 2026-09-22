@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
 
 vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
+// 全站音量层换成替身：详情弹窗把可见的视频与音乐交给它时，真实实现要去 Pinia 里读音量，
+// 而这个文件没有装 Pinia（登录态是在 auth store 那一层整体替掉的）。
+// 登记了哪个元素、什么时候注销由 GalleryDetailDialog.test.js 与 mediaVolume.test.js 负责。
+vi.mock("@/modules/player/composables/mediaVolume", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, registerMediaElement: vi.fn(), unregisterMediaElement: vi.fn() };
+});
 vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
 vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({

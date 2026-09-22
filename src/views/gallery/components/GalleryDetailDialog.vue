@@ -14,7 +14,10 @@
         ><span class="ui-icon ui-icon-prev"></span></button>
 
         <video v-if="currentMedia.type === 'video'" :key="currentMedia.id ?? currentMedia.src" ref="mediaEl" :src="currentMedia.src" controls autoplay loop class="detail-media"></video>
-        <audio v-else-if="currentMedia.type === 'music'" :key="currentMedia.id ?? currentMedia.src" :src="currentMedia.src" controls class="detail-audio"></audio>
+        <!-- 音乐项也登记进音量层：与视频共用同一个 mediaEl ref，下面的 watch 覆盖两者。
+             漏掉它的话音乐以浏览器默认的 1.0 出声，右栏那个旋钮对它完全无效 ——
+             与「全站一个旋钮」直接矛盾，而页面上没有任何地方看得出来 -->
+        <audio v-else-if="currentMedia.type === 'music'" :key="currentMedia.id ?? currentMedia.src" ref="mediaEl" :src="currentMedia.src" controls class="detail-audio"></audio>
         <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下。
              用主键而不是地址 —— 两条同地址的媒体（或某条地址为空）用地址当 key 时
              元素不会重建，上一段视频会继续出声，正是这个 key 要防的事。
@@ -136,6 +139,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
+import { mediaListOf } from "@/modules/gallery/media";
 import {
   registerMediaElement,
   unregisterMediaElement,
@@ -165,15 +169,11 @@ const description = ref(null);
  * 这个作品要翻的媒体。服务端按翻阅顺序下发，第 0 项就是封面，
  * 与 item.src / item.type 由服务端保证一致。
  *
- * 空数组是合法形状（BGM 候选列表与回填之前的历史行都是如此），它表示
- * 「这条作品只登记了封面这一条」，所以兜底成同样的形状 —— 按「没有媒体」
- * 渲染会留出一片空白，而封面明明还在。
+ * 兜底规则不在这里写第二遍：`mediaListOf` 是全前端唯一一份 ——
+ * 编辑弹窗用的也是它。各写一份的话，规则一改就会有一边漂掉，
+ * 而漂掉的后果是同一个作品在两个弹窗里翻出不同的条数。
  */
-const mediaList = computed(() => {
-  const media = props.item?.media;
-  if (Array.isArray(media) && media.length > 0) return media;
-  return props.item ? [{ id: null, src: props.item.src, type: props.item.type }] : [];
-});
+const mediaList = computed(() => mediaListOf(props.item));
 
 /** 当前翻到第几条，从 0 开始 */
 const mediaIndex = ref(0);
@@ -210,7 +210,7 @@ watch(() => mediaList.value.length, (length) => {
 });
 
 /**
- * 弹窗里可见的视频跟全站音量走：与侧栏播放器、画廊 BGM 读同一个数字。
+ * 弹窗里可见的视频与音乐跟全站音量走：与侧栏播放器、画廊 BGM 读同一个数字。
  *
  * 登记的是元素本身，而翻页会把元素整只换掉（`:key` 保证换一条媒体就重建，
  * 上一段视频才不会接着出声），所以换下来的那个必须注销 —— 登记表是模块级的

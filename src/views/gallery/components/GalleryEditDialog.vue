@@ -13,7 +13,8 @@
         <textarea v-model="form.description" rows="3" class="field-input field-textarea"></textarea>
       </label>
 
-      <!-- 只有图文项能配 BGM：后端规则 3 会给 music / video 项整条请求回 400 -->
+      <!-- 只有音乐项不能配 BGM：后端规则 3 会给 music 项整条请求回 400，
+           音乐项自己就是音源。photo / gif / video 都可以，与上传弹窗同一口径 -->
       <GalleryBgmPicker v-if="bgmAllowed" v-model="bgm" />
 
       <!-- 媒体列表。一条只有文件：标题、描述、BGM 都属于作品本身，不在这里再传一遍 -->
@@ -35,7 +36,7 @@
             <span v-else class="media-thumb media-thumb-text">文件</span>
             <span class="media-name" :title="row.name">{{ row.name }}</span>
             <label class="media-pick">
-              <input type="file" :accept="ACCEPT" class="media-file-input" @change="onPickFile($event, row)" />
+              <input type="file" :accept="rowAccept" class="media-file-input" @change="onPickFile($event, row)" />
               <span class="media-btn">换文件</span>
             </label>
             <button class="media-btn media-move-up" :disabled="index === 0" @click="move(index, -1)">上移</button>
@@ -75,6 +76,20 @@ const emit = defineEmits(["close", "submit"]);
 
 const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
 
+/**
+ * 「换文件」那一行的可选扩展名，按这条作品的族收窄。
+ *
+ * 作品的类型由族决定，跨族换文件会被服务端回 400（换类型要删除后重新上传）。
+ * 在选文件这一步就按族过滤，用户拿到的是系统的文件过滤，而不是一条服务端文案 ——
+ * 选中之后才被拒的话，他已经把那一步做完了才发现做不成。
+ * 「添加媒体」那份清单不收窄：它不限于一行的替换，混族由服务端判。
+ */
+const ACCEPT_BY_FAMILY = {
+  still: ".jpg,.jpeg,.png,.webp,.bmp,.gif",
+  video: ".mp4,.webm,.avi,.mov,.mkv",
+  audio: ".mp3,.wav,.flac,.aac,.ogg",
+};
+
 // 只开放标题与描述。alt / 标签 / 分类目前没有对应的业务场景，先不放进表单。
 const EDITABLE_KEYS = ["title", "description"];
 
@@ -90,8 +105,19 @@ let initialBgm = null;
 /** 封面：media 非空时以 media[0] 为准，与服务端同一份规则 */
 const cover = computed(() => coverOf(props.item));
 
-/** 只有图文项能配 BGM：给 music / video 项配 BGM 会被后端整条请求回 400 */
-const bgmAllowed = computed(() => ["photo", "gif"].includes(cover.value.type));
+/** 只有音乐项不能配 BGM：给音乐项配 BGM 会被后端整条请求回 400（它自己就是音源） */
+const bgmAllowed = computed(() => ["photo", "gif", "video"].includes(cover.value.type));
+
+/** 作品族 → 允许换进来的扩展名。划分与后端 sameFamily 一致：photo 与 gif 一族 */
+const FAMILY_BY_TYPE = { photo: "still", gif: "still", video: "video", music: "audio" };
+
+/**
+ * 每一行「换文件」按这条作品的族过滤。
+ *
+ * 认不出的类型退回全量清单：宁可让服务端去判，也不要在客户端凭一个猜出来的族
+ * 把用户能选的文件挡掉。
+ */
+const rowAccept = computed(() => ACCEPT_BY_FAMILY[FAMILY_BY_TYPE[cover.value.type]] ?? ACCEPT);
 
 /**
  * 草稿：编辑弹窗里的一切改动都先落在这里，点保存才发出去。

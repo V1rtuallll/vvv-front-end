@@ -579,7 +579,7 @@ describe("GalleryDetailDialog 的媒体翻阅", () => {
 });
 
 /**
- * 详情弹窗里可见的视频要跟右栏滑块走，和画廊 BGM、首页主展示读同一个音量。
+ * 详情弹窗里可见的视频与音乐要跟右栏滑块走，和画廊 BGM、首页主展示读同一个音量。
  *
  * 登记表持有的是元素本身，而翻页会把元素整只换掉，所以换下来的必须注销：
  * 只登记不注销，每次翻过的视频都会留在那里不被回收。
@@ -588,6 +588,7 @@ describe("GalleryDetailDialog 的声音跟着全站音量", () => {
   const PHOTO = { id: 11, src: "/a.jpg", type: "photo" };
   const VIDEO_A = { id: 21, src: "/v1.mp4", type: "video" };
   const VIDEO_B = { id: 22, src: "/v2.mp4", type: "video" };
+  const MUSIC = { id: 31, src: "/m1.mp3", type: "music" };
 
   const work = (media) => ({ ...ITEM, src: media[0].src, type: media[0].type, media });
 
@@ -632,10 +633,36 @@ describe("GalleryDetailDialog 的声音跟着全站音量", () => {
     expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(video);
   });
 
-  /** 登记的是可见视频。图片与音频没有对应的元素，不该往登记表里塞东西 */
+  /** 登记的是会出声的元素。图片没有对应的元素，不该往登记表里塞东西 */
   it("图片不登记", () => {
     mountDialog({ item: work([PHOTO]) });
 
     expect(volumeSpies.registerMediaElement).not.toHaveBeenCalledWith(expect.anything());
+  });
+
+  /**
+   * 音乐项那条 `<audio>` 同样要登记。
+   *
+   * 漏掉它的话音乐以浏览器默认的 1.0 出声，右栏滑块对它完全无效 ——
+   * 与「全站一个旋钮」直接矛盾，而页面上没有任何地方看得出来。
+   */
+  it("音乐登记进音量层", async () => {
+    const wrapper = mountDialog({ item: work([MUSIC]) });
+
+    await nextTick();
+
+    expect(volumeSpies.registerMediaElement).toHaveBeenCalledWith(wrapper.find("audio").element);
+  });
+
+  /** 从音乐翻到图片，音频元素被注销，与视频那条路径同一套收尾 */
+  it("从音乐翻到图片后，音频元素被注销", async () => {
+    const wrapper = mountDialog({ item: work([MUSIC, PHOTO]) });
+    const audio = wrapper.find("audio").element;
+    await nextTick();
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find("audio").exists()).toBe(false);
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(audio);
   });
 });
