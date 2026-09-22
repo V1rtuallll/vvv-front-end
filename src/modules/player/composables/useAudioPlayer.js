@@ -109,7 +109,7 @@ export function useAudioPlayer() {
     const volume = volumeSlider.value;
     const trackNameElement = trackName.value;
     const volumeDisplayElement = volumeDisplay.value;
-    const shuffledPlaylist = [...(await loadConfiguredTracks())].sort(() => Math.random() - 0.5);
+    let shuffledPlaylist = [...(await loadConfiguredTracks())].sort(() => Math.random() - 0.5);
     let currentIndex = 0;
 
     // 把元素交给模块级的让位逻辑：详情弹窗打开时要靠它把侧栏暂停下来
@@ -126,12 +126,19 @@ export function useAudioPlayer() {
       playIcon.classList.toggle("ui-icon-play", !playing);
     };
 
+    // 空库与「空库之后又被填回来」共用这一处开关：按钮的禁用状态只有这一个写入口
+    const setLibraryEnabled = (enabled) => {
+      [playButton, previousButton, nextButton].forEach((button) => {
+        button.disabled = !enabled;
+      });
+    };
+
     // 一首都没有时不能走 loadSong：下标会算出 NaN，取到 undefined，
     // formatTrackName 在它上面调 replace 直接抛。禁用三个按钮，说明状态。
     const applyEmptyLibrary = () => {
-      [playButton, previousButton, nextButton].forEach((button) => {
-        button.disabled = true;
-      });
+      setLibraryEnabled(false);
+      // 按钮禁用了而声音还在响的话，界面说的和听到的对不上
+      audio.pause();
       trackNameElement.textContent = EMPTY_LIBRARY_TEXT;
       progress.value = 0;
       setPlayingIcon(false);
@@ -155,6 +162,49 @@ export function useAudioPlayer() {
       loadSong(currentIndex);
       if (autoPlay) playSong();
     };
+
+    /**
+     * 用新表替换当前这份。
+     *
+     * 正在放的那首如果还在新表里，就让它留在下标上 —— 否则下一次「下一曲」会从表头
+     * 重来，听起来像跳了一张专辑。已经不在表里的（管理员刚把它从配置里去掉了）回到
+     * 表头，但**不动音频元素**：那首歌还能自己放完，下一次切换自然落到新表上。
+     */
+    const applyPlaylist = (list) => {
+      const playing = shuffledPlaylist[currentIndex];
+      shuffledPlaylist = [...list].sort(() => Math.random() - 0.5);
+      if (shuffledPlaylist.length === 0) {
+        currentIndex = 0;
+        applyEmptyLibrary();
+        return;
+      }
+      setLibraryEnabled(true);
+      const kept = shuffledPlaylist.indexOf(playing);
+      currentIndex = kept === -1 ? 0 : kept;
+    };
+
+    /** 距上次拉取不足这么久就跳过。连点「下一曲」不该每次都打后端 */
+    const PLAYLIST_REFRESH_INTERVAL = 30000;
+    let lastPlaylistFetchAt = 0;
+
+    /**
+     * 重新拉一次曲目表，管理员改配置后已打开的页面不必刷新。
+     *
+     * 不走 loadConfiguredTracks()：它失败时返回 []，与「真的被清空了」分不开，
+     * 一次网络抖动就会把正在放的曲目表清掉。这里自己 try，失败保留现状。
+     */
+    const refreshPlaylist = async () => {
+      if (Date.now() - lastPlaylistFetchAt < PLAYLIST_REFRESH_INTERVAL) return;
+      lastPlaylistFetchAt = Date.now();
+      try {
+        const res = await getPlayerPlaylist();
+        applyPlaylist(playableTracks(res?.data));
+      } catch {
+        // 提示由 request.js 负责。一次拉取失败只意味着这次不更新，
+        // 不能把当前正在放的曲目表清掉
+      }
+    };
+
     const updateProgress = () => {
       if (audio.duration && !Number.isNaN(audio.duration)) {
         progress.value = (audio.currentTime / audio.duration) * 100;
@@ -167,15 +217,24 @@ export function useAudioPlayer() {
       volume.valueAsNumber = volumePercent;
     };
 
-    playButton.addEventListener("click", () => {
-      if (audio.paused) playSong();
-      else {
+    // 三个按钮都是用户点出来的，顺手校一次曲目表。`ended` 那条自动切歌不跟这一套
+    playButton.addEventListener("click", async () => {
+      if (audio.paused) {
+        await refreshPlaylist();
+        playSong();
+      } else {
         audio.pause();
         setPlayingIcon(false);
       }
     });
-    previousButton.addEventListener("click", () => switchSong(-1, true));
-    nextButton.addEventListener("click", () => switchSong(1, true));
+    previousButton.addEventListener("click", async () => {
+      await refreshPlaylist();
+      switchSong(-1, true);
+    });
+    nextButton.addEventListener("click", async () => {
+      await refreshPlaylist();
+      switchSong(1, true);
+    });
     audio.addEventListener("ended", () => switchSong(1, true));
     audio.addEventListener("timeupdate", updateProgress);
     audio.addEventListener("loadedmetadata", updateProgress);

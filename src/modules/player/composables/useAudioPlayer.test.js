@@ -339,3 +339,184 @@ describe("播放器的曲库", () => {
     expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
   });
 });
+
+/**
+ * 曲目表原先只在挂载时拉一次：管理员改完配置，已经开着页面的访客必须整页刷新才拿得到。
+ * 现在的策略是用户点「播放」「上一曲」「下一曲」时各拉一次，30 秒内不重复拉 ——
+ * 连点「下一曲」不该每次都打后端。
+ *
+ * 自动切歌（`ended`）不是用户点击，不拉。
+ */
+describe("播放器在点击时刷新曲目表", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    getPlayerPlaylist.mockResolvedValue({ data: ["a.mp3"] });
+  });
+
+  /**
+   * 这条用例的前提是有个能改配置的后端：先按旧配置挂载，再把接口换成新配置，
+   * 点一下「下一曲」就该听到新曲子。
+   */
+  it("点「下一曲」会重新拉一次曲目表，新表里的曲子能放出来", async () => {
+    const wrapper = mountPlayer();
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("a");
+
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+    expect(wrapper.find("audio").element.src).toContain("/music/b.mp3");
+    expect(wrapper.find(".track-name").text()).toBe("b");
+  });
+
+  /**
+   * 间隔的意义就是挡住连点。没有它，手指在「下一曲」上抖两下就是两次请求。
+   */
+  it("连着点两次「下一曲」，30 秒内只拉一次", async () => {
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * 拉取失败与「管理员真的清空了配置」返回的是同一个空表，分不开。一次网络抖动
+   * 就把正在放的曲目表清掉、按钮禁掉，比不刷新更糟 —— 失败只意味着这次不更新。
+   */
+  it("刷新失败时保留当前曲目表，正在放的那首不被打断、按钮不禁用", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    // 把间隔放过，这一次失败的刷新才真的由「下一曲」发出
+    getPlayerPlaylist.mockRejectedValue(new Error("boom"));
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+
+    // 请求确实发出去了，只是没成功
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(3);
+    expect(wrapper.find(".track-name").text()).toBe("a");
+    expect(wrapper.find("audio").element.getAttribute("src")).toBe("/music/a.mp3");
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeUndefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
+    expect(window.HTMLMediaElement.prototype.pause).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 正在放的那首如果还在新表里，下标要跟着它 —— 否则下一次「下一曲」从表头重来，
+   * 听起来像凭空跳了一张专辑。
+   *
+   * `Math.random` 固定成 0.5 是为了让洗牌变成恒等的：比较函数恒为 0，稳定排序
+   * 保持原顺序，于是「表头是哪首」在用例里是确定的。
+   */
+  it("刷新后正在放的那首还在新表里时，下标停在它身上", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    getPlayerPlaylist.mockResolvedValue({ data: ["a.mp3", "b.mp3"] });
+
+    const wrapper = mountPlayer();
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("a");
+
+    // 切到第二首。这一次点击顺带拉了一次表，表没变
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("b");
+
+    // 点播放也拉一次表。正在放的「b」还在新表里，且位置没变
+    now.mockReturnValue(1_000_000_000 + 62_000);
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(3);
+    expect(wrapper.find(".track-name").text()).toBe("b");
+    expect(wrapper.find("audio").element.getAttribute("src")).toBe("/music/b.mp3");
+
+    // 下标若被刷新重置成表头，这里会再放一遍「b」；停在「b」上则绕回「a」
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("a");
+  });
+
+  /**
+   * 开始播放才拉。暂停时拉一次是白费的请求 —— 用户要的是停下来。
+   *
+   * 这里把 `Date.now` 往前拨 31 秒，是为了让间隔挡不住暂停那一支：否则它是被间隔
+   * 跳过的，断言就分不清「暂停不刷新」和「间隔生效」。
+   */
+  it("播放按钮在开始播放时拉，在暂停时不拉", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+
+    makePlaying(wrapper);
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+    expect(window.HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * 一首放完自动切下一首，不是用户点击。间隔在这里特意已经放过，若 `ended` 被接上
+   * 刷新，这一次就会打后端。
+   */
+  it("自动切歌的 ended 不拉曲目表", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find("audio").trigger("ended");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * 反过来的一支：刷新拉到空表（管理员把配置清空了）时得真的停下来 ——
+   * 按钮禁用而声音还在放，状态就对不上了。
+   */
+  it("刷新拉到空表时停住：曲名换成中性文案、按钮禁用、声音停住", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeDefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeDefined();
+    expect(window.HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+    expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-play");
+  });
+});
