@@ -25,11 +25,21 @@
             v-for="(row, index) in draft"
             :key="row.key"
             class="media-row"
-            draggable="true"
-            @dragstart="onDragStart(row)"
-            @dragover.prevent
+            :class="{
+              'is-dragging': draggingKey === row.key,
+              'is-drop-target': dropTarget && dropTarget.key === row.key,
+              'is-drop-after': dropTarget && dropTarget.key === row.key && !dropTarget.before,
+            }"
+            @dragover.prevent="onDragOver(row, $event)"
             @drop.prevent="onDrop(row)"
           >
+            <span
+              class="media-grip"
+              draggable="true"
+              aria-hidden="true"
+              @dragstart="onDragStart(row, $event)"
+              @dragend="onDragEnd"
+            ></span>
             <img v-if="row.kind === 'image'" :src="row.previewUrl || row.src" class="media-thumb" alt="" />
             <video v-else-if="row.kind === 'video'" :src="row.previewUrl || row.src" class="media-thumb" preload="metadata" muted></video>
             <audio v-else-if="row.kind === 'audio'" :src="row.previewUrl || row.src" class="media-audio" controls></audio>
@@ -257,27 +267,60 @@ const onAddFiles = (event) => {
 };
 
 // 拖拽只是额外的便利：原生 draggable 在触屏上不工作，排序主要靠上移 / 下移按钮
-let draggingKey = null;
+//
+// 只有握把是可拖的。整行都可拖时，想选中文件名文字就会把它拖起来，
+// 而且看不出哪里能拖 —— 一个可见的握把就是「这里能拖」的信号。
+const draggingKey = ref(null);
+/** 当前悬停的落点 { key, before }。before 为真表示插到那一行前面 */
+const dropTarget = ref(null);
 
-const onDragStart = (row) => {
-  draggingKey = row.key;
+/** 指针落在元素的上半还是下半。默认高度取不到时按「后面」处理 */
+const isUpperHalf = (event, element) => {
+  const rect = element.getBoundingClientRect();
+  return event.clientY - rect.top < rect.height / 2;
+};
+
+const onDragStart = (row, event) => {
+  draggingKey.value = row.key;
+  // Firefox 要求 dragstart 里写入数据，否则整个拖拽根本不启动
+  if (event.dataTransfer) {
+    event.dataTransfer.setData("text/plain", String(row.key));
+    event.dataTransfer.effectAllowed = "move";
+  }
+};
+
+const onDragOver = (row, event) => {
+  // 拖到自己身上不算落点
+  if (draggingKey.value === null || draggingKey.value === row.key) {
+    dropTarget.value = null;
+    return;
+  }
+  dropTarget.value = { key: row.key, before: isUpperHalf(event, event.currentTarget) };
+};
+
+/** 拖到列表外、按 Esc 中止都走这里，状态不会留在半道上 */
+const onDragEnd = () => {
+  draggingKey.value = null;
+  dropTarget.value = null;
 };
 
 /**
- * 拖到某一条上 = 放到那一条的位置。
+ * 落到悬停时定下的位置：上半插到目标前面，下半插到目标后面。
  *
- * 往下拖时被拖的条目先被摘出，它后面的条目整体前移一位，落点所以要减一 ——
- * 不减的话条目会落到目标后面（A 拖到 C 上得到 [B, C, A]，而不是 [B, A, C]）。
- * 相邻的一对减一后正好是原位，那样这次拖拽等于什么都没做，所以那一档仍放到目标后面：
- * 往下拖一位的结果是两条互换。
+ * 被拖的条目先从数组里摘出去，它后面的条目因此整体前移一位，所以落点要**现算一次**
+ * 目标的下标。原来的实现靠 `to - 1` 硬修，还得为「往下拖一位」那个相邻场景加特例
+ * （两条互换），两样在这里都消失了。
  */
 const onDrop = (row) => {
-  const from = draft.value.findIndex((candidate) => candidate.key === draggingKey);
-  const to = draft.value.findIndex((candidate) => candidate.key === row.key);
-  draggingKey = null;
-  if (from === -1 || to === -1 || from === to) return;
+  const target = dropTarget.value && dropTarget.value.key === row.key ? dropTarget.value : null;
+  const from = draft.value.findIndex((candidate) => candidate.key === draggingKey.value);
+  draggingKey.value = null;
+  dropTarget.value = null;
+  if (target === null || from === -1) return;
+
   const [moved] = draft.value.splice(from, 1);
-  draft.value.splice(from < to && to - from > 1 ? to - 1 : to, 0, moved);
+  const targetIndex = draft.value.findIndex((candidate) => candidate.key === row.key);
+  draft.value.splice(target.before ? targetIndex : targetIndex + 1, 0, moved);
 };
 
 const bgmChanged = () => {

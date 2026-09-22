@@ -43,6 +43,28 @@ const save = (wrapper) => wrapper.find(".save-btn").trigger("click");
 /** 最后一次 submit 带出去的载荷 */
 const submitted = (wrapper) => wrapper.emitted("submit")?.at(-1)[0];
 
+/**
+ * jsdom 里 getBoundingClientRect 全是 0，上/下半判不出来，得自己摆一个。
+ * 落点是按指针在目标行的上半还是下半定的。
+ */
+function stubRowRect(element, top = 100, height = 40) {
+  element.getBoundingClientRect = () => ({
+    top, height, bottom: top + height, left: 0, right: 0, width: 0, x: 0, y: top,
+  });
+}
+
+/**
+ * 一次完整的拖拽。真实浏览器里 dragover 一定先于 drop —— 落点就是在
+ * 那一步定下来的，所以这里也照同样的顺序发。
+ */
+async function dragTo(wrapper, from, to, half) {
+  const all = rows(wrapper);
+  stubRowRect(all[to].element);
+  await all[from].find(".media-grip").trigger("dragstart", { dataTransfer: { setData: vi.fn() } });
+  await all[to].trigger("dragover", { clientY: half === "before" ? 110 : 130 });
+  await all[to].trigger("drop");
+}
+
 const png = (name) => new File(["x"], name, { type: "image/png" });
 
 /** jsdom 的 file input 上 files 是只读的，只能这样塞进去 */
@@ -273,31 +295,98 @@ describe("GalleryEditDialog 的排序", () => {
   });
 
   /** 拖拽只是额外的便利，顺序一样要落在草稿上 */
-  it("把一条拖到另一条上也能换位置", async () => {
+  it("拖到另一条的下半等于插到它后面", async () => {
     const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
 
-    await wrapper.find(".media-row:nth-child(1)").trigger("dragstart");
-    await wrapper.find(".media-row:nth-child(2)").trigger("drop");
+    await dragTo(wrapper, 0, 1, "after");
     await save(wrapper);
 
     expect(submitted(wrapper).items).toEqual([{ mediaId: PHOTO_B.id }, { mediaId: PHOTO_A.id }]);
   });
 
   /**
-   * 拖到目标上 = 放到目标的位置，也就是目标前面。
-   * 只测相邻那一对看不出问题：被拖的条目先被摘出，它后面的条目整体前移一位，
-   * 拿原下标当落点的话条目会落到目标后面。
+   * 落点由指针在目标行的上半还是下半决定：上半插到它前面、下半插到它后面。
+   * 摘出被拖的条目之后目标的下标会往前挪一位，所以落点要现算 ——
+   * 拿原下标硬算的话，往下拖到不相邻的条目上会落到目标后面。
    */
-  it("往下拖到不相邻的条目上，落在目标前面而不是后面", async () => {
+  it("往下拖到不相邻的条目，落在上半就插到它前面", async () => {
     const wrapper = mountDialog(work([PHOTO_A, PHOTO_B, PHOTO_C]));
 
-    await wrapper.find(".media-row:nth-child(1)").trigger("dragstart");
-    await wrapper.find(".media-row:nth-child(3)").trigger("drop");
+    await dragTo(wrapper, 0, 2, "before");
     await save(wrapper);
 
     expect(submitted(wrapper).items).toEqual([
       { mediaId: PHOTO_B.id }, { mediaId: PHOTO_A.id }, { mediaId: PHOTO_C.id },
     ]);
+  });
+
+  it("同一个目标，上半与下半得到不同结果", async () => {
+    const upper = mountDialog(work([PHOTO_A, PHOTO_B]));
+    await dragTo(upper, 0, 1, "before");
+    await save(upper);
+    // 上半 = 插到 B 前面；A 本来就在 B 前面，顺序没变，也就没有要提交的改动。
+    // 落到下半的话顺序会变（下面那段），所以「没提交」本身就说明落点在前面
+    expect(upper.emitted("submit")).toBeFalsy();
+    expect(rows(upper).map((row) => row.find(".media-name").text())).toEqual(["a.png", "b.png"]);
+
+    const lower = mountDialog(work([PHOTO_A, PHOTO_B]));
+    await dragTo(lower, 0, 1, "after");
+    await save(lower);
+    expect(submitted(lower).items).toEqual([{ mediaId: PHOTO_B.id }, { mediaId: PHOTO_A.id }]);
+  });
+
+  /** 整行可拖时想选中文件名文字就会把它拖起来，而且看不出哪里能拖 */
+  it("只有握把可拖，整行不可拖", () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
+
+    expect(wrapper.findAll(".media-grip")).toHaveLength(2);
+    expect(wrapper.find(".media-row").attributes("draggable")).toBeUndefined();
+    expect(wrapper.find(".media-grip").attributes("draggable")).toBe("true");
+  });
+
+  /** Firefox 要求 dragstart 里写入数据，否则整个拖拽根本不启动 */
+  it("拖起时写入 dataTransfer 并声明 move", async () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
+    const dataTransfer = { setData: vi.fn(), effectAllowed: "" };
+
+    await wrapper.find(".media-grip").trigger("dragstart", { dataTransfer });
+
+    expect(dataTransfer.setData).toHaveBeenCalledWith("text/plain", expect.any(String));
+    expect(dataTransfer.effectAllowed).toBe("move");
+  });
+
+  it("拖起的那行标成 is-dragging，dragend 时复位", async () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
+
+    await wrapper.find(".media-grip").trigger("dragstart", { dataTransfer: { setData: vi.fn() } });
+    expect(rows(wrapper)[0].classes()).toContain("is-dragging");
+
+    await wrapper.find(".media-grip").trigger("dragend");
+
+    const classes = rows(wrapper)[0].classes();
+    expect(classes).not.toContain("is-dragging");
+  });
+
+  it("悬停到目标行时标出落点，上半不带 is-drop-after", async () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
+    stubRowRect(rows(wrapper)[1].element);
+
+    await rows(wrapper)[0].find(".media-grip").trigger("dragstart", { dataTransfer: { setData: vi.fn() } });
+    await rows(wrapper)[1].trigger("dragover", { clientY: 110 });
+
+    const classes = rows(wrapper)[1].classes();
+    expect(classes).toContain("is-drop-target");
+    expect(classes).not.toContain("is-drop-after");
+  });
+
+  it("悬停在下半时带上 is-drop-after", async () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B]));
+    stubRowRect(rows(wrapper)[1].element);
+
+    await rows(wrapper)[0].find(".media-grip").trigger("dragstart", { dataTransfer: { setData: vi.fn() } });
+    await rows(wrapper)[1].trigger("dragover", { clientY: 130 });
+
+    expect(rows(wrapper)[1].classes()).toContain("is-drop-after");
   });
 });
 
