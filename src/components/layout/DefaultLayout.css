@@ -1531,6 +1531,17 @@
   background: #0277bd;
 }
 
+/* 曲库为空时三个按钮禁用。禁用态沿用站内那一套（降透明度 + not-allowed），
+   同时要把 :hover 的填色压掉 —— 否则鼠标移上去仍然点亮，看着像还能点 */
+.player-controls button:disabled,
+.player-controls button:disabled:hover {
+  color: #7b8fa1;
+  background: transparent;
+  border-color: #b9c4cc;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 音量区 */
 .volume-control {
   padding: 12px 12px 0;

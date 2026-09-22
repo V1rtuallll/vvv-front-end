@@ -1,42 +1,9 @@
 import { nextTick, onMounted, ref } from "vue";
 
-// eslint-disable-next-line import/no-unresolved -- 由 vite.config.js 的 musicManifest 插件提供
-import manifest from "virtual:music-manifest";
+import { getPlayerPlaylist } from "@/modules/player/api/playerApi";
 import { getVolume, registerMediaElement, setVolume } from "@/modules/player/composables/mediaVolume";
+import { playableTracks } from "@/modules/player/playlist";
 import { formatTrackName } from "@/modules/player/trackName";
-
-/**
- * 曲库清单的兜底名单。
- *
- * 正常情况下读的是 `public/music/manifest.json` —— 它由 vite.config.js 里的
- * musicManifest 插件在启动/构建时扫描目录生成，往 public/music/ 丢新歌即可生效，
- * 不用改代码。这份数组只在清单取不到时兜底：直接开 dist/index.html、
- * 清单被误删、请求失败，都还能放出声，不至于整个播放器哑掉。
- */
-const FALLBACK_PLAYLIST = [
-  "3tries - In My Restless Dreams.mp3",
-  "aak3 - dissociated.mp3",
-  "aak3 _ Softboy7 - false promises (feat_ Softboy7).mp3",
-  "CactusTeam _ MixAndMash - flutterbies (feat_ MixAndMash).mp3",
-  "Exodia - 825 hp.mp3",
-  "Glitchtrode _ pLasterbrain - Nimbasa CORE (glitchtrode Remix).mp3",
-  "Iwakura - farlands.mp3",
-  "Iwakura - Hatred.mp3",
-  "Iwakura - ∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰∰.mp3",
-  "musicarchives_mp3 _ Sewerslvt - Ryona (feat_ Sewerslvt).mp3",
-  "musicarchives_mp3 _ Yabujin - gnome - ✞ (swineantarctica) (feat_ Yabujin).mp3",
-  "Nuvfr - Pink flame.mp3",
-  "RFM Beats - 3 minute.mp3",
-  "Sewerslvt - Lexapro Delirium.mp3",
-  "Sewerslvt - Mr_ Kill Myself.mp3",
-  "Sewerslvt - Swinging in His Cell (Explicit).mp3",
-];
-
-// 曲库清单由 vite.config.js 的 musicManifest 插件在构建期生成，
-// 往 public/music/ 丢新歌即可生效，不用改代码
-const playlist = typeof manifest === "object" && Array.isArray(manifest) && manifest.length > 0
-  ? manifest
-  : FALLBACK_PLAYLIST;
 
 // =============================================================================
 // 为详情弹窗的背景音乐让位
@@ -103,6 +70,25 @@ export function resumeAfterBgm() {
   if (started && typeof started.catch === "function") started.catch(() => {});
 }
 
+/** 曲库为空时显示的中性文案。不是错误提示，只是陈述状态。 */
+const EMPTY_LIBRARY_TEXT = "曲库未配置";
+
+/**
+ * 当前生效的曲目。
+ *
+ * 读失败时退成空列表、**不弹提示**：request.js 已经弹过一次，
+ * 而且播放器是页面上的附加功能，它读不到歌不该再叠一条看着像整页出错的提示。
+ */
+async function loadConfiguredTracks() {
+  try {
+    const res = await getPlayerPlaylist();
+    return playableTracks(res?.data);
+  } catch {
+    // 提示由 request.js 负责
+    return [];
+  }
+}
+
 export function useAudioPlayer() {
   const audioEl = ref(null);
   const playPauseBtn = ref(null);
@@ -123,7 +109,7 @@ export function useAudioPlayer() {
     const volume = volumeSlider.value;
     const trackNameElement = trackName.value;
     const volumeDisplayElement = volumeDisplay.value;
-    const shuffledPlaylist = [...playlist].sort(() => Math.random() - 0.5);
+    const shuffledPlaylist = [...(await loadConfiguredTracks())].sort(() => Math.random() - 0.5);
     let currentIndex = 0;
 
     // 把元素交给模块级的让位逻辑：详情弹窗打开时要靠它把侧栏暂停下来
@@ -140,6 +126,17 @@ export function useAudioPlayer() {
       playIcon.classList.toggle("ui-icon-play", !playing);
     };
 
+    // 一首都没有时不能走 loadSong：下标会算出 NaN，取到 undefined，
+    // formatTrackName 在它上面调 replace 直接抛。禁用三个按钮，说明状态。
+    const applyEmptyLibrary = () => {
+      [playButton, previousButton, nextButton].forEach((button) => {
+        button.disabled = true;
+      });
+      trackNameElement.textContent = EMPTY_LIBRARY_TEXT;
+      progress.value = 0;
+      setPlayingIcon(false);
+    };
+
     const loadSong = (index) => {
       currentIndex = index;
       audio.src = `/music/${shuffledPlaylist[index]}`;
@@ -152,6 +149,8 @@ export function useAudioPlayer() {
       setPlayingIcon(true);
     };
     const switchSong = (direction, autoPlay = false) => {
+      // 空列表时 % 0 得到 NaN，后面拿它当下标会取到 undefined
+      if (shuffledPlaylist.length === 0) return;
       currentIndex = (currentIndex + direction + shuffledPlaylist.length) % shuffledPlaylist.length;
       loadSong(currentIndex);
       if (autoPlay) playSong();
@@ -192,6 +191,10 @@ export function useAudioPlayer() {
       updateVolumeDisplay();
     });
     updateVolumeDisplay();
+    if (shuffledPlaylist.length === 0) {
+      applyEmptyLibrary();
+      return;
+    }
     loadSong(0);
   });
 

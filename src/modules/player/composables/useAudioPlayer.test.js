@@ -3,6 +3,22 @@ import { h } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/modules/player/api/playerApi", () => ({ getPlayerPlaylist: vi.fn() }));
+
+vi.mock("@/modules/player/playlist", async (importOriginal) => {
+  const actual = await importOriginal();
+  // 只覆盖导出的 buildTimeTracks 拦不住 playableTracks —— 后者的默认参数读的是
+  // 模块内部的绑定，仍然指向 public/music 那份真实清单，配置里的假文件名会被全部滤掉。
+  // 必须把函数也换成用替身清单的那一份，用例才真的在测「配置 ∩ 可用曲子」。
+  const buildTimeTracks = ["a.mp3", "b.mp3"];
+  return {
+    ...actual,
+    buildTimeTracks,
+    playableTracks: (configured) => actual.playableTracks(configured, buildTimeTracks),
+  };
+});
+
+import { getPlayerPlaylist } from "@/modules/player/api/playerApi";
 import { registerMediaElement } from "@/modules/player/composables/mediaVolume";
 import {
   pauseForBgm,
@@ -30,7 +46,7 @@ function mountPlayer() {
       return () =>
         h("div", [
           h("audio", { ref: player.audioEl, preload: "auto" }),
-          h("span", { ref: player.trackName }),
+          h("span", { ref: player.trackName, class: "track-name" }),
           h("progress", { ref: player.progressBar }),
           h("button", { ref: player.prevBtn, type: "button" }),
           h("button", { ref: player.playPauseBtn, type: "button", class: "play-pause" }, [
@@ -58,6 +74,7 @@ function makePlaying(wrapper) {
 // 被测的是 useAudioPlayer 的接线，不是这个 store —— 后者另有专门的测试。
 beforeEach(() => {
   setActivePinia(createPinia());
+  getPlayerPlaylist.mockResolvedValue({ data: ["a.mp3"] });
 });
 
 describe("侧栏播放器为详情 BGM 让位", () => {
@@ -261,5 +278,64 @@ describe("播放器的音量来自全局音量层", () => {
     expect(usePlayerStore().volume).toBeCloseTo(0.75);
     expect(wrapper.find("audio").element.volume).toBeCloseTo(0.75);
     expect(other.volume).toBeCloseTo(0.75);
+  });
+});
+
+describe("播放器的曲库", () => {
+  beforeEach(() => {
+    vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  });
+
+  it("曲目表来自后端配置，不是构建期清单", async () => {
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalled();
+    expect(wrapper.find("audio").element.src).toContain("/music/b.mp3");
+    expect(wrapper.find(".track-name").text()).toBe("b");
+  });
+
+  it("配置里指向已删文件的条目不放进去", async () => {
+    getPlayerPlaylist.mockResolvedValue({ data: ["gone.mp3"] });
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(wrapper.find("audio").element.getAttribute("src")).toBeNull();
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+  });
+
+  /**
+   * 空列表时会撞上 (0 + 1 + 0) % 0 = NaN，拿 NaN 当下标取到 undefined，
+   * formatTrackName 在它上面调 replace 直接抛。必须在这里兜住。
+   */
+  it("一首都没有时禁用三个按钮，曲名显示中性文案", async () => {
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeDefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").every((button) => button.attributes("disabled") !== undefined)).toBe(true);
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+  });
+
+  it("接口失败时静默退成空列表，不重复弹提示", async () => {
+    getPlayerPlaylist.mockRejectedValue(new Error("boom"));
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+    // 提示由 request.js 负责
+    expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+
+  it("有曲目时按钮可用", async () => {
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeUndefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
   });
 });
