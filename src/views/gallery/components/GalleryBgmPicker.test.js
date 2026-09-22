@@ -20,6 +20,13 @@ vi.mock("@/modules/gallery/composables/useGalleryBgm", async (importOriginal) =>
   return { ...actual, useGalleryBgm: () => ({ ...bgmSpies }) };
 });
 
+// 本站曲库那一支的清单来自构建期的目录扫描。清单本身由 playlist 自己的测试守着，
+// 这里只要一份固定的名单，好把「显示成什么名字」与「发出的地址」钉死。
+vi.mock("@/modules/player/playlist", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, buildTimeTracks: ["Iwakura - farlands.mp3", "a_b.mp3"] };
+});
+
 import { getGalleryBgmCandidates, uploadGalleryBgm } from "@/modules/gallery/api/galleryApi";
 import GalleryBgmPicker from "@/views/gallery/components/GalleryBgmPicker.vue";
 
@@ -39,7 +46,19 @@ async function openPanel(wrapper) {
   await flushPromises();
 }
 
+/**
+ * 切到「画廊作品」那一段。
+ *
+ * 面板默认停在「本站曲库」，而两段的按钮 class 同名（`bgm-item` / `bgm-audition-btn` /
+ * `bgm-choose-btn`）—— 不切过去的话选到的是本站曲库那一支的节点，断言会张冠李戴。
+ */
+async function showGallery(wrapper) {
+  await wrapper.find(".bgm-tab-gallery").trigger("click");
+}
+
 async function pickFile(wrapper, file) {
+  // 上传输入框只在「我的上传」那一段里
+  await wrapper.find(".bgm-tab-upload").trigger("click");
   const input = wrapper.find(".bgm-file-input");
   Object.defineProperty(input.element, "files", { value: [file], configurable: true });
   await input.trigger("change");
@@ -61,6 +80,7 @@ describe("GalleryBgmPicker 的候选列表", () => {
   it("展开时拉候选，音乐与视频各自标出类型", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     expect(getGalleryBgmCandidates).toHaveBeenCalledTimes(1);
     const rows = wrapper.findAll(".bgm-item");
@@ -79,6 +99,7 @@ describe("GalleryBgmPicker 的候选列表", () => {
   it("图文项只显示标题，不缀资源名", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     const row = wrapper.findAll(".bgm-item")[2].text();
     expect(row).toContain("配过曲子的图");
@@ -89,6 +110,7 @@ describe("GalleryBgmPicker 的候选列表", () => {
     getGalleryBgmCandidates.mockResolvedValue({ data: [] });
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     expect(wrapper.find(".bgm-status").text()).toBe("画廊里还没有可用作背景音乐的资源。");
   });
@@ -98,6 +120,7 @@ describe("GalleryBgmPicker 的选曲", () => {
   it("选音乐项得到 audio 类型", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     await wrapper.findAll(".bgm-choose-btn")[0].trigger("click");
 
@@ -109,6 +132,7 @@ describe("GalleryBgmPicker 的选曲", () => {
   it("选视频项得到 video 类型", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     await wrapper.findAll(".bgm-choose-btn")[1].trigger("click");
 
@@ -121,6 +145,7 @@ describe("GalleryBgmPicker 的选曲", () => {
   it("选图文项得到它配的那一首曲子", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     await wrapper.findAll(".bgm-choose-btn")[2].trigger("click");
 
@@ -132,6 +157,7 @@ describe("GalleryBgmPicker 的选曲", () => {
   it("选完收起面板", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     await wrapper.findAll(".bgm-choose-btn")[0].trigger("click");
 
@@ -157,6 +183,7 @@ describe("GalleryBgmPicker 的试听", () => {
   it("点试听播这一条", async () => {
     const wrapper = mountPicker();
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     await wrapper.find(".bgm-audition-btn").trigger("click");
 
@@ -167,6 +194,7 @@ describe("GalleryBgmPicker 的试听", () => {
     const wrapper = mountPicker();
     bgmSpies.activeId.value = SONG.id;
     await openPanel(wrapper);
+    await showGallery(wrapper);
 
     expect(wrapper.find(".bgm-audition-btn").text()).toBe("停止");
     await wrapper.find(".bgm-audition-btn").trigger("click");
@@ -234,5 +262,74 @@ describe("GalleryBgmPicker 的上传", () => {
     expect(bgmSpies.playSource).not.toHaveBeenCalled();
     // 提示由 request.js 负责
     expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("GalleryBgmPicker 的 tab", () => {
+  it("默认停在本站曲库，列出构建期清单里的曲子", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    expect(wrapper.find(".bgm-tab-site").classes()).toContain("is-active");
+    expect(wrapper.findAll(".bgm-site-name").map((node) => node.text())).toEqual(["farlands", "a b"]);
+  });
+
+  it("切到画廊作品才显示画廊候选", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    expect(wrapper.find(".bgm-list").exists()).toBe(false);
+
+    await wrapper.find(".bgm-tab-gallery").trigger("click");
+
+    expect(wrapper.find(".bgm-list").exists()).toBe(true);
+    expect(wrapper.findAll(".bgm-item")).toHaveLength(3);
+  });
+
+  it("切到我的上传只显示上传按钮", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    await wrapper.find(".bgm-tab-upload").trigger("click");
+
+    expect(wrapper.find(".bgm-upload").exists()).toBe(true);
+    expect(wrapper.find(".bgm-list").exists()).toBe(false);
+    expect(wrapper.find(".bgm-site-list").exists()).toBe(false);
+  });
+
+  /** 本站曲库的地址是站内相对路径，后端在 GalleryBgmResolver 里单独为它开了一条路 */
+  it("选本站曲库的一首发出的地址是 /music/ 开头的相对路径", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    await wrapper.findAll(".bgm-site-choose")[0].trigger("click");
+
+    expect(wrapper.emitted("update:modelValue")[0]).toEqual([
+      { src: "/music/Iwakura - farlands.mp3", type: "audio" },
+    ]);
+  });
+
+  it("本站曲库也能试听，再点一次停", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    await wrapper.findAll(".bgm-site-audition")[0].trigger("click");
+    expect(bgmSpies.playSource).toHaveBeenCalledWith(
+      { src: "/music/Iwakura - farlands.mp3", type: "audio" },
+      "site:Iwakura - farlands.mp3",
+    );
+
+    bgmSpies.activeId.value = "site:Iwakura - farlands.mp3";
+    await wrapper.findAll(".bgm-site-audition")[0].trigger("click");
+    expect(bgmSpies.stop).toHaveBeenCalled();
+  });
+
+  it("收起面板会停止试听", async () => {
+    const wrapper = mountPicker();
+    await openPanel(wrapper);
+
+    await wrapper.find(".bgm-toggle-btn").trigger("click");
+
+    expect(bgmSpies.stop).toHaveBeenCalled();
   });
 });
