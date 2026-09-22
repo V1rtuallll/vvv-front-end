@@ -124,10 +124,8 @@
     <GalleryEditDialog
       :visible="!!editingItem"
       :item="editingItem"
-      :replacement-file="replacementFile"
       @close="closeEditModal"
       @submit="submitEdit"
-      @select-replacement="setReplacementFile"
     />
     <ConfirmDialog
       :visible="!!deleteTarget"
@@ -198,8 +196,6 @@ const {
   canManageItem,
   canManageComment,
   editingItem,
-  replacementFile,
-  setReplacementFile,
   openEditModal,
   closeEditModal,
   submitEdit,

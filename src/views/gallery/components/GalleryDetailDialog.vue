@@ -194,6 +194,14 @@ watch(() => props.item?.id, () => {
   mediaIndex.value = 0;
 });
 
+/**
+ * 同一件作品被编辑保存时媒体会被删掉几条，media 跟着变短（id 没变，上面那个 watch 不触发）。
+ * 页码越过新的长度时 currentMedia 是 undefined，整块媒体区渲染会报错 —— 回到第一条。
+ */
+watch(() => mediaList.value.length, (length) => {
+  if (mediaIndex.value > length - 1) mediaIndex.value = 0;
+});
+
 const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = useGalleryBgm();
 
 // 打开就播、关闭就停。

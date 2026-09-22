@@ -24,13 +24,19 @@ export const likeGalleryComment = (commentId) => request.post("/gallery/comment/
 export const appendGalleryMedia = (id, formData, onUploadProgress, signal) =>
   request.post(`/gallery/${id}/media`, formData, { onUploadProgress, signal });
 
-// 换文件走独立接口：它会同步两张表的 src 并清掉旧的 OSS 对象
-export const replaceGalleryFile = (id, formData, onUploadProgress, signal) =>
-  request.post(`/gallery/${id}/replace`, formData, { onUploadProgress, signal });
+/**
+ * 编辑弹窗的保存。formData 里两个字段：
+ *   payload — GalleryMediaCommitDTO 的 JSON，items 是有序的最终媒体列表
+ *   files   — 本次新传的文件，items 里的 newFile 是它在这个数组里的下标；可以缺省
+ *
+ * 全量替换语义：标题、描述、BGM、媒体列表都以请求里的值为最终值。一次请求一个事务。
+ * 不要手写 Content-Type —— 手写会丢掉 boundary，浏览器不再替我们拼。
+ */
+export const commitGalleryMedia = (id, formData, onUploadProgress, signal) =>
+  request.put(`/gallery/${id}`, formData, { onUploadProgress, signal });
 // 撤销一次上传：按客户端上传 ID 删掉已入库的行与已上传的 OSS 对象（幂等）
 export const cancelUpload = (clientUploadId) =>
   request.delete(`/gallery/upload/${encodeURIComponent(clientUploadId)}`);
-export const updateGallery = (id, payload) => request.patch(`/gallery/${id}`, payload);
 export const deleteGallery = (id) => request.delete(`/gallery/${id}`);
 export const deleteComment = (commentId) => request.delete(`/gallery/comments/${commentId}`);
 // 背景音乐上传：走独立接口，只在登记表里记一行，**不建画廊项** ——

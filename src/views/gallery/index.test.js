@@ -7,6 +7,7 @@ vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
 vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
   cancelUpload: vi.fn(),
+  commitGalleryMedia: vi.fn(),
   getGalleryBgmCandidates: vi.fn(),
   getGalleryComments: vi.fn(),
   getGalleryItem: vi.fn(),
@@ -16,16 +17,15 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
   likeGallery: vi.fn(),
   likeGalleryComment: vi.fn(),
   postGalleryComment: vi.fn(),
-  replaceGalleryFile: vi.fn(),
   uploadGalleryBgm: vi.fn(),
   uploadGalleryFile: vi.fn(),
-  updateGallery: vi.fn(),
   deleteGallery: vi.fn(),
   deleteComment: vi.fn(),
 }));
 
 import { useAuthStore } from "@/stores/auth";
 import {
+  commitGalleryMedia,
   deleteComment,
   getGalleryComments,
   getGalleryItem,
@@ -63,6 +63,12 @@ async function openDetail() {
   await wrapper.find(".gallery-card").trigger("click");
   await flushPromises();
   return wrapper;
+}
+
+/** jsdom 的 file input 上 files 是只读的，只能这样塞进去 */
+async function pickFile(input, file) {
+  Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+  await input.trigger("change");
 }
 
 describe("Gallery 页面的评论", () => {
@@ -355,6 +361,79 @@ describe("Gallery 页面的侧栏深链", () => {
 
     // 打开详情会去拉评论；组件都没了，这个请求不该发出去
     expect(getGalleryComments).not.toHaveBeenCalled();
+  });
+});
+
+describe("Gallery 页面的编辑弹窗", () => {
+  const MEDIA = [
+    { id: 11, src: "/a.png", type: "photo" },
+    { id: 12, src: "/b.png", type: "photo" },
+  ];
+  /** 一个作品：src / type 就是 media[0]，服务端保证两者一致 */
+  const WORK = { ...ITEM, id: 400, title: "旧标题", src: "/a.png", type: "photo", media: MEDIA };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 1024 } });
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...WORK }], total: 1 } });
+    commitGalleryMedia.mockResolvedValue({ data: { ...WORK } });
+    URL.createObjectURL = vi.fn((file) => `blob:${file.name}`);
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  /** 打开详情，再从详情里进编辑弹窗 */
+  async function openEdit() {
+    const { wrapper } = await mountPage();
+    await wrapper.find(".gallery-card").trigger("click");
+    await flushPromises();
+    await wrapper.find(".detail-edit-btn").trigger("click");
+    await flushPromises();
+    return wrapper;
+  }
+
+  /** 草稿语义是这一轮的核心：没点保存就一次请求都不该发出去 */
+  it("删掉一条媒体再取消，服务端零调用", async () => {
+    const wrapper = await openEdit();
+
+    await wrapper.find(".media-row:nth-child(2) .media-remove").trigger("click");
+
+    expect(wrapper.findAll(".media-row")).toHaveLength(1);
+    expect(commitGalleryMedia).not.toHaveBeenCalled();
+
+    await wrapper.find(".cancel-btn").trigger("click");
+
+    expect(commitGalleryMedia).not.toHaveBeenCalled();
+    expect(wrapper.find(".edit-modal").exists()).toBe(false);
+  });
+
+  it("保存把整组媒体按用户排好的顺序发出去", async () => {
+    const wrapper = await openEdit();
+
+    await wrapper.find(".media-row:nth-child(2) .media-move-up").trigger("click");
+    await wrapper.find(".save-btn").trigger("click");
+    await flushPromises();
+
+    const payload = JSON.parse(commitGalleryMedia.mock.calls[0][1].get("payload"));
+    expect(commitGalleryMedia).toHaveBeenCalledWith(
+      400, expect.any(FormData), expect.any(Function), expect.any(AbortSignal),
+    );
+    expect(payload.items).toEqual([{ mediaId: 12 }, { mediaId: 11 }]);
+  });
+
+  it("换掉封面并保存后，卡片与详情一起换成新封面", async () => {
+    const wrapper = await openEdit();
+
+    await pickFile(wrapper.find(".media-row:nth-child(1) .media-file-input"), new File(["x"], "new.png", { type: "image/png" }));
+    commitGalleryMedia.mockResolvedValue({
+      data: { ...WORK, src: "/new.png", media: [{ id: 21, src: "/new.png", type: "photo" }] },
+    });
+    await wrapper.find(".save-btn").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".gallery-card .media-preview").attributes("src")).toBe("/new.png");
+    expect(wrapper.find(".detail-modal .detail-media").attributes("src")).toBe("/new.png");
   });
 });
 

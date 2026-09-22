@@ -3,12 +3,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { getPublicUser } from "@/modules/user/api/userApi";
 import { isOwner } from "@/shared/auth/owner";
+import { coverOf } from "@/modules/gallery/media";
 import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 import { formatBytes } from "@/utils/bytes";
 import { formatDate, formatShortDate } from "@/utils/DateUtil";
 import {
   appendGalleryMedia,
   cancelUpload,
+  commitGalleryMedia,
   deleteComment,
   deleteGallery,
   getGalleryComments,
@@ -18,8 +20,6 @@ import {
   likeGallery,
   likeGalleryComment,
   postGalleryComment,
-  replaceGalleryFile,
-  updateGallery,
   uploadGalleryFile,
 } from "@/modules/gallery/api/galleryApi";
 
@@ -56,8 +56,6 @@ export function useGalleryPage() {
   const initialDescHeight = ref(0);
   const resizeTarget = ref(null);
   const editingItem = ref(null);
-  /** 编辑弹窗里选好的新文件；为空表示只改元数据 */
-  const replacementFile = ref(null);
   // 待删除目标：{ type: "gallery" | "comment", id, label }
   const deleteTarget = ref(null);
   const deleting = ref(false);
@@ -77,10 +75,21 @@ export function useGalleryPage() {
     likeCount: comment.likeCount || comment.likes || 0,
   }));
 
+  /**
+   * 行上的 src / type 是封面快照，media[0] 才是本体：两份之间没有外键、没有唯一约束，
+   * 谁也保证不了另一份被同步更新。media 非空时以它为准，否则卡片按 src 渲染、
+   * 详情弹窗按 media 翻阅，两边会各显示一套封面。
+   */
+  const withCoverFromMedia = (row) => {
+    if (!row?.media?.length) return row;
+    const cover = coverOf(row);
+    return { ...row, src: cover.src, type: cover.type };
+  };
+
   const loadGallery = async () => {
     try {
       const res = await getGalleryPage({ page: page.value, limit: limit.value });
-      galleryList.value = res.data.list || [];
+      galleryList.value = (res.data.list || []).map(withCoverFromMedia);
       total.value = res.data.total || 0;
     } catch {
       // 提示由 request.js 负责
@@ -442,18 +451,11 @@ export function useGalleryPage() {
   };
 
   const openEditModal = (item) => {
-    replacementFile.value = null;
     editingItem.value = item;
   };
 
   const closeEditModal = () => {
     editingItem.value = null;
-    replacementFile.value = null;
-  };
-
-  /** 编辑弹窗里选好了用来替换当前资源的新文件 */
-  const setReplacementFile = (file) => {
-    replacementFile.value = file;
   };
 
   // 局部更新列表与详情中对应的那条，不重新拉取整页
@@ -466,60 +468,65 @@ export function useGalleryPage() {
   };
 
   /**
-   * 保存编辑。做成队列任务而不是立刻发请求：
-   * 顶部队列面板会显示它，中途取消还能把已经改上去的值改回来。
-   * 如果同时选了新文件，换文件与改元数据合成一个任务，一次点在一条进度里跑完。
+   * 把保存结果写回列表与详情。
+   *
+   * 媒体列表必须和封面一起写：只写 src 的话，详情弹窗翻的还是旧的 media 数组 ——
+   * 卡片变了、打开大图仍是旧封面，而且不报错。封面那两份数据以 media[0] 为准，
+   * 响应里没带媒体时才回落到它自己的 src / type。
    */
-  const submitEdit = (payload) => {
+  const applySavedItem = (id, vo) => {
+    if (!vo) return;
+    const cover = coverOf(vo);
+    applyEditedFields(id, {
+      title: vo.title,
+      description: vo.description,
+      bgmSrc: vo.bgmSrc ?? null,
+      bgmType: vo.bgmType ?? null,
+      // 曲名不进播放逻辑，但换过曲子之后界面上还留着旧曲名是错的
+      bgmTitle: vo.bgmTitle ?? null,
+      ...(Array.isArray(vo.media) ? { media: vo.media } : {}),
+      src: cover.src,
+      type: cover.type,
+    });
+  };
+
+  /**
+   * 保存编辑：一个任务、一次 PUT。
+   *
+   * 后端是全量替换语义（标题、描述、BGM、媒体列表都以这次请求里的值为最终值），
+   * 所以不是「只发改动过的字段」—— 一次请求一个事务，要么全成要么全不成。
+   * items 是有序的最终列表，newFiles 按 items 里 newFile 的下标顺序放进 files。
+   */
+  const submitEdit = ({ title, description, bgmSrc = null, bgmType = null, items = [], newFiles = [] } = {}) => {
     const target = editingItem.value;
     if (!target) return;
-    const file = replacementFile.value;
-    if (Object.keys(payload).length === 0 && !file) {
-      window.$vmessage.info("未修改任何内容");
-      closeEditModal();
-      return;
-    }
-    if (payload.title !== undefined && !payload.title.trim()) {
-      return window.$vmessage.warning("标题不能为空");
-    }
+    if (!title?.trim()) return window.$vmessage.warning("标题不能为空");
+    // 作品至少要有一个媒体：删空之后 gallery.src 无处可取，也就没有封面了（服务端同样会拒）
+    if (!items.length) return window.$vmessage.warning("作品至少要保留一个媒体");
 
-    // 取消要能回滚：记下这几个字段改之前的值
-    const before = {};
-    Object.keys(payload).forEach((key) => {
-      before[key] = target[key] ?? null;
-    });
     const targetId = target.id;
-    const targetName = payload.title ?? target.title;
+    const targetName = title || target.title;
     closeEditModal();
 
-    uploadQueue.add(file, {
-      kind: file ? TASK_KIND.REPLACE : TASK_KIND.EDIT,
+    uploadQueue.add(null, {
+      kind: TASK_KIND.EDIT,
       targetId,
       name: targetName,
-      preview: file ? URL.createObjectURL(file) : null,
       execute: async (_task, { onProgress, signal }) => {
-        let res = null;
-        if (file) {
-          const formData = new FormData();
-          formData.append("file", file);
-          res = await replaceGalleryFile(targetId, formData, onProgress, signal);
-        }
-        if (Object.keys(payload).length > 0) await updateGallery(targetId, payload);
-        applyEditedFields(targetId, payload);
-        // 换文件会同时改掉两张表的 src。响应里带的是新地址，直接同步到界面，
-        // 否则用户会继续看到旧的那张图，只能靠手动刷新
-        if (res?.data?.url) applyEditedFields(targetId, { src: res.data.url });
+        const formData = new FormData();
+        // payload 是一个 JSON 字符串字段，不是请求体
+        formData.append("payload", JSON.stringify({ title, description, bgmSrc, bgmType, items }));
+        // 没有新文件时整个字段缺省，服务端的 files 是可选的
+        newFiles.forEach((file) => formData.append("files", file));
+        const res = await commitGalleryMedia(targetId, formData, onProgress, signal);
+        applySavedItem(targetId, res?.data);
         return res;
       },
+      // 服务端一次请求一个事务，取消只中止得了在途请求 —— 它可能已经提交了，
+      // 本地看不出结果，所以按服务端重读一次，而不是自己算一个「回滚」出来
       onCancel: async (task) => {
-        // 没发过请求，或者压根没改元数据，就没有要回滚的东西
-        if (!task.started || Object.keys(before).length === 0) return;
-        try {
-          await updateGallery(targetId, before);
-          applyEditedFields(targetId, before);
-        } catch {
-          // 提示由 request.js 负责
-        }
+        if (!task.started) return;
+        await loadGallery();
       },
     });
     uploadQueue.start();
@@ -647,8 +654,8 @@ export function useGalleryPage() {
     postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
     formatDate, formatShortDate,
     expandedThreads, isThreadExpanded, toggleThread,
-    isAdmin, canManageItem, canManageComment, editingItem, replacementFile, openEditModal, closeEditModal,
-    setReplacementFile, submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
+    isAdmin, canManageItem, canManageComment, editingItem, openEditModal, closeEditModal,
+    submitEdit, deleteTarget, deleting, requestDeleteItem, requestDeleteComment,
     cancelDelete, confirmDelete,
     uploadItems: uploadQueue.items,
     uploadOverallProgress: uploadQueue.overallProgress,

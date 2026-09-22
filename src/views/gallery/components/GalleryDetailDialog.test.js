@@ -510,6 +510,21 @@ describe("GalleryDetailDialog 的媒体翻阅", () => {
     expect(wrapper.find(".detail-media").attributes("src")).toBe("/a.jpg");
   });
 
+  /**
+   * 编辑保存会把媒体删掉几条，新的 media 数组一起写回这条作品（同一条作品、id 不变）。
+   * 页码越过新的长度时 currentMedia 是 undefined，整块媒体区渲染会直接报错。
+   */
+  it("媒体被删到只剩一条时回到第一条，不留在越界的页码上", async () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B, GIF_C]) });
+    await wrapper.find(".media-arrow-right").trigger("click");
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 3");
+
+    await wrapper.setProps({ item: work([PHOTO_A]) });
+
+    expect(wrapper.find(".detail-media").attributes("src")).toBe(PHOTO_A.src);
+    expect(wrapper.find(".media-indicator").exists()).toBe(false);
+  });
+
   /** 箭头是图标按钮：几何字符在 iOS/Safari 上会被渲染成彩色 emoji，按钮里不放字符 */
   it("箭头是带无障碍名称的图标按钮", () => {
     const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B]) });

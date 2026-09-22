@@ -7,6 +7,7 @@ vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
   appendGalleryMedia: vi.fn(),
   cancelUpload: vi.fn(),
+  commitGalleryMedia: vi.fn(),
   getGalleryBgmCandidates: vi.fn(),
   getGalleryComments: vi.fn(),
   getGalleryPage: vi.fn(),
@@ -15,10 +16,8 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
   likeGallery: vi.fn(),
   likeGalleryComment: vi.fn(),
   postGalleryComment: vi.fn(),
-  replaceGalleryFile: vi.fn(),
   uploadGalleryBgm: vi.fn(),
   uploadGalleryFile: vi.fn(),
-  updateGallery: vi.fn(),
   deleteGallery: vi.fn(),
   deleteComment: vi.fn(),
 }));
@@ -28,6 +27,7 @@ import { useAuthStore } from "@/stores/auth";
 import {
   appendGalleryMedia,
   cancelUpload,
+  commitGalleryMedia,
   deleteComment,
   deleteGallery,
   getGalleryComments,
@@ -35,9 +35,7 @@ import {
   getUploadLimit,
   likeGalleryComment,
   postGalleryComment,
-  replaceGalleryFile,
   uploadGalleryFile,
-  updateGallery,
 } from "@/modules/gallery/api/galleryApi";
 import { getPublicUser } from "@/modules/user/api/userApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
@@ -45,6 +43,24 @@ import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 const ME = 7;
 const SOMEONE_ELSE = 8;
 const ITEM = { id: 100, title: "旧标题", description: "旧描述", src: "https://example.test/old.png", userId: ME, commentCount: 2 };
+
+/** 一个作品：src / type 就是 media[0]，服务端保证两者一致，这里照同样的形状拼出来 */
+const WORK = {
+  ...ITEM,
+  type: "photo",
+  src: "https://example.test/a.png",
+  media: [
+    { id: 11, src: "https://example.test/a.png", type: "photo" },
+    { id: 12, src: "https://example.test/b.png", type: "photo" },
+  ],
+};
+
+/** 保存成功后端的回包：同样是那一行的形状，src / type 跟着 media[0] 走 */
+const savedWithCover = (src, type = "photo") => ({
+  id: 100, title: "新标题", description: "旧描述", src, type,
+  media: [{ id: 21, src, type }],
+  bgmSrc: null, bgmType: null, bgmTitle: null,
+});
 
 function signIn(id) {
   useAuthStore.mockReturnValue({ user: { id, username: "u" + id }, token: "t" });
@@ -68,7 +84,7 @@ describe("useGalleryPage 的编辑与删除", () => {
     vi.clearAllMocks();
     isOwner.mockReturnValue(false);
     signIn(ME);
-    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...WORK }], total: 1 } });
     getGalleryComments.mockResolvedValue({ data: [] });
   });
 
@@ -100,44 +116,101 @@ describe("useGalleryPage 的编辑与删除", () => {
   });
 
   it("编辑成功后局部更新列表和详情，不重新拉整页", async () => {
-    updateGallery.mockResolvedValue({ data: {} });
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
     const api = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
     getGalleryPage.mockClear();
 
     api.openEditModal(api.galleryList.value[0]);
-    api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
     await flushPromises();
 
-    expect(updateGallery).toHaveBeenCalledWith(100, { title: "新标题" });
     expect(api.galleryList.value[0].title).toBe("新标题");
     expect(api.currentItem.value.title).toBe("新标题");
     expect(getGalleryPage).not.toHaveBeenCalled();
     expect(api.editingItem.value).toBeNull();
   });
 
-  it("编辑会作为任务出现在队列里，而不是悄悄发一个请求", async () => {
-    updateGallery.mockResolvedValue({ data: {} });
+  /** 整组媒体与元数据在一个事务里写下去，所以只能是一次请求，不能是「换文件 + 改元数据」两次 */
+  it("保存是一个任务，整组只发一次 PUT", async () => {
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    api.submitEdit({ title: "新标题" });
+    api.submitEdit({
+      title: "新标题", description: "旧描述",
+      items: [{ newFile: 0 }, { mediaId: 12 }],
+      newFiles: [new File(["x"], "new.png", { type: "image/png" })],
+    });
 
     expect(api.uploadItems.value).toHaveLength(1);
     expect(api.uploadItems.value[0].kind).toBe("edit");
 
     await flushPromises();
+
+    expect(commitGalleryMedia).toHaveBeenCalledTimes(1);
+    expect(commitGalleryMedia).toHaveBeenCalledWith(
+      100, expect.any(FormData), expect.any(Function), expect.any(AbortSignal),
+    );
     expect(api.uploadItems.value[0].status).toBe("success");
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 
+  it("载荷里是最终的有序列表，新文件按同一个次序进 files", async () => {
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
+    const api = await mountGallery();
+    const file = new File(["x"], "new.png", { type: "image/png" });
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({
+      title: "新标题", description: "新描述",
+      items: [{ newFile: 0 }, { mediaId: 12 }], newFiles: [file],
+    });
+    await flushPromises();
+
+    const formData = commitGalleryMedia.mock.calls[0][1];
+    expect(JSON.parse(formData.get("payload"))).toEqual({
+      title: "新标题", description: "新描述", bgmSrc: null, bgmType: null,
+      items: [{ newFile: 0 }, { mediaId: 12 }],
+    });
+    expect(formData.getAll("files")).toEqual([file]);
+  });
+
+  it("没有新文件时不带 files 字段", async () => {
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/a.png") });
+    const api = await mountGallery();
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
+    await flushPromises();
+
+    expect(commitGalleryMedia.mock.calls[0][1].has("files")).toBe(false);
+  });
+
+  /**
+   * 全量替换：BGM 缺一个字段会被服务端判成参数不完整而不是清空，
+   * 所以两个字段永远都带，没有 BGM 时两个都是 null。
+   */
+  it("载荷里始终带着 BGM 两个字段", async () => {
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/a.png") });
+    const api = await mountGallery();
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }] });
+    await flushPromises();
+
+    const payload = JSON.parse(commitGalleryMedia.mock.calls[0][1].get("payload"));
+    expect(payload).toHaveProperty("bgmSrc", null);
+    expect(payload).toHaveProperty("bgmType", null);
+  });
+
   it("编辑失败时不改动已展示的数据，也不重复弹错误", async () => {
-    updateGallery.mockRejectedValue(new Error("boom"));
+    commitGalleryMedia.mockRejectedValue(new Error("boom"));
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
     await flushPromises();
 
     expect(api.galleryList.value[0].title).toBe("旧标题");
@@ -145,84 +218,95 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 
-  /** 取消编辑要把已经改上去的值改回来，否则用户以为取消了、数据却变了 */
-  it("编辑中途取消会回滚成原来的值", async () => {
-    let releaseFirst;
-    updateGallery
-      .mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = resolve; }))
-      .mockResolvedValue({ data: {} });
+  /**
+   * 一次 PUT 在服务端是一个事务，取消只中止得了在途请求 —— 它可能已经提交了，
+   * 本地看不出结果，所以按服务端重读一次，而不是自己回滚成一个猜出来的值。
+   */
+  it("取消在途的保存会重新拉一次列表", async () => {
+    let release;
+    commitGalleryMedia.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
-    api.submitEdit({ title: "新标题" });
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
     await flushPromises();
+    getGalleryPage.mockClear();
 
     const cancelling = api.cancelTask(api.uploadItems.value[0]);
-    releaseFirst({ data: {} });
+    release({ data: savedWithCover("https://example.test/new.png") });
     await cancelling;
     await flushPromises();
 
-    expect(updateGallery).toHaveBeenLastCalledWith(100, { title: "旧标题" });
+    expect(getGalleryPage).toHaveBeenCalled();
   });
 
   it("标题清空属于本地校验，直接拦下不入队", async () => {
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
-    api.submitEdit({ title: "  " });
+    api.submitEdit({ title: "  ", description: "旧描述", items: [{ mediaId: 11 }] });
 
-    expect(updateGallery).not.toHaveBeenCalled();
+    expect(commitGalleryMedia).not.toHaveBeenCalled();
     expect(api.uploadItems.value).toHaveLength(0);
     expect(window.$vmessage.warning).toHaveBeenCalled();
   });
 
-  it("选了新文件时换文件与改元数据合成一个任务", async () => {
-    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
-    updateGallery.mockResolvedValue({ data: {} });
+  /** 服务端会拒空列表；本地先拦下，用户不用等一次往返才知道 */
+  it("媒体列表为空属于本地校验，直接拦下不入队", async () => {
     const api = await mountGallery();
-    const file = new File(["x"], "new.png", { type: "image/png" });
-
     api.openEditModal(api.galleryList.value[0]);
-    api.setReplacementFile(file);
-    api.submitEdit({ title: "新标题" });
-    await flushPromises();
 
-    expect(api.uploadItems.value).toHaveLength(1);
-    expect(api.uploadItems.value[0].kind).toBe("replace");
-    expect(replaceGalleryFile).toHaveBeenCalledWith(
-      100, expect.any(FormData), expect.any(Function), expect.any(AbortSignal),
-    );
-    expect(updateGallery).toHaveBeenCalledWith(100, { title: "新标题" });
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [] });
+
+    expect(commitGalleryMedia).not.toHaveBeenCalled();
+    expect(api.uploadItems.value).toHaveLength(0);
+    expect(window.$vmessage.warning).toHaveBeenCalled();
   });
 
-  it("只选文件不改字段也能保存", async () => {
-    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
-    const api = await mountGallery();
-    const file = new File(["x"], "new.png", { type: "image/png" });
-
-    api.openEditModal(api.galleryList.value[0]);
-    api.setReplacementFile(file);
-    api.submitEdit({});
-    await flushPromises();
-
-    expect(replaceGalleryFile).toHaveBeenCalled();
-    expect(api.uploadItems.value[0].status).toBe("success");
-  });
-
-  /** 换完文件界面还显示旧图的话，用户会以为根本没换上 */
-  it("换文件后把新地址同步到列表与详情", async () => {
-    replaceGalleryFile.mockResolvedValue({ data: { url: "https://example.test/new.png" } });
+  /**
+   * 只写 src 的话，卡片变了而详情弹窗翻的还是旧的 media 数组 ——
+   * 打开大图仍是旧封面，而且不报错。
+   */
+  it("保存后封面与 media 一起更新，详情不会停在旧封面", async () => {
+    commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/b.png") });
     const api = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
-    const file = new File(["x"], "new.png", { type: "image/png" });
 
     api.openEditModal(api.galleryList.value[0]);
-    api.setReplacementFile(file);
-    api.submitEdit({});
+    api.submitEdit({
+      title: "旧标题", description: "旧描述",
+      items: [{ newFile: 0 }], newFiles: [new File(["x"], "b.png", { type: "image/png" })],
+    });
     await flushPromises();
 
-    expect(api.galleryList.value[0].src).toBe("https://example.test/new.png");
-    expect(api.currentItem.value.src).toBe("https://example.test/new.png");
+    const savedMedia = [{ id: 21, src: "https://example.test/b.png", type: "photo" }];
+    expect(api.galleryList.value[0].src).toBe("https://example.test/b.png");
+    expect(api.galleryList.value[0].media).toEqual(savedMedia);
+    expect(api.currentItem.value.src).toBe("https://example.test/b.png");
+    expect(api.currentItem.value.media).toEqual(savedMedia);
+  });
+
+  /**
+   * 列表行的 src / type 是封面快照，media[0] 才是本体，两份之间没有外键、没有唯一约束。
+   * media 非空时以它为准，否则卡片按 src 渲染、详情弹窗按 media 翻阅，两边会各显示一套封面。
+   */
+  it("列表行的 src 与 media[0] 不一致时以 media[0] 为准", async () => {
+    getGalleryPage.mockResolvedValue({
+      data: {
+        list: [{
+          ...ITEM,
+          src: "https://example.test/stale.png",
+          type: "video",
+          media: [{ id: 11, src: "https://example.test/cover.png", type: "photo" }],
+        }],
+        total: 1,
+      },
+    });
+
+    const api = await mountGallery();
+
+    expect(api.galleryList.value[0].src).toBe("https://example.test/cover.png");
+    expect(api.galleryList.value[0].type).toBe("photo");
   });
 
   it("删除成功后从列表移除，并在当前页被删空时回退补数据", async () => {
@@ -268,29 +352,31 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(window.$vmessage.error).not.toHaveBeenCalled();
   });
 
-  /** 取消编辑要把 BGM 一起改回去，否则用户以为取消了、曲子却换掉了 */
-  it("编辑中途取消会把背景音乐一起回滚", async () => {
-    let releaseFirst;
-    updateGallery
-      .mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = resolve; }))
-      .mockResolvedValue({ data: {} });
-    const api = await mountGallery();
-    const item = { ...api.galleryList.value[0], bgmSrc: "https://cdn.example.test/music/old.mp3", bgmType: "audio" };
-    api.galleryList.value = [item];
-
-    api.openEditModal(item);
-    api.submitEdit({ bgmSrc: "https://cdn.example.test/music/new.mp3", bgmType: "audio" });
-    await flushPromises();
-
-    const cancelling = api.cancelTask(api.uploadItems.value[0]);
-    releaseFirst({ data: {} });
-    await cancelling;
-    await flushPromises();
-
-    expect(updateGallery).toHaveBeenLastCalledWith(100, {
-      bgmSrc: "https://cdn.example.test/music/old.mp3",
-      bgmType: "audio",
+  /** BGM 与媒体列表在同一次保存里落定，显示的以服务端返回的那一份为准 */
+  it("保存后把服务端返回的背景音乐写回列表与详情", async () => {
+    commitGalleryMedia.mockResolvedValue({
+      data: {
+        ...savedWithCover("https://example.test/a.png"),
+        bgmSrc: "https://cdn.example.test/music/new.mp3",
+        bgmType: "audio",
+        bgmTitle: "新曲子",
+      },
     });
+    const api = await mountGallery();
+    api.openDetailModal(api.galleryList.value[0]);
+    await flushPromises();
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({
+      title: "旧标题", description: "旧描述",
+      bgmSrc: "https://cdn.example.test/music/new.mp3", bgmType: "audio",
+      items: [{ mediaId: 11 }, { mediaId: 12 }],
+    });
+    await flushPromises();
+
+    expect(api.galleryList.value[0].bgmSrc).toBe("https://cdn.example.test/music/new.mp3");
+    expect(api.galleryList.value[0].bgmTitle).toBe("新曲子");
+    expect(api.currentItem.value.bgmType).toBe("audio");
   });
 });
 

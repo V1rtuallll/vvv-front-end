@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/utils/request", () => ({
-  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
 import request from "@/utils/request";
 import {
   appendGalleryMedia,
+  commitGalleryMedia,
   getGalleryBgmCandidates,
   uploadGalleryBgm,
 } from "@/modules/gallery/api/galleryApi";
@@ -60,6 +61,38 @@ describe("galleryApi 的追加媒体接口", () => {
     appendGalleryMedia(7, formData, onUploadProgress, controller.signal);
 
     expect(request.post).toHaveBeenCalledWith("/gallery/7/media", formData, {
+      onUploadProgress,
+      signal: controller.signal,
+    });
+  });
+});
+
+describe("galleryApi 的编辑提交接口", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 后端已经把 PATCH /gallery/{id} 与 POST /gallery/{id}/replace 摘掉了，
+   * 编辑保存只剩这一条 PUT。走错门的话编辑功能整体失效，而页面只报一个 404。
+   */
+  it("走 PUT /gallery/{id}，不是已经摘掉的 PATCH 或 /replace", () => {
+    const formData = new FormData();
+
+    commitGalleryMedia(7, formData);
+
+    expect(request.put).toHaveBeenCalledWith("/gallery/7", formData, expect.anything());
+  });
+
+  /** 保存也要能取消：中途取消要能中止在途请求 */
+  it("把进度回调与取消信号透传给 axios", () => {
+    const formData = new FormData();
+    const onUploadProgress = () => {};
+    const controller = new AbortController();
+
+    commitGalleryMedia(7, formData, onUploadProgress, controller.signal);
+
+    expect(request.put).toHaveBeenCalledWith("/gallery/7", formData, {
       onUploadProgress,
       signal: controller.signal,
     });
