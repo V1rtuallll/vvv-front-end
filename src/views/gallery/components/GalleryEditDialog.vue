@@ -381,8 +381,42 @@ const submit = () => {
 
 /* 媒体列表：一条媒体一行，窄屏自动折行 */
 .media-list { margin: 0; padding: 0; list-style: none; }
-.media-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #e9f2f9; }
-.media-row[draggable="true"] { cursor: grab; }
+/* position: relative 是给落点线那条绝对定位的伪元素当参照系的 */
+.media-row { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #e9f2f9; transition: background-color 0.15s ease; }
+
+/* 拖柄。点阵是站点的既有母题（侧栏标题条的小方块、卡片底板都是它）：
+   调点的疏密改 background-size，调点的粗细改 radial-gradient 的 1.2px / 1.5px */
+.media-grip {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 44px;
+  background-image: radial-gradient(circle, #7b8fa1 1.2px, transparent 1.5px);
+  background-size: 6px 6px;
+  background-position: center;
+  border-radius: 4px;
+  cursor: grab;
+}
+.media-grip:hover { background-image: radial-gradient(circle, #0277bd 1.2px, transparent 1.5px); }
+.media-grip:active { cursor: grabbing; }
+
+/* 被拖起的那一行：淡下去，加一条虚线框表示它正在被搬动 */
+.media-row.is-dragging { opacity: 0.45; background: #e9f2f9; border-bottom-color: transparent; }
+.media-row.is-dragging .media-grip { outline: 1px dashed #0277bd; outline-offset: -1px; }
+
+/* 落点行：底色亮一层，再用一条 2px 的线指出插到前面还是后面。
+   线画在绝对定位的伪元素上 —— 直接改 border 会让整行抖一下，
+   而伪元素不会成为 flex 项，不影响原来的排版 */
+.media-row.is-drop-target { background: #e9f2f9; }
+.media-row.is-drop-target::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: #0277bd;
+}
+.media-row.is-drop-target:not(.is-drop-after)::after { bottom: auto; top: -1px; }
 .media-thumb { flex: 0 0 auto; width: 56px; height: 56px; object-fit: contain; background: #e9f2f9; border-radius: 4px; }
 /* 音频与未知类型没有画面，用文字占位，与缩略图同高 */
 .media-thumb-text { display: flex; align-items: center; justify-content: center; color: #54636f; font-size: 0.85rem; }
