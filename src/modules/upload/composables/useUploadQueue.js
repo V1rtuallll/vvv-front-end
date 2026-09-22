@@ -16,7 +16,6 @@ export const UPLOAD_STATUS = {
 export const TASK_KIND = {
   UPLOAD: "upload",
   EDIT: "edit",
-  REPLACE: "replace",
 };
 
 /**

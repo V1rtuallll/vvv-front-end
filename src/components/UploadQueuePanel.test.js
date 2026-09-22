@@ -54,17 +54,16 @@ describe("UploadQueuePanel", () => {
     expect(done.find(".queue-summary").text()).toContain("成功 1");
   });
 
-  it("按任务种类分别标注上传 / 编辑 / 换文件", () => {
+  it("按任务种类分别标注上传 / 编辑", () => {
     const wrapper = mountPanel({
       items: [
         task({ key: 1, kind: "upload" }),
         task({ key: 2, kind: "edit", name: "改标题" }),
-        task({ key: 3, kind: "replace", name: "new.png" }),
       ],
     });
 
     const kinds = wrapper.findAll(".queue-kind").map((node) => node.text());
-    expect(kinds).toEqual(["上传", "编辑", "换文件"]);
+    expect(kinds).toEqual(["上传", "编辑"]);
   });
 
   it("排队中与上传中的任务都能取消", async () => {

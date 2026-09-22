@@ -74,7 +74,6 @@ const settledSummary = computed(() => {
 const KIND_LABEL = {
   [TASK_KIND.UPLOAD]: "上传",
   [TASK_KIND.EDIT]: "编辑",
-  [TASK_KIND.REPLACE]: "换文件",
 };
 
 const runningCount = computed(
