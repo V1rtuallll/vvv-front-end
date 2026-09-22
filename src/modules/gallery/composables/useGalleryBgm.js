@@ -98,6 +98,18 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
    */
   let openedWindow = false;
 
+  /**
+   * 被我们暂时按下去的另一个实例。停止试听时要把它接回去。
+   *
+   * 为什么不能沿用 `stop()`：`stop()` 会 `releaseElement()` **销毁**对方的媒体元素，
+   * 对方永远回不来（详情弹窗那行会一直显示「无背景音乐」，连开关一起消失）。
+   * 而 `pause()` 保留元素与进度，`resume()` 从原处接着放。
+   *
+   * 只记「真的被我们按下去的」那一个：对方本来就是用户手动暂停时 `pause()` 返回
+   * `false`，那种情况我们无权替用户解停。
+   */
+  let interruptedInstance = null;
+
   const stop = () => {
     // 没在播就什么都不做：一道便宜的空跑早退。
     //
@@ -116,6 +128,15 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     if (openedWindow) {
       openedWindow = false;
       resumeAfterBgm();
+    }
+    // 把试听期间按下去的那个实例接回去。与侧栏是两个独立的音源，先后无所谓
+    if (interruptedInstance) {
+      const other = interruptedInstance;
+      interruptedInstance = null;
+      // 槽位一并交回给它：它又出声了。留 `null` 的话下一次试听看不到还有人在响，
+      // 就不再按停它，两路音频一起出声（连着试听第二首就会走到这里）
+      soundingInstance = other;
+      other.resume();
     }
   };
 
@@ -136,10 +157,19 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     ) return;
 
     releaseElement();
-    // 别的实例还在响就先把它停掉。**顺序是固定的一环**：它的 stop() 会先把
-    // 侧栏还原，我们随后的 pauseForBgm() 才谈得上真正接管（否则这一让是空转）。
-    // 两步调换的话，停掉对方之后侧栏会留在它解停后的状态，而我们没接管成功
-    if (soundingInstance && soundingInstance !== api) soundingInstance.stop();
+    // 别的实例还在响就先让它闭嘴：同一时刻只准一路出声，自己这一路先起的话
+    // 会有那么一瞬间两路叠着。
+    //
+    // 它只是被按停，**不会**释放侧栏那扇窗口（谁开的窗口谁关：只有 stop() 才还窗口）。
+    // 所以下面那次 `pauseForBgm()` 接不到一个在播的侧栏，本实例不会成为窗口的主人，
+    // `stop()` 时也就不该去解停侧栏。
+    //
+    // 暂停而不是停掉：硬停会销毁对方的媒体元素，试听结束后它回不来。
+    // 只有真的按下了才记 —— 对方本来就是用户手动暂停时 `pause()` 返回 `false`，
+    // 那种情况我们无权替用户解停
+    if (soundingInstance && soundingInstance !== api) {
+      interruptedInstance = soundingInstance.pause() ? soundingInstance : null;
+    }
     soundingInstance = api;
     // 先让侧栏闭嘴，再起自己的。记下是不是**我们**把它按下去的 ——
     // 记错了，stop() 就会去解停一个不是我们开的窗口
@@ -171,11 +201,16 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
    * 与 `stop()` 的区别很关键：`stop()` 会 `releaseElement()` **销毁**媒体元素，
    * 再播只能从头开始；这里只是 `element.pause()`，进度保留，resume 从原处接着放。
    * 详情弹窗左下角那个开关要的是后者。
+   *
+   * @returns 本次是否**真的按下了**。试听仲裁靠它区分「我按停的」与
+   *          「用户本来就按停的」：后者不记，试听结束才不会擅自替用户解停。
+   *          没有元素、或已经在暂停态时返回 `false`（这两种情况都没动它）。
    */
   const pause = () => {
-    if (!element || paused.value) return;
+    if (!element || paused.value) return false;
     element.pause();
     paused.value = true;
+    return true;
   };
 
   const resume = () => {

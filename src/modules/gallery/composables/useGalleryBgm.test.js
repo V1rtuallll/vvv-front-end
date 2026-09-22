@@ -315,11 +315,11 @@ describe("useGalleryBgm 与侧栏的协调", () => {
    * 详情弹窗开着时从它里面打开编辑弹窗试听，是两个实例各建各的元素：
    * 少了仲裁就是两路音频一起响，而且没有控件解释多出来的那一路。
    *
-   * 顺序也是被测行为的一部分：后起播的那个先停掉对方（对方的 stop 会解停
-   * 侧栏），再让位 —— 这次才真的接管。所以侧栏在仲裁期间 pause 两次、
-   * play 一次，最后由后者一人持有窗口。
+   * 仲裁的手法是**按停**对方（理由见「试听期间的让位与恢复」那一组）：对方只是
+   * 不出声，元素与播放状态都留在原处，试听一停就接着放。侧栏则始终由详情弹窗
+   * 那一次让位持有 —— 试听这一路按不动它（`pauseForBgm()` 空转），也就不许解停。
    */
-  it("另一个实例起播时先停掉正在响的那一个", () => {
+  it("另一个实例起播时先让正在响的那一个让位", () => {
     const player = {
       paused: false,
       pause: vi.fn(() => {
@@ -346,27 +346,30 @@ describe("useGalleryBgm 与侧栏的协调", () => {
 
     const dialog = newBgm();
     dialog.play(PHOTO_WITH_BGM); // 详情弹窗接管侧栏
+    expect(player.pause).toHaveBeenCalledTimes(1);
 
     const picker = newBgm();
     picker.playSource({ src: "https://cdn.example.test/music/new.mp3", type: "audio" });
 
-    // 详情弹窗那一首真的被按停，它自己的状态也清了 —— 否则它的 activeBgm
-    // 还挂着，选择器「选它」之类的判断会读到一条早就不在响的曲子
+    // 详情弹窗那一路不出声了，但只是被按停：曲子还在它名下，元素也没销毁
     expect(elements[0][0].pause).toHaveBeenCalledTimes(1);
-    expect(dialog.activeBgm.value).toBe(null);
-    expect(dialog.activeId.value).toBe(null);
-    // 侧栏：详情弹窗解停一次、选择器再按下去一次，两路音频不会叠
-    expect(player.pause).toHaveBeenCalledTimes(2);
+    expect(dialog.paused.value).toBe(true);
+    expect(dialog.activeBgm.value).not.toBe(null);
+    // 侧栏：详情弹窗按下去过一次。选择器这一让是空转（按不下去已经被按住的），
+    // 不出现「解停再按停」那一下
+    expect(player.pause).toHaveBeenCalledTimes(1);
+    expect(player.play).not.toHaveBeenCalled();
+
+    picker.stop(); // 试听结束：详情弹窗那一首接着放
+
+    expect(elements[0][0].play).toHaveBeenCalledTimes(2);
+    expect(dialog.paused.value).toBe(false);
+    // 详情弹窗还在响，侧栏就该继续闭嘴 —— 窗口是详情弹窗开的，还没到还的时候
+    expect(player.play).not.toHaveBeenCalled();
+
+    dialog.stop(); // 关掉详情：这次该它还原侧栏
+
     expect(player.play).toHaveBeenCalledTimes(1);
-
-    picker.stop(); // 关掉编辑弹窗：这次该它还原侧栏
-
-    expect(elements[1][0].pause).toHaveBeenCalledTimes(1);
-    expect(player.play).toHaveBeenCalledTimes(2);
-
-    dialog.stop(); // 已经停过，不该再动侧栏一次
-
-    expect(player.play).toHaveBeenCalledTimes(2);
   });
 
   /**
@@ -435,6 +438,149 @@ describe("useGalleryBgm 与侧栏的协调", () => {
     expect(bgm.paused.value).toBe(false);
   });
 
+});
+
+/**
+ * **试听把另一个实例按停，试听结束再把它接回去。**
+ *
+ * 详情弹窗正放着自己的 BGM 时点「编辑」→ 在选曲面板里试听另一首。两个实例各建
+ * 各的媒体元素，仲裁必须让原来那一路闭嘴 —— 但**只能按停，不能停掉**：
+ * `stop()` 走 `releaseElement()` 销毁对方的元素，对方从此回不来（重播要整只重建、
+ * 从头开始），详情弹窗那行会一直显示「无背景音乐」，连开关一起消失。
+ * 用户只是试听、没选那一首的话，条目数据一个字节都没动，界面不该跟着变。
+ *
+ * 反过来，「对方本来就是用户手动暂停的」必须原样留着：我们只是把它按住更久，
+ * 无权替用户解停 —— 记错了，试听一结束就会擅自把用户按下的音乐放起来。
+ */
+describe("useGalleryBgm 试听期间的让位与恢复", () => {
+  const AUDITION = { src: "https://cdn.example.test/music/audition.mp3", type: "audio" };
+  const AUDITION_2 = { src: "https://cdn.example.test/music/audition-2.mp3", type: "audio" };
+
+  /** 有状态的侧栏替身：`pause()` 必须真翻转 `paused`，否则模拟不出「已被按下去」 */
+  function makePlayer() {
+    const player = {
+      paused: false,
+      pause: vi.fn(() => {
+        player.paused = true;
+      }),
+      play: vi.fn(() => {
+        player.paused = false;
+        return Promise.resolve();
+      }),
+    };
+    return player;
+  }
+
+  // 本组用例自建的实例都登记在这里，收尾统一停掉：`soundingInstance` 是模块级的，
+  // 留着上一轮的发声者会串进下一个用例。倒着停 —— 后起播的先停，
+  // 收尾之后槽位是空的
+  let mounted = [];
+
+  const newBgm = () => {
+    const created = [];
+    const bgm = useGalleryBgm((tag) => {
+      const el = fakeElement(tag);
+      created.push(el);
+      return el;
+    });
+    mounted.push(bgm);
+    return { bgm, created };
+  };
+
+  /** 详情弹窗那一路在响，选择器这一路开始试听另一首 */
+  const mountAudition = () => {
+    const player = makePlayer();
+    registerPlayerAudio(player);
+    const dialog = newBgm();
+    const picker = newBgm();
+    dialog.bgm.play(PHOTO_WITH_BGM);
+    picker.bgm.playSource(AUDITION, "site:a");
+    return { dialog, picker, player };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    [...mounted].reverse().forEach((bgm) => bgm.stop());
+    mounted = [];
+  });
+
+  it("试听把对方按停：元素、进度与播放状态都留着", () => {
+    const { dialog } = mountAudition();
+
+    expect(dialog.created[0].pause).toHaveBeenCalledTimes(1); // 真的不出声了
+    expect(dialog.bgm.paused.value).toBe(true);
+    // 不是 `stop()`：曲子还在它名下，元素也没交回音量层（交回去就等于销毁了）
+    expect(dialog.bgm.activeBgm.value).not.toBe(null);
+    expect(dialog.bgm.activeId.value).not.toBe(null);
+    expect(unregisterMediaElement).not.toHaveBeenCalledWith(dialog.created[0]);
+  });
+
+  it("试听结束时对方从原处接着放", () => {
+    const { dialog, picker } = mountAudition();
+    expect(dialog.created[0].play).toHaveBeenCalledTimes(1); // 起播那一次
+
+    picker.bgm.stop();
+
+    expect(dialog.bgm.paused.value).toBe(false);
+    expect(dialog.created[0].play).toHaveBeenCalledTimes(2);
+    expect(dialog.bgm.activeBgm.value).not.toBe(null);
+  });
+
+  /**
+   * 连着试听第二首是最常见的操作（听一首、停掉、再听下一首）。
+   * 试听结束时对方被接回原处接着放，槽位也必须交回给它 —— 留在 `null` 上的话，
+   * 下一次试听看不到「还有人在响」，就不再按停它，两路音频一起出声。
+   */
+  it("试听完一首再试听下一首，对方仍然被按停", () => {
+    const { dialog, picker } = mountAudition();
+
+    picker.bgm.stop(); // 第一次试听结束：详情弹窗那一首接着放
+    expect(dialog.bgm.paused.value).toBe(false);
+
+    picker.bgm.playSource(AUDITION_2, "site:b"); // 再试听另一首出来
+
+    expect(dialog.bgm.paused.value).toBe(true);
+    expect(dialog.created[0].pause).toHaveBeenCalledTimes(2);
+    expect(dialog.created[0].play).toHaveBeenCalledTimes(2); // 起播一次、接回去一次
+    expect(picker.created).toHaveLength(2);
+    expect(picker.created[1].play).toHaveBeenCalledTimes(1);
+  });
+
+  /** 对方本来就是用户按停的：我们只是把它按住更久，无权替用户解停 */
+  it("对方本来就被用户按停时，试听结束不擅自把它放起来", () => {
+    const player = makePlayer();
+    registerPlayerAudio(player);
+    const dialog = newBgm();
+    dialog.bgm.play(PHOTO_WITH_BGM);
+    dialog.bgm.pause(); // 用户自己点的暂停
+    expect(dialog.bgm.paused.value).toBe(true);
+
+    const picker = newBgm();
+    picker.bgm.playSource(AUDITION, "site:a");
+    picker.bgm.stop();
+
+    expect(dialog.bgm.paused.value).toBe(true);
+    expect(dialog.created[0].play).toHaveBeenCalledTimes(1); // 只有起播那一次
+    expect(dialog.bgm.activeBgm.value).not.toBe(null);
+  });
+
+  /**
+   * `pause()` 返回「本次是否真的按下了」。
+   *
+   * 返回值不是装饰：仲裁要靠它区分「我按停的」与「用户本来就按停的」。
+   * 后者不记，试听结束时才不会擅自解停用户按下的音乐。
+   */
+  it("pause 返回本次是否真的按下了", () => {
+    const { bgm } = newBgm(); // 走同一套收尾：模块状态不留给下一个用例
+
+    expect(bgm.pause()).toBe(false); // 还没有东西可停
+    bgm.playSource(AUDITION, "site:a");
+    expect(bgm.pause()).toBe(true); // 真的按下了
+    expect(bgm.pause()).toBe(false); // 已经在暂停态：没有动它
+  });
 });
 
 /**

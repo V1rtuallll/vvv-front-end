@@ -286,6 +286,11 @@ const nameFromSrc = (src) => {
  * 前缀不是装饰：一条项配的曲子可能是音频也可能是视频（见 bgmType），
  * 只写名字看不出放的是哪一种。
  *
+ * 取自**条目数据**而不是播放状态。播放状态是会被仲裁改动的 —— 在选曲面板里
+ * 试听另一首时，本实例会被对面按停、`activeBgm` 一度为空，按它算名字的话这行
+ * 会在试听期间翻成「无背景音乐」，连开关一起消失，退出编辑也不恢复。
+ * 有没有背景音乐是条目自己的属性，与此刻谁在出声无关。
+ *
  * 名字优先用后端算好的 `bgmTitle`（GalleryItemVO 上一直有这个字段，只是前端从没读过）；
  * 取不到时退回从地址末段还原文件名。
  *
@@ -293,10 +298,10 @@ const nameFromSrc = (src) => {
  * （如 a18778e1-f6a9-....mp3），退回来读不出任何东西，此时显示占位而不是那串标识。
  */
 const bgmName = computed(() => {
-  if (!activeBgm.value) return "无背景音乐";
+  if (!props.item?.bgmSrc) return "无背景音乐";
 
   const type = props.item?.bgmType === "video" ? "视频" : "音频";
-  return `${type} · ${props.item?.bgmTitle || nameFromSrc(activeBgm.value.src)}`;
+  return `${type} · ${props.item?.bgmTitle || nameFromSrc(props.item.bgmSrc)}`;
 });
 
 /**

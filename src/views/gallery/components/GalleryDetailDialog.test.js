@@ -7,18 +7,28 @@ import GalleryDetailDialog from "@/views/gallery/components/GalleryDetailDialog.
 // useGalleryBgm 换成替身：这一层要断言的是「弹窗什么时候让它播、什么时候让它停」，
 // 播放本身（建元素、循环、音量、与侧栏协调）由 useGalleryBgm.test.js 负责。
 // 而真实实现会在 jsdom 里建真的媒体元素，那既没解码器、也不是本文件的被测对象。
-// activeBgm 由各用例按需设置：曲名兜底那组要断言「拿不到曲名时显示什么」
-const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn(), activeBgm: { value: null } }));
+// activeBgm / paused 由各用例按需设置：曲名那一组要断言「播放状态为空时显示什么」，
+// 还要摆出「实例被按停」这个状态。
+// 两个都是真 ref（模板就是按 ref 读它们的）：用普通对象顶替的话 `v-if="activeBgm"`
+// 恒为真，摆不出「没在出声」的样子
+const bgmSpies = vi.hoisted(() => ({ play: vi.fn(), stop: vi.fn(), activeBgm: null, paused: null }));
 
-vi.mock("@/modules/gallery/composables/useGalleryBgm", () => ({
-  useGalleryBgm: () => ({
-    activeBgm: bgmSpies.activeBgm,
-    activeId: { value: null },
-    play: bgmSpies.play,
-    playSource: vi.fn(),
-    stop: bgmSpies.stop,
-  }),
-}));
+vi.mock("@/modules/gallery/composables/useGalleryBgm", async () => {
+  // ref 在这里现取：vi.mock 的工厂被提升到文件顶部，那时静态导入还没就位
+  const { ref } = await import("vue");
+  bgmSpies.activeBgm = ref(null);
+  bgmSpies.paused = ref(false);
+  return {
+    useGalleryBgm: () => ({
+      activeBgm: bgmSpies.activeBgm,
+      activeId: { value: null },
+      paused: bgmSpies.paused,
+      play: bgmSpies.play,
+      playSource: vi.fn(),
+      stop: bgmSpies.stop,
+    }),
+  };
+});
 
 const ITEM = { id: 1, type: "photo", src: "/a.jpg", title: "标题", description: "描述" };
 
@@ -342,6 +352,61 @@ describe("GalleryDetailDialog 显示的曲名", () => {
 
   beforeEach(() => {
     bgmSpies.activeBgm.value = null;
+    bgmSpies.paused.value = false;
+  });
+
+  /**
+   * **名字与播放状态无关。**
+   *
+   * 播放状态是会被仲裁改动的：在选曲面板里试听另一首时，本实例被对面按停，
+   * `activeBgm` 一度为空。按它算名字的话这一行会翻成「无背景音乐」，连开关
+   * 一起消失 —— 而条目上的曲子一个字节都没动，用户看到的是「背景音乐被删掉了」，
+   * 退出编辑也不恢复，只有刷新才回来。有没有背景音乐是条目自己的属性，
+   * 与此刻谁在出声无关。
+   */
+  it("播放状态为空时仍显示条目自己的名字", () => {
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmTitle: "夏夜" } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 夏夜");
+  });
+
+  /** 被按停的只是这一路声音：条目与控件都不跟着走样，开关切成「播放」 */
+  it("被按停时名字与开关都还在", () => {
+    bgmSpies.activeBgm.value = { id: WITH_OSS_SRC.id, src: WITH_OSS_SRC.bgmSrc };
+    bgmSpies.paused.value = true;
+
+    const wrapper = mountDialog({ item: { ...WITH_OSS_SRC, bgmTitle: "夏夜" } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("音频 · 夏夜");
+    expect(wrapper.find(".bgm-toggle").text()).toBe("播放");
+  });
+
+  /** 反过来也一样：条目没有曲子时，播放状态里还挂着谁都不该继续报曲名 */
+  it("条目没有 bgmSrc 时显示无背景音乐，播放状态非空也不改口", () => {
+    bgmSpies.activeBgm.value = { id: ITEM.id, src: "https://cdn.example.test/music/stale.mp3" };
+
+    const wrapper = mountDialog({ item: { ...ITEM, bgmTitle: "夏夜" } });
+
+    expect(wrapper.find(".bgm-name").text()).toBe("无背景音乐");
+  });
+
+  /**
+   * 音乐 / 视频项自己就是同屏那条可见的播放器，没有「配了哪首背景音乐」这回事，
+   * 照旧显示无背景音乐。判据必须是 `bgmSrc`：换成 `resolveBgm(item)` 那样按类型
+   * 推导（音乐/视频项都会返回一条曲子）就会在这里谎报一条并不存在的背景音乐。
+   */
+  it("音乐与视频项没配背景音乐时显示无背景音乐", () => {
+    bgmSpies.activeBgm.value = { id: ITEM.id, src: "https://cdn.example.test/music/b.mp3" };
+
+    const music = mountDialog({
+      item: { ...ITEM, type: "music", src: "https://cdn.example.test/music/b.mp3", bgmTitle: "夏夜" },
+    });
+    const video = mountDialog({
+      item: { ...ITEM, type: "video", src: "https://cdn.example.test/video/c.mp4", bgmTitle: "夏夜" },
+    });
+
+    expect(music.find(".bgm-name").text()).toBe("无背景音乐");
+    expect(video.find(".bgm-name").text()).toBe("无背景音乐");
   });
 
   /** OSS 上存的是 UUID 文件名，摆给用户看等于什么都没说 */
