@@ -61,8 +61,12 @@
           <!-- 编辑与删除只在详情弹窗里提供，列表页不再放置入口 -->
         </div>
 
-        <!-- 底部类型条 -->
-        <div class="card-foot">{{ item.type.toUpperCase() }}</div>
+        <!-- 底部类型条。类型只是封面那一条的类型，作品里还有几条媒体不点开看不见，
+             所以多于一条时把张数一并标出来 -->
+        <div class="card-foot">
+          {{ item.type.toUpperCase() }}
+          <span v-if="item.media?.length > 1" class="card-media-count">{{ item.media.length }} 张</span>
+        </div>
       </article>
 
       <div v-if="galleryList.length === 0" class="empty-state">

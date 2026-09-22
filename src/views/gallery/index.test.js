@@ -393,3 +393,39 @@ describe("Gallery 列表里的音乐项", () => {
     expect(audio.attributes("controls")).toBeDefined();
   });
 });
+
+describe("Gallery 卡片的媒体张数", () => {
+  const MEDIA = [
+    { id: 1, src: "/a.png", type: "photo" },
+    { id: 2, src: "/b.png", type: "photo" },
+    { id: 3, src: "/c.mp4", type: "video" },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 1024 } });
+    getGalleryPage.mockResolvedValue({
+      data: { list: [{ ...ITEM, id: 400, media: MEDIA }], total: 1 },
+    });
+  });
+
+  /** 卡片只显示封面的类型，作品里有几条媒体不点开看不出来 */
+  it("一个作品有多条媒体时在类型条上标出张数", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".card-foot").text()).toContain("PHOTO");
+    expect(wrapper.find(".card-media-count").text()).toBe("3 张");
+  });
+
+  it("只有封面的作品不标张数", async () => {
+    getGalleryPage.mockResolvedValue({
+      data: { list: [{ ...ITEM, id: 401, media: [MEDIA[0]] }], total: 1 },
+    });
+
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".card-media-count").exists()).toBe(false);
+  });
+});

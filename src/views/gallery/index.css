@@ -159,6 +159,11 @@
   text-shadow: 0 1px 0 rgba(60, 80, 100, 0.55);
 }
 
+/* 类型条里的张数，紧跟类型文字 */
+.card-media-count {
+  margin-left: 8px;
+}
+
 .card-body {
   padding: 12px;
 }

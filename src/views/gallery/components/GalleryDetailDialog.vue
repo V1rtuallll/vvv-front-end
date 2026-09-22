@@ -2,10 +2,31 @@
   <div v-if="item" class="modal-overlay" @click="$emit('close')">
     <div class="detail-modal" @click.stop>
       <button @click="$emit('close')" class="close-btn">×</button>
-      <div class="detail-left">
-        <img v-if="item.type === 'photo' || item.type === 'gif'" :src="item.src" class="detail-media" />
-        <video v-else-if="item.type === 'video'" :src="item.src" controls autoplay loop class="detail-media"></video>
-        <audio v-else-if="item.type === 'music'" :src="item.src" controls class="detail-audio"></audio>
+      <!-- 媒体区：一个作品有 N 条媒体，一次显示一条，左右箭头逐条翻。
+           箭头用图标按钮 —— 几何字符在 iOS/Safari 上会被渲染成彩色 emoji -->
+      <div class="detail-left" :class="{ 'is-paged': hasMultipleMedia }">
+        <button
+          v-if="hasMultipleMedia"
+          class="media-arrow media-arrow-left"
+          :disabled="mediaIndex === 0"
+          aria-label="上一个"
+          @click.stop="showPreviousMedia"
+        ><span class="ui-icon ui-icon-prev"></span></button>
+
+        <video v-if="currentMedia.type === 'video'" :key="currentMedia.src" :src="currentMedia.src" controls autoplay loop class="detail-media"></video>
+        <audio v-else-if="currentMedia.type === 'music'" :key="currentMedia.src" :src="currentMedia.src" controls class="detail-audio"></audio>
+        <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下 -->
+        <img v-else :key="currentMedia.src" :src="currentMedia.src" class="detail-media" />
+
+        <button
+          v-if="hasMultipleMedia"
+          class="media-arrow media-arrow-right"
+          :disabled="mediaIndex >= mediaList.length - 1"
+          aria-label="下一个"
+          @click.stop="showNextMedia"
+        ><span class="ui-icon ui-icon-next"></span></button>
+
+        <span v-if="hasMultipleMedia" class="media-indicator">{{ mediaIndex + 1 }} / {{ mediaList.length }}</span>
       </div>
 
       <div class="detail-right">
@@ -132,6 +153,46 @@ const props = defineProps({
 
 defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
 const description = ref(null);
+
+/**
+ * 这个作品要翻的媒体。服务端按翻阅顺序下发，第 0 项就是封面，
+ * 与 item.src / item.type 由服务端保证一致。
+ *
+ * 空数组是合法形状（BGM 候选列表与回填之前的历史行都是如此），它表示
+ * 「这条作品只登记了封面这一条」，所以兜底成同样的形状 —— 按「没有媒体」
+ * 渲染会留出一片空白，而封面明明还在。
+ */
+const mediaList = computed(() => {
+  const media = props.item?.media;
+  if (Array.isArray(media) && media.length > 0) return media;
+  return props.item ? [{ id: null, src: props.item.src, type: props.item.type }] : [];
+});
+
+/** 当前翻到第几条，从 0 开始 */
+const mediaIndex = ref(0);
+
+const currentMedia = computed(() => mediaList.value[mediaIndex.value]);
+
+/** 只有一条媒体时不渲染翻页控件：点了也不会动 */
+const hasMultipleMedia = computed(() => mediaList.value.length > 1);
+
+/**
+ * 翻页。两端不循环：到头就不再走。边界在这里判一次而不是只靠按钮的 disabled ——
+ * 禁用挡得住鼠标，挡不住直接派发进来的事件，越过边界会让 currentMedia 变成
+ * undefined，整块媒体区渲染报错。
+ */
+const showPreviousMedia = () => {
+  if (mediaIndex.value > 0) mediaIndex.value -= 1;
+};
+
+const showNextMedia = () => {
+  if (mediaIndex.value < mediaList.value.length - 1) mediaIndex.value += 1;
+};
+
+// 换一条作品要把页码归零，否则从第 3 张换到只有 1 张的作品会越界
+watch(() => props.item?.id, () => {
+  mediaIndex.value = 0;
+});
 
 const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = useGalleryBgm();
 
@@ -280,9 +341,20 @@ onBeforeUnmount(() => stopBgm());
 .detail-modal { position: relative; display: flex; width: 96%; max-width: 1600px; height: 92vh; overflow: hidden; background: #ffffff; border: 1px solid #b9c4cc; }
 .close-btn { position: absolute; top: 20px; right: 30px; z-index: 10; width: 44px; height: 44px; color: #54636f; font-size: 1.6rem; font-weight: bold; background: #ffffff; border: 1px solid #b9c4cc; border-radius: 4px; cursor: pointer; }
 .close-btn:hover { color: #c2185b; border-color: #ff69b4; }
-.detail-left { display: flex; flex: 0 0 70%; align-items: center; justify-content: center; height: 100%; background: #e9f2f9; }
+.detail-left { position: relative; display: flex; flex: 0 0 70%; align-items: center; justify-content: center; height: 100%; background: #e9f2f9; }
 .detail-media { max-width: 100%; max-height: 100%; object-fit: contain; }
 .detail-audio { width: 90%; max-width: 1000px; }
+/* 翻页箭头贴在媒体区左右边缘，不参与 flex 布局（绝对定位的子项不进弹性流） */
+.media-arrow { position: absolute; top: 50%; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; color: #2f3b47; font-size: 1.3rem; background: rgba(255, 255, 255, 0.85); border: 1px solid #b9c4cc; border-radius: 50%; cursor: pointer; transform: translateY(-50%); }
+.media-arrow:hover:not(:disabled) { color: #ffffff; background: #ff69b4; border-color: #ff69b4; }
+.media-arrow:disabled { color: #b9c4cc; cursor: not-allowed; }
+.media-arrow-left { left: 16px; }
+.media-arrow-right { right: 16px; }
+/* 第几张 / 共几张。只有一条媒体时不出现 */
+.media-indicator { position: absolute; bottom: 14px; left: 50%; padding: 2px 12px; color: #ffffff; font-size: 0.8rem; background: rgba(1, 40, 70, 0.55); border-radius: 10px; transform: translateX(-50%); }
+/* 箭头压在画面边上：图片和视频被压住一角是常规做法，音频不行 ——
+   控件最左边就是播放键，被压住就点不到了。翻页时把音频收窄，两端各让出一条 */
+.is-paged .detail-audio { width: 70%; }
 .detail-right { display: flex; flex: 0 0 30%; flex-direction: column; height: 100%; padding: 25px 20px; overflow: auto; box-sizing: border-box; background: #ffffff; border-left: 1px solid #b9c4cc; }
 .detail-info-fixed { flex: 0 0 auto; overflow-y: auto; }
 .detail-info-fixed h2 { margin-bottom: 12px; color: #2f3b47; font-size: 1.9rem; word-break: break-word; }
@@ -366,6 +438,11 @@ onBeforeUnmount(() => stopBgm());
   .detail-modal { width: 100%; max-width: 100%; height: 100vh; height: 100dvh; max-height: 100vh; border-radius: 0; }
   .close-btn { top: 10px; right: 12px; width: 44px; height: 44px; font-size: 1.6rem; }
   .detail-left { flex: 0 0 42%; height: 42%; }
+  /* 窄屏媒体区更矮，箭头收小并贴近边缘，免得压住画面 */
+  .media-arrow { width: 40px; height: 40px; font-size: 1rem; }
+  .media-arrow-left { left: 8px; }
+  .media-arrow-right { right: 8px; }
+  .media-indicator { bottom: 8px; }
   /* 窄屏把右栏整体改成滚动容器：信息区（标题/描述/按钮/BGM）在桌面是固定不滚的，
      手机上内容一多就被 overflow: hidden 直接裁掉，且没有任何办法滚到下面 */
   .detail-right { flex: 1 1 58%; height: auto; min-height: 0; padding: 14px 12px; overflow-y: auto; }

@@ -377,3 +377,146 @@ describe("GalleryDetailDialog 显示的曲名", () => {
     expect(wrapper.find(".bgm-name").text()).toBe("视频 · 夏夜");
   });
 });
+
+describe("GalleryDetailDialog 的媒体翻阅", () => {
+  const PHOTO_A = { id: 11, src: "/a.jpg", type: "photo" };
+  const PHOTO_B = { id: 12, src: "/b.jpg", type: "photo" };
+  const GIF_C = { id: 13, src: "/c.gif", type: "gif" };
+  const VIDEO_A = { id: 21, src: "/v1.mp4", type: "video" };
+  const VIDEO_B = { id: 22, src: "/v2.mp4", type: "video" };
+
+  /** 一个作品：封面与 media[0] 由服务端保证一致，这里照同样的形状拼出来 */
+  const work = (media) => ({ ...ITEM, src: media[0].src, type: media[0].type, media });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 候选列表与回填之前的历史行都不带 media。空是合法形状，
+   * 表示「这条作品只有封面」而不是「这条作品没有媒体」——
+   * 按后者渲染会留出一片空白。
+   */
+  it("列表没带 media 时兜底成只有封面这一条，不出现翻页箭头", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, media: undefined } });
+
+    expect(wrapper.findAll(".detail-media")).toHaveLength(1);
+    expect(wrapper.find(".detail-media").attributes("src")).toBe(ITEM.src);
+    expect(wrapper.find(".media-arrow-left").exists()).toBe(false);
+    expect(wrapper.find(".media-arrow-right").exists()).toBe(false);
+    expect(wrapper.find(".media-indicator").exists()).toBe(false);
+  });
+
+  it("media 是空数组时同样兜底成只有封面这一条", () => {
+    const wrapper = mountDialog({ item: { ...ITEM, media: [] } });
+
+    expect(wrapper.findAll(".detail-media")).toHaveLength(1);
+    expect(wrapper.find(".detail-media").attributes("src")).toBe(ITEM.src);
+    expect(wrapper.find(".media-arrow-right").exists()).toBe(false);
+  });
+
+  it("一次只显示一条媒体，并标出这是第几条", () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B, GIF_C]) });
+
+    expect(wrapper.findAll(".detail-media")).toHaveLength(1);
+    expect(wrapper.find(".detail-media").attributes("src")).toBe("/a.jpg");
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 3");
+  });
+
+  it("点右箭头换下一条，媒体与页码一起走", async () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B, GIF_C]) });
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find(".detail-media").attributes("src")).toBe("/b.jpg");
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 3");
+
+    await wrapper.find(".media-arrow-left").trigger("click");
+
+    expect(wrapper.find(".detail-media").attributes("src")).toBe("/a.jpg");
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 3");
+  });
+
+  /** 两端不循环：到头就停住，箭头同时是禁用的 */
+  it("第一页左箭头禁用，最后一页右箭头禁用，继续点不动", async () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B]) });
+
+    expect(wrapper.find(".media-arrow-left").attributes("disabled")).toBeDefined();
+    expect(wrapper.find(".media-arrow-right").attributes("disabled")).toBeUndefined();
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 2");
+    expect(wrapper.find(".media-arrow-right").attributes("disabled")).toBeDefined();
+
+    // 即使点击被派发进来（禁用的按钮在测试里仍能派发事件），页码也不能绕回第一页
+    await wrapper.find(".media-arrow-right").trigger("click");
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 2");
+
+    await wrapper.find(".media-arrow-left").trigger("click");
+    await wrapper.find(".media-arrow-left").trigger("click");
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 2");
+  });
+
+  /** BGM 是作品级的：翻页换的是媒体，曲子必须继续放，不重启 */
+  it("翻页不重启作品级的背景音乐", async () => {
+    const wrapper = mountDialog({
+      item: { ...work([PHOTO_A, PHOTO_B]), bgmSrc: "https://cdn.example.test/music/a.mp3", bgmType: "audio" },
+    });
+    expect(bgmSpies.play).toHaveBeenCalledTimes(1);
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    // 既不能重放（play），也不能先停再放（stop + play），两者都会把曲子拉回开头
+    expect(bgmSpies.play).toHaveBeenCalledTimes(1);
+    expect(bgmSpies.stop).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 翻页离开视频要让它停。做法是重建元素：元素被摘出文档会触发浏览器的加载算法，
+   * 上一段视频随之停下；而只改 src 复用同一个节点时两段视频会重叠。
+   * jsdom 里没有解码器，能观察到的就是「换了节点」这件事。
+   */
+  it("翻到下一段视频时重建元素，上一段随之停下", async () => {
+    const wrapper = mountDialog({ item: work([VIDEO_A, VIDEO_B]) });
+    const first = wrapper.find("video").element;
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    const second = wrapper.find("video").element;
+    expect(second).not.toBe(first);
+    expect(second.getAttribute("src")).toBe("/v2.mp4");
+    expect(first.parentNode).toBeNull();
+  });
+
+  it("从视频翻到图片后，视频元素整个被摘掉", async () => {
+    const wrapper = mountDialog({ item: work([VIDEO_A, PHOTO_B]) });
+    const video = wrapper.find("video").element;
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find("video").exists()).toBe(false);
+    expect(video.parentNode).toBeNull();
+  });
+
+  /** 换作品要把页码归零，否则从第 3 张换到只有 1 张的作品会越界 */
+  it("换成另一条作品时页码归零", async () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B, GIF_C]) });
+    await wrapper.find(".media-arrow-right").trigger("click");
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 3");
+
+    await wrapper.setProps({ item: { ...work([PHOTO_A, PHOTO_B]), id: 999 } });
+
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 2");
+    expect(wrapper.find(".detail-media").attributes("src")).toBe("/a.jpg");
+  });
+
+  /** 箭头是图标按钮：几何字符在 iOS/Safari 上会被渲染成彩色 emoji，按钮里不放字符 */
+  it("箭头是带无障碍名称的图标按钮", () => {
+    const wrapper = mountDialog({ item: work([PHOTO_A, PHOTO_B]) });
+
+    expect(wrapper.find(".media-arrow-left").attributes("aria-label")).toBe("上一个");
+    expect(wrapper.find(".media-arrow-right").attributes("aria-label")).toBe("下一个");
+    expect(wrapper.find(".media-arrow-right").find(".ui-icon").exists()).toBe(true);
+    expect(wrapper.find(".media-arrow-right").text()).toBe("");
+  });
+});
