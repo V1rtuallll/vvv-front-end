@@ -51,12 +51,13 @@ defineEmits(["close"]);
 .close-profile-btn { margin-top: 40px; min-height: 44px; padding: 10px 24px; }
 
 /* ==== 窄屏适配 ====
-   <=768px：弹窗接近全屏，收紧内边距与头像尺寸，长描述换行不撑破容器；
-   <=480px：铺满视口宽度。
+   <=768px：仍然是「居中卡片」，只把四周留白收到 20px、高度上限收到 85% —— **不铺满视口**。
+   满屏那张脸和页面本身没有边界，看起来不像弹窗，和详情弹窗的窄屏处理也不一致。
+   <=480px：只再压一档字号与头像，留白与圆角维持不变。
 */
 @media (max-width: 768px) {
-  .crt-profile-modal { padding: 12px; }
-  .crt-profile-content { width: 100%; max-height: 92vh; max-height: 92dvh; }
+  .crt-profile-modal { padding: 20px; }
+  .crt-profile-content { width: 100%; max-height: 85vh; max-height: 85dvh; }
   .crt-content { padding: 28px 18px; }
   .crt-title { margin-bottom: 20px; font-size: 1.8rem; }
   .avatar-section { margin: 20px 0; }
@@ -68,9 +69,6 @@ defineEmits(["close"]);
 }
 
 @media (max-width: 480px) {
-  .crt-profile-modal { padding: 0; }
-  .crt-profile-content { max-height: 100vh; max-height: 100dvh; }
-  .crt-screen { border-radius: 0; min-height: 100vh; min-height: 100dvh; }
   .crt-content { padding: 24px 12px; }
   .crt-title { font-size: 1.5rem; }
   .crt-avatar { width: 92px; height: 92px; }
