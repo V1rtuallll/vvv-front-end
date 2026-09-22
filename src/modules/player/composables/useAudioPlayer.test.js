@@ -309,15 +309,18 @@ describe("播放器的曲库", () => {
   /**
    * 空列表时会撞上 (0 + 1 + 0) % 0 = NaN，拿 NaN 当下标取到 undefined，
    * formatTrackName 在它上面调 replace 直接抛。必须在这里兜住。
+   *
+   * 按钮**不禁用**：空库时它们是唯一的刷新入口，禁用了就把「管理员把曲子加回来」
+   * 之后的路堵死，用户只能整页刷新。
    */
-  it("一首都没有时禁用三个按钮，曲名显示中性文案", async () => {
+  it("一首都没有时按钮保持可点，曲名显示中性文案", async () => {
     getPlayerPlaylist.mockResolvedValue({ data: [] });
     const wrapper = mountPlayer();
     await flushPromises();
 
-    expect(wrapper.find(".play-pause").attributes("disabled")).toBeDefined();
-    expect(wrapper.find(".next").attributes("disabled")).toBeDefined();
-    expect(wrapper.findAll("button").every((button) => button.attributes("disabled") !== undefined)).toBe(true);
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeUndefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
+    expect(wrapper.findAll("button").every((button) => button.attributes("disabled") === undefined)).toBe(true);
     expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
   });
 
@@ -499,9 +502,9 @@ describe("播放器在点击时刷新曲目表", () => {
 
   /**
    * 反过来的一支：刷新拉到空表（管理员把配置清空了）时得真的停下来 ——
-   * 按钮禁用而声音还在放，状态就对不上了。
+   * 曲名还写着上一首、声音还在放，状态就对不上了。按钮保持可点，它们要留着再拉一次。
    */
-  it("刷新拉到空表时停住：曲名换成中性文案、按钮禁用、声音停住", async () => {
+  it("刷新拉到空表时停住：曲名换成中性文案、声音停住、按钮保持可点", async () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
     const wrapper = mountPlayer();
     await flushPromises();
@@ -514,9 +517,63 @@ describe("播放器在点击时刷新曲目表", () => {
     await flushPromises();
 
     expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
-    expect(wrapper.find(".play-pause").attributes("disabled")).toBeDefined();
-    expect(wrapper.find(".next").attributes("disabled")).toBeDefined();
+    expect(wrapper.find(".play-pause").attributes("disabled")).toBeUndefined();
+    expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
     expect(window.HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+    expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-play");
+  });
+
+  /**
+   * 空库时三个按钮是仅有的刷新入口，所以那一支不受 30 秒间隔限制：
+   * 管理员把配置清空、再加回来，用户在 30 秒内点一下就该看到曲子回来。
+   *
+   * 间隔在这里特意只剩 1 秒，能挡住非空时的那套逻辑。
+   */
+  it("空库时点「下一曲」不受间隔限制，配置加回来就能放", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    // 第一次点击拉一次，之后进入 30 秒窗口
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+
+    // 管理员清空配置：这一次点击把空表拉进来
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    now.mockReturnValue(1_000_000_000 + 62_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+
+    // 管理员把曲子加回来，此时距上次拉取只过了 1 秒
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    now.mockReturnValue(1_000_000_000 + 63_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(4);
+    expect(wrapper.find(".track-name").text()).toBe("b");
+    expect(wrapper.find("audio").element.src).toContain("/music/b.mp3");
+  });
+
+  /**
+   * 空库时点播放只用来拉配置。没有可放的曲子就不该去碰 audio：
+   * src 为空时 `audio.play()` 会以一个 NotSupportedError 被拒，
+   * 控制台留下一条无谓的「音频播放失败」。
+   */
+  it("空库时点播放只拉配置，不动音频", async () => {
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    const wrapper = mountPlayer();
+    await flushPromises();
+
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    expect(getPlayerPlaylist).toHaveBeenCalledTimes(2);
+    expect(window.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(wrapper.find("audio").element.getAttribute("src")).toBeNull();
     expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-play");
   });
 });

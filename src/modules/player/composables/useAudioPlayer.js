@@ -126,18 +126,11 @@ export function useAudioPlayer() {
       playIcon.classList.toggle("ui-icon-play", !playing);
     };
 
-    // 空库与「空库之后又被填回来」共用这一处开关：按钮的禁用状态只有这一个写入口
-    const setLibraryEnabled = (enabled) => {
-      [playButton, previousButton, nextButton].forEach((button) => {
-        button.disabled = !enabled;
-      });
-    };
-
     // 一首都没有时不能走 loadSong：下标会算出 NaN，取到 undefined，
-    // formatTrackName 在它上面调 replace 直接抛。禁用三个按钮，说明状态。
+    // formatTrackName 在它上面调 replace 直接抛。这里说明状态，但**不禁用按钮** ——
+    // 空库时三个按钮是仅有的刷新入口，禁用就把「管理员把曲子加回来」的路堵死了。
     const applyEmptyLibrary = () => {
-      setLibraryEnabled(false);
-      // 按钮禁用了而声音还在响的话，界面说的和听到的对不上
+      // 声音还在响的话，界面说的和听到的对不上
       audio.pause();
       trackNameElement.textContent = EMPTY_LIBRARY_TEXT;
       progress.value = 0;
@@ -178,7 +171,6 @@ export function useAudioPlayer() {
         applyEmptyLibrary();
         return;
       }
-      setLibraryEnabled(true);
       const kept = shuffledPlaylist.indexOf(playing);
       currentIndex = kept === -1 ? 0 : kept;
     };
@@ -194,7 +186,8 @@ export function useAudioPlayer() {
      * 一次网络抖动就会把正在放的曲目表清掉。这里自己 try，失败保留现状。
      */
     const refreshPlaylist = async () => {
-      if (Date.now() - lastPlaylistFetchAt < PLAYLIST_REFRESH_INTERVAL) return;
+      // 空库时不受间隔限制：那时三个按钮是唯一的刷新入口，用户点一次就该真的拉一次
+      if (shuffledPlaylist.length > 0 && Date.now() - lastPlaylistFetchAt < PLAYLIST_REFRESH_INTERVAL) return;
       lastPlaylistFetchAt = Date.now();
       try {
         const res = await getPlayerPlaylist();
@@ -217,10 +210,14 @@ export function useAudioPlayer() {
       volume.valueAsNumber = volumePercent;
     };
 
-    // 三个按钮都是用户点出来的，顺手校一次曲目表。`ended` 那条自动切歌不跟这一套
+    // 三个按钮都是用户点出来的，顺手校一次曲目表。`ended` 那条自动切歌不跟这一套。
+    // 暂停那一支不拉：空库时它必然是暂停态，走的是下面那一支，不会漏掉刷新入口
     playButton.addEventListener("click", async () => {
       if (audio.paused) {
         await refreshPlaylist();
+        // 空库时这次点击只用来拉配置 —— 没有可放的曲子，别去碰 audio，
+        // 否则 play() 会以一个 NotSupportedError 被拒并在控制台留下一条 warn
+        if (shuffledPlaylist.length === 0) return;
         playSong();
       } else {
         audio.pause();
