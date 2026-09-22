@@ -7,6 +7,7 @@ import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/compo
 import { formatBytes } from "@/utils/bytes";
 import { formatDate, formatShortDate } from "@/utils/DateUtil";
 import {
+  appendGalleryMedia,
   cancelUpload,
   deleteComment,
   deleteGallery,
@@ -24,6 +25,9 @@ import {
 
 // 后端 ID 是 Long，序列化后可能是数字或字符串，统一转成字符串比较
 const isSameId = (left, right) => left != null && right != null && String(left) === String(right);
+
+// 上传任务不会再变的三个状态：任务停在其中一个就说明已有结果
+const SETTLED_STATUS = [UPLOAD_STATUS.SUCCESS, UPLOAD_STATUS.FAILED, UPLOAD_STATUS.CANCELLED];
 
 // 发请求的方法，catch 里只做状态回滚，不弹提示：
 // 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
@@ -261,18 +265,23 @@ export function useGalleryPage() {
   };
 
   /**
-   * 发表一个资源：一次一个文件、一份信息，以及可选的一首背景音乐。
-   * 想连发多个就再点一次「上传」，队列本身支持并发，进度在页面顶部的面板里看。
+   * 发表一个作品，可以一次选多个文件。
+   *
+   * 第一个文件走普通上传把作品行建出来，其余的在同一个作品下逐个追加 ——
+   * 没有作品行，后面的文件无处可加。这一步用 meta.execute 表达，不给队列加依赖概念：
+   * 队列不需要知道批次这回事，它只是按顺序投递任务，等待发生在任务自己内部。
    */
-  const publishOne = ({ file, title, description, bgm } = {}) => {
-    if (!file) return;
-    uploadQueue.add(file, {
+  const publishBatch = ({ files, title, description, bgm } = {}) => {
+    const [coverEntry, ...restEntries] = files ?? [];
+    if (!coverEntry) return;
+
+    const coverItem = uploadQueue.add(coverEntry.file, {
       kind: TASK_KIND.UPLOAD,
-      preview: URL.createObjectURL(file),
+      preview: URL.createObjectURL(coverEntry.file),
       // 留空时由队列按文件名兜底
       title: title || undefined,
       description: description || "",
-      // 随图配的背景音乐；队列会把它拼进同一次 multipart 请求
+      // 随作品配的背景音乐；队列会把它拼进同一次 multipart 请求
       bgm: bgm ?? null,
       // 中途取消：把服务端已经产生的行与 OSS 对象一起清掉
       onCancel: async (item) => {
@@ -286,6 +295,71 @@ export function useGalleryPage() {
         }
       },
     });
+
+    // 封面任务的落定信号。队列没有 onSuccess 之类的回调，状态只能从 items 上观察：
+    // add 返回的是原始对象，状态变更写在它的响应式代理上，盯原对象读不到变化。
+    //
+    // 做成一份等待者名单而不是一个 Promise：封面失败后用户可以单独重试，
+    // 兑现过的 Promise 不会再变，追加任务会一直读到上一次的失败结果。
+    const coverOf = () => uploadQueue.items.value.find((item) => item.key === coverItem.key);
+    // 任务已经不在列表里（队列被清空）与失败同样处理：不会再有结果了
+    const settled = (item) => !item || SETTLED_STATUS.includes(item.status);
+    const coverResult = () => {
+      const item = coverOf();
+      // 成功却没带 id，等于没有作品行可追加
+      return item?.status === UPLOAD_STATUS.SUCCESS && item.resource?.id != null
+        ? { id: item.resource.id }
+        : { error: item?.error || "作品创建失败，未追加" };
+    };
+
+    const coverWaiters = [];
+    const waitForCover = () => new Promise((resolve) => {
+      if (settled(coverOf())) return resolve(coverResult());
+      coverWaiters.push(resolve);
+    });
+
+    // 这个 watcher 要活到封面任务离开队列为止，不能第一次落定就停：
+    // 封面重试后还会再落定一次，停在第一次的话后来的等待者没有人兑现
+    const stopCoverWatch = watch(
+      () => coverOf()?.status,
+      () => {
+        const item = coverOf();
+        if (item && !settled(item)) return;
+        if (!item) stopCoverWatch();
+        coverWaiters.splice(0).forEach((resolve) => resolve(coverResult()));
+      },
+    );
+
+    // 追加请求必须一个接一个发：服务端按 COALESCE(MAX(sort_order)+1, 0) 现算位置，
+    // 两个并发到达会取到同一个值，两行的先后就定不下来了。
+    // 锁在 execute 一进来就拿到，所以发出的顺序就是任务入队的顺序。
+    let appendLock = Promise.resolve();
+
+    restEntries.forEach((entry) => {
+      uploadQueue.add(entry.file, {
+        kind: TASK_KIND.UPLOAD,
+        preview: URL.createObjectURL(entry.file),
+        // 追加只带文件与幂等键：标题与描述属于作品本身，不在这里再传一遍
+        execute: async (item, { onProgress, signal }) => {
+          const earlier = appendLock;
+          let release;
+          appendLock = new Promise((resolve) => { release = resolve; });
+          await earlier;
+          try {
+            const cover = await waitForCover();
+            if (cover.id == null) throw new Error(cover.error);
+            const formData = new FormData();
+            formData.append("file", item.file);
+            // 幂等键复用队列为这个任务生成的 clientUploadId
+            formData.append("clientMediaId", item.clientUploadId);
+            return await appendGalleryMedia(cover.id, formData, onProgress, signal);
+          } finally {
+            release();
+          }
+        },
+      });
+    });
+
     uploadQueue.start();
     // 关掉弹窗，把舞台交给页面里的队列面板
     showUploadModal.value = false;
@@ -569,7 +643,7 @@ export function useGalleryPage() {
   return {
     authStore, page, limit, total, totalPages, galleryList, showUploadModal,
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
-    closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishOne, toggleLike, openDetailModal,
+    closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishBatch, toggleLike, openDetailModal,
     postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
     formatDate, formatShortDate,
     expandedThreads, isThreadExpanded, toggleThread,

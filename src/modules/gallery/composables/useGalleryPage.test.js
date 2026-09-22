@@ -5,6 +5,7 @@ vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
 vi.mock("@/modules/user/api/userApi", () => ({ getPublicUser: vi.fn() }));
 vi.mock("@/modules/gallery/api/galleryApi", () => ({
+  appendGalleryMedia: vi.fn(),
   cancelUpload: vi.fn(),
   getGalleryBgmCandidates: vi.fn(),
   getGalleryComments: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("@/modules/gallery/api/galleryApi", () => ({
 import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
 import {
+  appendGalleryMedia,
   cancelUpload,
   deleteComment,
   deleteGallery,
@@ -558,6 +560,11 @@ describe("useGalleryPage 的评论加载失败", () => {
 
 describe("useGalleryPage 的上传队列", () => {
   const picked = (name = "a.png", size = 10) => ({ name, size, type: "image/png" });
+  /** 批次载荷：形状与弹窗给出来的一致，多数用例只关心文件名与这一份信息 */
+  const batch = (names, extra = {}) => ({
+    files: names.map((name) => ({ file: picked(name) })),
+    ...extra,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -573,7 +580,7 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1, status: "success" } });
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("月光.png"), title: "月光", description: "描述" });
+    api.publishBatch(batch(["月光.png"], { title: "月光", description: "描述" }));
     await flushPromises();
 
     expect(api.uploadItems.value).toHaveLength(1);
@@ -584,7 +591,7 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("a.png"), title: "我的标题", description: "我的描述" });
+    api.publishBatch(batch(["a.png"], { title: "我的标题", description: "我的描述" }));
     await flushPromises();
 
     const sent = uploadGalleryFile.mock.calls[0][0];
@@ -596,7 +603,7 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("月光.png"), title: "", description: "" });
+    api.publishBatch(batch(["月光.png"], { title: "", description: "" }));
     await flushPromises();
 
     expect(uploadGalleryFile.mock.calls[0][0].get("title")).toBe("月光");
@@ -606,8 +613,8 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("a.png") });
-    api.publishOne({ file: picked("b.png") });
+    api.publishBatch(batch(["a.png"]));
+    api.publishBatch(batch(["b.png"]));
     await flushPromises();
 
     expect(api.uploadItems.value).toHaveLength(2);
@@ -631,7 +638,7 @@ describe("useGalleryPage 的上传队列", () => {
     api.openUploadModal();
     expect(api.showUploadModal.value).toBe(true);
 
-    api.publishOne({ file: picked("a.png") });
+    api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
     expect(api.showUploadModal.value).toBe(false);
@@ -642,7 +649,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("上传进行中重新打开弹窗不会清空队列", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
-    api.publishOne({ file: picked("a.png") });
+    api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
     api.openUploadModal();
@@ -656,7 +663,7 @@ describe("useGalleryPage 的上传队列", () => {
     let release;
     uploadGalleryFile.mockReturnValue(new Promise((resolve) => { release = resolve; }));
     const api = await mountGallery();
-    api.publishOne({ file: picked("月光.png"), title: "月光" });
+    api.publishBatch(batch(["月光.png"], { title: "月光" }));
     await flushPromises();
 
     getGalleryPage.mockClear();
@@ -673,8 +680,8 @@ describe("useGalleryPage 的上传队列", () => {
     const pending = [];
     uploadGalleryFile.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
     const api = await mountGallery();
-    api.publishOne({ file: picked("a.png") });
-    api.publishOne({ file: picked("b.png") });
+    api.publishBatch(batch(["a.png"]));
+    api.publishBatch(batch(["b.png"]));
     await flushPromises();
 
     getGalleryPage.mockClear();
@@ -692,7 +699,7 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockRejectedValue(new Error("boom"));
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("a.png") });
+    api.publishBatch(batch(["a.png"]));
     await flushPromises();
     getGalleryPage.mockClear();
     await flushPromises();
@@ -703,7 +710,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("上传还在进行时关闭弹窗会先确认", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
     const api = await mountGallery();
-    api.publishOne({ file: picked("a.png") });
+    api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
     api.openUploadModal();
@@ -719,10 +726,9 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.publishOne({
-      file: picked("a.png"),
+    api.publishBatch(batch(["a.png"], {
       bgm: { src: "https://cdn.example.test/music/a.mp3", type: "audio" },
-    });
+    }));
     await flushPromises();
 
     const sent = uploadGalleryFile.mock.calls[0][0];
@@ -734,12 +740,194 @@ describe("useGalleryPage 的上传队列", () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
     const api = await mountGallery();
 
-    api.publishOne({ file: picked("a.png") });
+    api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
     const sent = uploadGalleryFile.mock.calls[0][0];
     expect(sent.has("bgmSrc")).toBe(false);
     expect(sent.has("bgmType")).toBe(false);
+  });
+});
+
+describe("useGalleryPage 的多选上传", () => {
+  // 真 File：追加请求要按文件名断言，占位对象在这里没有意义
+  const entry = (name) => ({ file: new File(["x"], name, { type: "image/png" }) });
+  const entries = (...names) => names.map(entry);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [], total: 0 } });
+    URL.createObjectURL = vi.fn((candidate) => `blob:${candidate.name ?? "preview"}`);
+    URL.revokeObjectURL = vi.fn();
+    uploadGalleryFile.mockResolvedValue({ data: { id: 42, status: "success" } });
+    appendGalleryMedia.mockResolvedValue({ data: { id: 1, src: "s", type: "photo" } });
+  });
+
+  it("第一个文件建作品，其余的都追加到这个作品下", async () => {
+    const api = await mountGallery();
+
+    api.publishBatch({ files: entries("a.png", "b.png", "c.png"), title: "组图", description: "三张" });
+    await flushPromises();
+
+    expect(uploadGalleryFile).toHaveBeenCalledTimes(1);
+    expect(appendGalleryMedia).toHaveBeenCalledTimes(2);
+    expect(appendGalleryMedia.mock.calls.map(([id]) => id)).toEqual([42, 42]);
+    // 标题与描述是作品本身的，只在建作品那一次请求里
+    expect(uploadGalleryFile.mock.calls[0][0].get("title")).toBe("组图");
+    expect(uploadGalleryFile.mock.calls[0][0].get("description")).toBe("三张");
+  });
+
+  it("追加请求只带文件与幂等键", async () => {
+    const api = await mountGallery();
+
+    api.publishBatch({ files: entries("a.png", "b.png") });
+    await flushPromises();
+
+    expect(appendGalleryMedia).toHaveBeenCalledTimes(1);
+    const [, formData] = appendGalleryMedia.mock.calls[0];
+    expect(formData.get("file").name).toBe("b.png");
+    // 幂等键复用任务自己的 clientUploadId：重放同一份文件不会追加出第二条
+    expect(formData.get("clientMediaId")).toBe(api.uploadItems.value[1].clientUploadId);
+    expect(formData.has("title")).toBe(false);
+    expect(formData.has("description")).toBe(false);
+  });
+
+  /**
+   * 追加的位置由服务端按 COALESCE(MAX(sort_order)+1, 0) 现算，
+   * 两个追加并发到达会取到同一个值，两行的先后就定不下来了 —— 必须一个接一个发。
+   */
+  it("追加一个接一个发，前一个没落定就不发下一个", async () => {
+    const sent = [];
+    const pending = [];
+    appendGalleryMedia.mockImplementation((id, formData) => {
+      sent.push(formData.get("file").name);
+      return new Promise((resolve) => pending.push(resolve));
+    });
+    const api = await mountGallery();
+
+    api.publishBatch({ files: entries("a.png", "b.png", "c.png", "d.png") });
+    await flushPromises();
+
+    expect(sent).toEqual(["b.png"]);
+
+    pending[0]({ data: { id: 1 } });
+    await flushPromises();
+    expect(sent).toEqual(["b.png", "c.png"]);
+
+    pending[1]({ data: { id: 2 } });
+    await flushPromises();
+    expect(sent).toEqual(["b.png", "c.png", "d.png"]);
+  });
+
+  /** 没有作品行，后面的文件无处可加：整批失败，而且原因要写清楚 */
+  it("封面失败时整批失败，后面的文件不会去追加", async () => {
+    uploadGalleryFile.mockRejectedValue(new Error("网络错误，请稍后重试"));
+    const api = await mountGallery();
+
+    api.publishBatch({ files: entries("a.png", "b.png", "c.png") });
+    await flushPromises();
+
+    expect(appendGalleryMedia).not.toHaveBeenCalled();
+    const appended = api.uploadItems.value.slice(1);
+    expect(appended.map((item) => item.status)).toEqual(["failed", "failed"]);
+    expect(appended[0].error).toBe("网络错误，请稍后重试");
+  });
+
+  /** 封面还在排队时被取消：不会再有结果了，追加任务得带着原因落定，不能一直等 */
+  it("封面排队中被取消时，追加任务带着原因失败而不是一直等下去", async () => {
+    let releaseUpload;
+    const pendingUpload = new Promise((resolve) => { releaseUpload = resolve; });
+    uploadGalleryFile.mockImplementation(() => pendingUpload);
+    const api = await mountGallery();
+
+    // 先把三个并发位占满，第四个批次的封面才排得上队
+    api.publishBatch({ files: entries("x1.png") });
+    api.publishBatch({ files: entries("x2.png") });
+    api.publishBatch({ files: entries("x3.png") });
+    await flushPromises();
+    api.publishBatch({ files: entries("a.png", "b.png") });
+    await flushPromises();
+
+    const coverItem = api.uploadItems.value[3];
+    expect(coverItem.status).toBe("queued");
+    await api.cancelTask(coverItem);
+    expect(coverItem.status).toBe("cancelled");
+
+    // 腾出一个并发位，排队中的追加才会被投递
+    releaseUpload({ data: { id: 1 } });
+    await flushPromises();
+
+    expect(api.uploadItems.value[4].status).toBe("failed");
+    expect(api.uploadItems.value[4].error).toBe("作品创建失败，未追加");
+    expect(appendGalleryMedia).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 封面失败后用户可以重试。追加任务要认这一次的结果：
+   * 记着上一次的失败就会一直报「作品创建失败」，哪怕作品已经建出来了。
+   */
+  it("重试封面后，追加任务读的是这一次的结果", async () => {
+    let releaseCover;
+    uploadGalleryFile
+      .mockRejectedValueOnce(new Error("网络错误，请稍后重试"))
+      .mockImplementationOnce(() => new Promise((resolve) => { releaseCover = resolve; }));
+    const api = await mountGallery();
+
+    api.publishBatch({ files: entries("a.png", "b.png") });
+    await flushPromises();
+
+    const [coverItem, appendItem] = api.uploadItems.value;
+    expect(coverItem.status).toBe("failed");
+    expect(appendItem.status).toBe("failed");
+
+    // 用户先重试封面，封面还没跑完又重试了那个文件
+    api.retryUpload(coverItem);
+    api.retryUpload(appendItem);
+    await flushPromises();
+
+    releaseCover({ data: { id: 42 } });
+    await flushPromises();
+
+    expect(appendGalleryMedia).toHaveBeenCalledTimes(1);
+    expect(appendGalleryMedia.mock.calls[0][0]).toBe(42);
+    expect(appendItem.status).toBe("success");
+  });
+
+  /** 取消失败的一个追加，不能把排在它后面、还没轮到的文件一起卡住 */
+  it("排队中被取消的追加不会挡住后面的文件", async () => {
+    let releaseCover;
+    const pendingCover = new Promise((resolve) => { releaseCover = resolve; });
+    uploadGalleryFile.mockImplementation(() => pendingCover);
+    const sent = [];
+    const pending = [];
+    appendGalleryMedia.mockImplementation((id, formData) => {
+      sent.push(formData.get("file").name);
+      return new Promise((resolve) => pending.push(resolve));
+    });
+    const api = await mountGallery();
+
+    // 五个任务抢三个并发位：封面与前两个追加在跑，后两个还在排队
+    api.publishBatch({ files: entries("a.png", "b.png", "c.png", "d.png", "e.png") });
+    await flushPromises();
+
+    const queued = api.uploadItems.value[3];
+    expect(queued.status).toBe("queued");
+    await api.cancelTask(queued);
+
+    releaseCover({ data: { id: 42 } });
+    await flushPromises();
+    expect(sent).toEqual(["b.png"]);
+
+    pending[0]({ data: { id: 1 } });
+    await flushPromises();
+    expect(sent).toEqual(["b.png", "c.png"]);
+
+    // 被取消的那份没有发出去，轮到的是它后面的文件
+    pending[1]({ data: { id: 2 } });
+    await flushPromises();
+    expect(sent).toEqual(["b.png", "c.png", "e.png"]);
   });
 });
 

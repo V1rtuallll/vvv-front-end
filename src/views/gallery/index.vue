@@ -84,7 +84,7 @@
       :visible="showUploadModal"
       :limit-text="uploadLimitText"
       @close="closeUploadModal"
-      @publish="publishOne"
+      @publish="publishBatch"
     />
     <GalleryDetailDialog
       :item="currentItem"
@@ -183,7 +183,7 @@ const {
   changeLimit,
   openUploadModal,
   closeUploadModal,
-  publishOne,
+  publishBatch,
   toggleLike,
   openDetailModal,
   postComment,

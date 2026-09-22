@@ -5,20 +5,31 @@
 
       <div class="upload-area">
         <label class="file-label">
-          <span>选择文件（一次一个）</span>
-          <input type="file" :accept="ACCEPT" class="hidden-input" @change="onPickFile" />
+          <span>选择文件（可多选）</span>
+          <input type="file" :accept="ACCEPT" class="hidden-input" multiple @change="onPickFiles" />
           <span class="select-btn">选择文件</span>
         </label>
         <p v-if="limitText" class="limit-tip">{{ limitText }}</p>
       </div>
 
-      <template v-if="file">
-        <div class="preview-box">
-          <img v-if="kind === 'image'" :src="previewUrl" class="preview-media" alt="" />
-          <video v-else-if="kind === 'video'" :src="previewUrl" class="preview-media" controls></video>
-          <audio v-else-if="kind === 'audio'" :src="previewUrl" class="preview-media" controls></audio>
-          <span v-else class="preview-none">{{ file.name }}</span>
-        </div>
+      <template v-if="files.length">
+        <!-- 一次发表是一个作品，作品里可以有多个文件；标题与描述属于作品本身，不随文件数量变化 -->
+        <ul class="batch-list">
+          <li v-for="entry in files" :key="entry.key" class="file-row">
+            <img v-if="entry.kind === 'image'" :src="entry.previewUrl" class="file-thumb" alt="" />
+            <video
+              v-else-if="entry.kind === 'video'"
+              :src="entry.previewUrl"
+              class="file-thumb"
+              preload="metadata"
+              muted
+            ></video>
+            <audio v-else-if="entry.kind === 'audio'" :src="entry.previewUrl" class="file-audio" controls></audio>
+            <span v-else class="file-thumb file-thumb-text">文件</span>
+            <span class="file-name">{{ entry.name }}</span>
+            <button class="crt-mini-btn danger file-remove" type="button" @click="removeFile(entry)">移除</button>
+          </li>
+        </ul>
 
         <label class="edit-field">
           <span class="field-label">标题</span>
@@ -30,13 +41,13 @@
           <textarea v-model="description" class="crt-input" placeholder="写点描述"></textarea>
         </label>
 
-        <!-- 只有图片能配 BGM：后端规则 3 会给音乐/视频项整条请求回 400，
-             而上传路径上那意味着文件根本没传上去 -->
-        <GalleryBgmPicker v-if="kind === 'image'" v-model="bgm" />
+        <!-- 静图与视频批次能配 BGM。音乐批次不行：那条项自己就是音源，
+             后端规则 3 会给整条请求回 400，而上传路径上那意味着文件根本没传上去 -->
+        <GalleryBgmPicker v-if="bgmAllowed" v-model="bgm" />
       </template>
 
       <div class="modal-actions">
-        <button class="crt-btn" :disabled="!file" @click="publish">发表</button>
+        <button class="crt-btn" :disabled="!files.length" @click="publish">发表</button>
         <button class="crt-btn danger" @click="$emit('close')">关闭</button>
       </div>
     </div>
@@ -58,23 +69,56 @@ const emit = defineEmits(["close", "publish"]);
 
 const ACCEPT = ".jpg,.jpeg,.png,.webp,.bmp,.gif,.mp4,.webm,.avi,.mov,.mkv,.mp3,.wav,.flac,.aac,.ogg";
 
-// 一次上传对应一个资源，所以只需要一份标题与描述
-const file = ref(null);
+// 一次上传对应一个作品，所以批次里可以有多个文件：每项
+// { key, file, kind, family, name, previewUrl }
+const files = ref([]);
 const title = ref("");
 const description = ref("");
-const previewUrl = ref("");
+let nextKey = 1;
 
-// 随图配的背景音乐 { src, type } 或 null，形状与接口字段一致，不做转换
+// 随作品配的背景音乐 { src, type } 或 null，形状与接口字段一致，不做转换
 const bgm = ref(null);
 
-const releasePreview = () => {
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
-  previewUrl.value = "";
+const EXTENSION_KIND = {
+  mp4: "video", webm: "video", avi: "video", mov: "video", mkv: "video",
+  gif: "image", jpg: "image", jpeg: "image", png: "image", webp: "image", bmp: "image",
+  mp3: "audio", wav: "audio", flac: "audio", aac: "audio", ogg: "audio",
+};
+
+const kindOf = (name) => {
+  const dot = name.lastIndexOf(".");
+  return EXTENSION_KIND[dot > 0 ? name.substring(dot + 1).toLowerCase() : ""] ?? "unknown";
+};
+
+/**
+ * 一个作品里的媒体必须同族，划分与后端的 sameFamily 一致：
+ * 静图是一族（jpg / png / webp / gif 都在 image 这一档里），video 与 audio 各自一族。
+ */
+const toFamily = (kind) => (kind === "image" ? "still" : kind);
+
+/** 批次只有一族（混族在选文件时就整体退回了），取第一个就够 */
+const batchFamily = computed(() => files.value[0]?.family ?? null);
+const bgmAllowed = computed(() => batchFamily.value === "still" || batchFamily.value === "video");
+
+// 选曲面板收起时曲子必须一起清掉：留着它用户既看不到面板、也没有入口取消，
+// 发表时却会被后端整条拒掉，还看不出是哪一步的问题
+watch(batchFamily, (family) => {
+  if (family !== "still" && family !== "video") bgm.value = null;
+});
+
+const releasePreview = (entry) => {
+  if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
+};
+
+const releasePreviews = () => files.value.forEach(releasePreview);
+
+const clearBatch = () => {
+  releasePreviews();
+  files.value = [];
 };
 
 const reset = () => {
-  releasePreview();
-  file.value = null;
+  clearBatch();
   title.value = "";
   description.value = "";
   bgm.value = null;
@@ -88,40 +132,41 @@ watch(
   },
 );
 
-onBeforeUnmount(releasePreview);
+onBeforeUnmount(releasePreviews);
 
-const EXTENSION_KIND = {
-  mp4: "video", webm: "video", avi: "video", mov: "video", mkv: "video",
-  gif: "image", jpg: "image", jpeg: "image", png: "image", webp: "image", bmp: "image",
-  mp3: "audio", wav: "audio", flac: "audio", aac: "audio", ogg: "audio",
+const onPickFiles = (event) => {
+  const picked = [...(event.target.files ?? [])];
+  event.target.value = "";
+  if (!picked.length) return;
+
+  const entries = picked.map((file) => {
+    const kind = kindOf(file.name);
+    return { file, kind, family: toFamily(kind), name: file.name };
+  });
+
+  // 混族整体退回，而不是只收下同族的那几个：用户得看得见自己选的哪些没进去，
+  // 而且一批文件要放进同一个作品，不是各建一个
+  const family = files.value.length ? batchFamily.value : entries[0].family;
+  if (entries.some((entry) => entry.family !== family)) {
+    return window.$vmessage.warning("一次只能上传同一类的文件");
+  }
+
+  files.value.push(...entries.map((entry) => ({
+    ...entry,
+    key: nextKey++,
+    previewUrl: URL.createObjectURL(entry.file),
+  })));
 };
 
-const kind = computed(() => {
-  const name = file.value?.name ?? "";
-  const dot = name.lastIndexOf(".");
-  return EXTENSION_KIND[dot > 0 ? name.substring(dot + 1).toLowerCase() : ""] ?? "unknown";
-});
-
-const onPickFile = (event) => {
-  const picked = event.target.files?.[0];
-  event.target.value = "";
-  if (!picked) return;
-  releasePreview();
-  file.value = picked;
-  previewUrl.value = URL.createObjectURL(picked);
-  // 标题留空就由服务端用文件名兜底，这里不预填，用户想改自己写
-  title.value = "";
-  description.value = "";
-  // 换了文件就是新的一份表单：BGM 跟着标题与描述一起清掉。
-  // 不清的话「图片配了曲 → 换成视频」会留下一份选不中也没有入口取消的 BGM，
-  // 发表时被后端整条拒掉，用户还找不到东西可删
-  bgm.value = null;
+const removeFile = (entry) => {
+  releasePreview(entry);
+  files.value = files.value.filter((candidate) => candidate.key !== entry.key);
 };
 
 const publish = () => {
-  if (!file.value) return;
+  if (!files.value.length) return;
   emit("publish", {
-    file: file.value,
+    files: files.value.map((entry) => ({ ...entry })),
     title: title.value.trim(),
     description: description.value.trim(),
     bgm: bgm.value,
@@ -141,10 +186,15 @@ const publish = () => {
 .select-btn { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; color: #ffffff; font-weight: bold; background: #0277bd; border-radius: 6px; }
 .limit-tip { margin-top: 10px; color: #c2185b; font-size: 0.9rem; }
 
-/* 预览固定高度，不随文件尺寸变化 */
-.preview-box { display: flex; align-items: center; justify-content: center; width: 100%; height: 220px; margin: 20px 0; overflow: hidden; background: #e9f2f9; border-radius: 4px; }
-.preview-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
-.preview-none { padding: 20px; color: #2f3b47; text-align: center; word-break: break-all; }
+/* 批次列表：一行一份文件，缩略图 + 名字 + 移除 */
+.batch-list { margin: 20px 0 0; padding: 0; list-style: none; }
+.file-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e9f2f9; }
+.file-thumb { flex: 0 0 auto; width: 56px; height: 56px; object-fit: contain; background: #e9f2f9; border-radius: 4px; }
+/* 音频与未知类型没有画面，用文字占位，与缩略图同宽 */
+.file-thumb-text { display: flex; align-items: center; justify-content: center; color: #54636f; font-size: 0.85rem; }
+.file-audio { flex: 0 0 auto; width: 200px; height: 32px; }
+.file-name { flex: 1 1 auto; min-width: 0; color: #2f3b47; word-break: break-all; }
+.file-remove { flex: 0 0 auto; margin: 0; }
 
 .edit-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; text-align: left; }
 .field-label { color: #c2185b; font-size: 1rem; }
@@ -157,13 +207,14 @@ const publish = () => {
 @media (max-width: 768px) {
   .modal-overlay { align-items: flex-end; padding: 0; }
   .upload-modal { width: 100%; max-height: 92vh; max-height: 92dvh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 4px; }
-  .preview-box { height: 160px; }
+  /* 音频播放器窄屏上占满一行，名字与移除按钮另起一行 */
+  .file-row { flex-wrap: wrap; }
+  .file-audio { width: 100%; }
 }
 
 @media (max-width: 480px) {
   .upload-modal { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
   .upload-modal h2 { font-size: 1.2rem; }
-  .preview-box { height: 140px; }
   .modal-actions { flex-direction: column; }
   .modal-actions > * { width: 100%; min-width: 0; }
 }

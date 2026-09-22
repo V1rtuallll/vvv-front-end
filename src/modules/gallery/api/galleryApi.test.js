@@ -5,7 +5,11 @@ vi.mock("@/utils/request", () => ({
 }));
 
 import request from "@/utils/request";
-import { getGalleryBgmCandidates, uploadGalleryBgm } from "@/modules/gallery/api/galleryApi";
+import {
+  appendGalleryMedia,
+  getGalleryBgmCandidates,
+  uploadGalleryBgm,
+} from "@/modules/gallery/api/galleryApi";
 
 describe("galleryApi 的背景音乐接口", () => {
   beforeEach(() => {
@@ -30,5 +34,34 @@ describe("galleryApi 的背景音乐接口", () => {
     getGalleryBgmCandidates();
 
     expect(request.get).toHaveBeenCalledWith("/gallery/bgm-candidates");
+  });
+});
+
+describe("galleryApi 的追加媒体接口", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** 走 /gallery/upload 的话服务端会**再建一条作品行**，多选上传就成了 N 个作品 */
+  it("走 /gallery/{id}/media，不是再传一次 /gallery/upload", () => {
+    const formData = new FormData();
+
+    appendGalleryMedia(7, formData);
+
+    expect(request.post).toHaveBeenCalledWith("/gallery/7/media", formData, expect.anything());
+  });
+
+  /** 追加也要能取消：中途取消要能中止在途请求，不然那一份照样会上传完 */
+  it("把进度回调与取消信号透传给 axios", () => {
+    const formData = new FormData();
+    const onUploadProgress = () => {};
+    const controller = new AbortController();
+
+    appendGalleryMedia(7, formData, onUploadProgress, controller.signal);
+
+    expect(request.post).toHaveBeenCalledWith("/gallery/7/media", formData, {
+      onUploadProgress,
+      signal: controller.signal,
+    });
   });
 });

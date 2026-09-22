@@ -14,6 +14,16 @@ export const likeGallery = (id) => request.post("/gallery/like", { id });
 export const isGalleryLiked = (id) => request.get(`/gallery/isLiked/${id}`);
 export const likeGalleryComment = (commentId) => request.post("/gallery/comment/like", { comment_id: commentId });
 
+/**
+ * 往一个已有作品追加一个媒体。
+ *
+ * 与 uploadGalleryFile 是两条路：那个建作品行，这个只往媒体列表末尾加一条。
+ * 多选上传时除第一个文件之外全走这里。追加的位置是服务端按 sort_order 现算的，
+ * 所以调用方必须串行发送 —— 两个追加并发到达会取到同一个位置。
+ */
+export const appendGalleryMedia = (id, formData, onUploadProgress, signal) =>
+  request.post(`/gallery/${id}/media`, formData, { onUploadProgress, signal });
+
 // 换文件走独立接口：它会同步两张表的 src 并清掉旧的 OSS 对象
 export const replaceGalleryFile = (id, formData, onUploadProgress, signal) =>
   request.post(`/gallery/${id}/replace`, formData, { onUploadProgress, signal });
