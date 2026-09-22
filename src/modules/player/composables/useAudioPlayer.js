@@ -213,16 +213,19 @@ export function useAudioPlayer() {
     // 三个按钮都是用户点出来的，顺手校一次曲目表。`ended` 那条自动切歌不跟这一套。
     // 暂停那一支不拉：空库时它必然是暂停态，走的是下面那一支，不会漏掉刷新入口
     playButton.addEventListener("click", async () => {
-      if (audio.paused) {
-        await refreshPlaylist();
-        // 空库时这次点击只用来拉配置 —— 没有可放的曲子，别去碰 audio，
-        // 否则 play() 会以一个 NotSupportedError 被拒并在控制台留下一条 warn
-        if (shuffledPlaylist.length === 0) return;
-        playSong();
-      } else {
+      if (!audio.paused) {
         audio.pause();
         setPlayingIcon(false);
+        return;
       }
+      await refreshPlaylist();
+      // 空库时这次点击只用来拉配置 —— 没有可放的曲子，别去碰 audio，
+      // 否则 play() 会以一个 NotSupportedError 被拒并在控制台留下一条 warn
+      if (shuffledPlaylist.length === 0) return;
+      // 上一次是空库时音频从没装过 src（applyEmptyLibrary 不会去碰它）。
+      // 光看列表长度不够：列表现在非空了，但元素还是空的，play() 照样会被拒
+      if (!audio.getAttribute("src")) loadSong(currentIndex);
+      playSong();
     });
     previousButton.addEventListener("click", async () => {
       await refreshPlaylist();

@@ -576,4 +576,27 @@ describe("播放器在点击时刷新曲目表", () => {
     expect(wrapper.find("audio").element.getAttribute("src")).toBeNull();
     expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-play");
   });
+
+  /**
+   * 用户最在意的那条路径：页面在空库时打开，管理员配好之后访客点一下「播放」。
+   *
+   * 空库挂载时音频从没装过 src（挂载分支直接 return，没走 loadSong），所以这一次
+   * 点击不能只看列表长度 —— 表已经非空了，元素还是空的，play() 照样以
+   * NotSupportedError 被拒。这一下必须真的有声：装曲、起播、曲名跟着换。
+   */
+  it("空库挂载后配置被加回来，点播放这一下就真的出声", async () => {
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    const wrapper = mountPlayer();
+    await flushPromises();
+    expect(wrapper.find("audio").element.getAttribute("src")).toBeNull();
+
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find("audio").element.getAttribute("src")).toBe("/music/b.mp3");
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+    expect(wrapper.find(".track-name").text()).toBe("b");
+    expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-pause");
+  });
 });
