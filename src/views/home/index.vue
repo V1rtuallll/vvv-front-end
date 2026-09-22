@@ -28,6 +28,7 @@
           -->
           <video
             v-if="mainItem.type === 'video'"
+            ref="showcaseEl"
             :src="mainItem.src"
             autoplay
             loop
@@ -68,7 +69,7 @@
                   mainItem.uploadTime || "未知时间"
                 }}</span>
               </div>
-              <!-- 动作区：换一个 / 视频播停 / 背景音乐播停 / 进详情 -->
+              <!-- 动作区：换一个 / 播停 / 进详情 -->
               <div class="memory-actions">
                 <!-- 判断更宽松，只要 random 为真值就显示 -->
                 <button
@@ -79,31 +80,19 @@
                   换一个
                 </button>
 
-                <!-- 视频暂停/播放。原生 controls 里也有，这里只是挪一个顺手的入口；
-                     状态跟着 video 的 play/pause 事件走，不自己维护 -->
+                <!-- 一个开关管两路声音：视频原声与这条作品的背景音乐。
+                     曲子的媒体元素是脱离 DOM 建的，没有任何原生控件，
+                     视频虽然有原生 controls，这里也留一个顺手的入口。
+                     图标与判据都只看「这一块有没有在响」，不区分是哪一路 -->
                 <button
-                  v-if="mainItem.type === 'video'"
+                  v-if="mainItem.type === 'video' || activeBgm"
                   class="icon-btn"
-                  :aria-label="videoPlaying ? '暂停视频' : '播放视频'"
-                  @click="toggleVideo"
+                  :aria-label="playing ? '暂停' : '播放'"
+                  @click="togglePlayback"
                 >
                   <span
                     class="ui-icon"
-                    :class="videoPlaying ? 'ui-icon-pause' : 'ui-icon-play'"
-                  ></span>
-                </button>
-
-                <!-- 背景音乐的暂停/播放。曲子的媒体元素是脱离 DOM 建的，
-                     没有任何原生控件，这个按钮是唯一的入口 -->
-                <button
-                  v-if="activeBgm"
-                  class="icon-btn"
-                  :aria-label="paused ? '播放背景音乐' : '暂停背景音乐'"
-                  @click="toggleBgm"
-                >
-                  <span
-                    class="ui-icon"
-                    :class="paused ? 'ui-icon-play' : 'ui-icon-pause'"
+                    :class="playing ? 'ui-icon-pause' : 'ui-icon-play'"
                   ></span>
                 </button>
 
@@ -221,11 +210,15 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useHomeContent } from "@/modules/home/composables/useHomeContent";
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
+import {
+  registerMediaElement,
+  unregisterMediaElement,
+} from "@/modules/player/composables/mediaVolume";
 
 const { mainItem, galleryItems, formatShortDate, changeRandom } = useHomeContent();
 const router = useRouter();
@@ -268,18 +261,19 @@ const onMediaReady = () => {
 };
 
 /* ---- 视频播放/暂停 ---- */
+// 状态跟着 video 自己的 play/pause 事件走，不自己维护
 const videoPlaying = ref(false);
-
-const toggleVideo = () => {
-  const v = document.querySelector(".showcase-media");
-  if (!v || v.tagName !== "VIDEO") return;
-  if (v.paused) v.play().catch(() => {});
-  else v.pause();
-};
 
 /* ---- 背景音乐 ---- */
 // 复用详情弹窗那一套：同一个 composable，同一时刻全站只有一路出声
-const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = useGalleryBgm();
+const {
+  activeBgm,
+  paused,
+  play: playBgm,
+  stop: stopBgm,
+  pause: pauseBgm,
+  resume: resumeBgm,
+} = useGalleryBgm();
 
 /**
  * 换了主展示就换曲，没有可播的就停 —— 与详情弹窗同一套规则。
@@ -290,7 +284,7 @@ const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = u
  *
  * ⚠️ 现状：主展示读的是类型表（photo/gif/video/music），
  * 而 bgm 列只存在于 gallery 表 —— 类型表一个 bgm 字段都没有。
- * 所以这个按钮目前**不会出现**，等后端把 gallery 的 bgm 按 src 关联进来才有数据。
+ * 所以这一支目前**不会真的起播**，等后端把 gallery 的 bgm 按 src 关联进来才有数据。
  */
 watch(
   () => [mainItem.value?.src, mainItem.value?.bgmSrc, mainItem.value?.bgmType],
@@ -301,6 +295,54 @@ watch(
   },
   { immediate: true },
 );
+
+/**
+ * 主展示这一块有没有在出声：视频原声与这条作品的背景音乐，任一路在响就算。
+ *
+ * 为什么合成一个判据：两者对用户是同一件事 ——「这条展示正在响」。
+ * 分成两个开关时，想静音得先判断声音是从哪一路来的，而画面上这两路是同时响的。
+ */
+const playing = computed(() => videoPlaying.value || (activeBgm.value !== null && !paused.value));
+
+/**
+ * 主展示的视频元素。用 ref 而不是查文档：`.showcase-media` 图片那边也在用，
+ * 而这里要的就是这一个元素，查全局还会连带依赖「组件挂到了文档上」。
+ */
+const showcaseEl = ref(null);
+
+/**
+ * 视频原声也跟全站音量走：与侧栏播放器、画廊的视频和 BGM 读同一个数字。
+ *
+ * 用 watch 而不是 onMounted：主展示的类型要等接口回来才知道，挂载时它往往还
+ * 不是视频，而 `v-if` 换成视频那一刻不会有第二次 onMounted。
+ * `flush: "post"` 是必须的 —— 默认的 pre 跑在补丁之前，那时 ref 还是旧元素。
+ *
+ * 换回图片、离开首页都要注销：登记表是模块级的、持有的是元素本身，
+ * 交不回去的元素不会被回收，滑块每动一次还会去写它。
+ */
+watch(showcaseEl, (el, previous) => {
+  unregisterMediaElement(previous);
+  registerMediaElement(el);
+}, { flush: "post" });
+
+onBeforeUnmount(() => unregisterMediaElement(showcaseEl.value));
+
+/**
+ * 一个开关管两路声音：视频原声与这条作品的背景音乐。
+ *
+ * 合并的理由见 `playing` 上面那段。换 item 时按 bgmSrc 起播/停播的那段 watch
+ * 不变，这里只管手动暂停/继续 —— 哪个开关在响就停哪个，两路都是。
+ */
+const togglePlayback = () => {
+  const video = showcaseEl.value;
+  if (playing.value) {
+    if (video) video.pause();
+    pauseBgm();
+  } else {
+    if (video) video.play().catch(() => {});
+    resumeBgm();
+  }
+};
 
 /* ---- 进详情 ---- */
 /**

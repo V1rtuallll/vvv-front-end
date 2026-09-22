@@ -59,6 +59,9 @@ const bgmInstances = [];
  * BGM 的元素是 useGalleryBgm 用 createElement 建的、**从不进 DOM**，
  * 页面上的 `.music-player audio` 查不到它，只能从这个工厂喂进去。
  * `playing` 为 false 摆出「用户按了暂停」。
+ *
+ * 传进来的音量只是个起点：BGM 现在跟右栏滑块走，元素**登记那一刻**就会被
+ * 全局音量覆盖 —— 「元素自己是多少」不再决定它出声的大小。
  */
 function mountGalleryBgm(volume, { playing = true } = {}) {
   const element = {
@@ -223,7 +226,9 @@ describe("画廊 BGM 与侧栏一起让路", () => {
     mountApp();
 
     window.playGlobalRandomSound();
-    expect(bgmElement.volume).toBe(0.8);
+    // 登记时它已经按全局音量写过一次（BGM 现在跟右栏滑块走），这里要断言的是
+    // 压低没有再碰它：真被压了的话会是 0.03
+    expect(bgmElement.volume).toBeCloseTo(0.3, 5);
     expect(music.volume).toBeCloseTo(0.3 * DUCK_FACTOR, 5);
 
     // 音效结束前它开始播了，此刻的音量与被跳过的 0.8 无关：

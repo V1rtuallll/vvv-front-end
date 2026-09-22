@@ -1,5 +1,9 @@
 import { ref } from "vue";
 
+import {
+  registerMediaElement,
+  unregisterMediaElement,
+} from "@/modules/player/composables/mediaVolume";
 import { pauseForBgm, resumeAfterBgm } from "@/modules/player/composables/useAudioPlayer";
 
 /**
@@ -56,7 +60,8 @@ export function getActiveBgmElement() {
  *
  * 播放规则（D5）：
  *   · **循环**；
- *   · **按源文件原始音量** —— 所以这里一个字都不设 volume，写了就等于把音量钉死；
+ *   · **音量跟全站走** —— 元素交给 mediaVolume，出声的音量由右栏那一个滑块决定，
+ *     这里不再按源文件的原始音量放；
  *   · 起播前让侧栏播放器让位，停止时只把它还原成原来的样子。
  *
  * @param createElement 建媒体元素的工厂。默认用 document.createElement；
@@ -74,6 +79,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   const releaseElement = () => {
     if (!element) return;
     element.pause();
+    // 元素就此销毁，登记表里那一份也要交回去：这个元素是 createElement 建的、
+    // 从不进 DOM，外面没有别的引用会放开它
+    unregisterMediaElement(element);
     element = null;
     activeElement = null;
   };
@@ -140,6 +148,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     const el = createElement(source.type === "video" ? "video" : "audio");
     el.loop = true;
     el.src = source.src;
+    // 音量交给全局：这里不再按源文件原始音量放。不登记的话这首曲子会以浏览器的
+    // 默认音量（1.0）出声，而用户明明把右栏滑块调到了 30%
+    registerMediaElement(el);
     element = el;
     // 登记在最后：上面两次释放（自己的旧元素、仲裁停掉的那个实例）都会把槽位
     // 清空，此刻写进去的才是真正在响的这一个

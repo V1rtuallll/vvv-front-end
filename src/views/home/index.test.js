@@ -1,5 +1,56 @@
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// useGalleryBgm 换成替身：这一层断言的是「一个开关怎么对待两路声音」，
+// 播放本身（建元素、循环、登记音量、与侧栏协调）由 useGalleryBgm.test.js 负责。
+// activeBgm / paused 是真 ref，模板与开关判据读的就是它们。
+const bgmSpies = vi.hoisted(() => ({
+  play: vi.fn(),
+  stop: vi.fn(),
+  pause: vi.fn(),
+  resume: vi.fn(),
+  toggle: vi.fn(),
+}));
+
+vi.mock("@/modules/gallery/composables/useGalleryBgm", async () => {
+  const { ref } = await import("vue");
+  const activeBgm = ref(null);
+  const paused = ref(false);
+
+  // 三个动作真的翻转这两个 ref：不翻的话，开关停了一次之后仍然读到
+  // 「有曲子正在响」，第二次点击会继续按停的那一支。
+  // play 保持空替身 —— 它建媒体元素、按地址解析曲目，都由原实现负责，
+  // 用例自己把 activeBgm 摆成播放中
+  Object.assign(bgmSpies, {
+    activeBgm,
+    paused,
+    stop: vi.fn(() => {
+      activeBgm.value = null;
+      paused.value = false;
+    }),
+    pause: vi.fn(() => {
+      paused.value = true;
+    }),
+    resume: vi.fn(() => {
+      paused.value = false;
+    }),
+  });
+
+  return { useGalleryBgm: () => ({ ...bgmSpies }) };
+});
+
+// 全站音量层换成替身：这里断言的是「主展示的视频有没有被交出去、什么时候交回去」，
+// 写音量本身由 mediaVolume.test.js 负责。
+const volumeSpies = vi.hoisted(() => ({
+  registerMediaElement: vi.fn(),
+  unregisterMediaElement: vi.fn(),
+}));
+
+vi.mock("@/modules/player/composables/mediaVolume", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, ...volumeSpies };
+});
 
 vi.mock("@/modules/home/composables/useHomeContent", async () => {
   const { ref } = await import("vue");
@@ -214,5 +265,176 @@ describe("Home 拼图卡进详情", () => {
     await wrapper.findAll(".masonry-item")[0].trigger("keydown.enter");
 
     expect(push).toHaveBeenCalledWith({ path: "/gallery", query: { id: 1 } });
+  });
+});
+
+/**
+ * 一个开关管两路声音：视频原声与这条作品的背景音乐。
+ *
+ * 「不区分是 bgm 还是视频的声音」—— 合并前是两个独立按钮，用户想静音得先判断
+ * 声音是从哪一路来的，而这两路是同时响的。
+ */
+describe("Home 主展示的播停开关", () => {
+  const BGM_SRC = "https://cdn.example.test/music/a.mp3";
+  const VIDEO_ITEM = {
+    type: "video",
+    src: "/main.mp4",
+    title: "主展示视频",
+    random: true,
+    inGallery: true,
+    bgmSrc: BGM_SRC,
+    bgmType: "audio",
+  };
+
+  const mounted = [];
+
+  const mountHome = () => {
+    const wrapper = mount(HomePage);
+    mounted.push(wrapper);
+    return wrapper;
+  };
+
+  beforeEach(() => {
+    stubHover(true);
+    useRouter.mockReturnValue({ push: vi.fn() });
+    bgmSpies.activeBgm.value = null;
+    bgmSpies.paused.value = false;
+    [
+      bgmSpies.play, bgmSpies.stop, bgmSpies.pause, bgmSpies.resume, bgmSpies.toggle,
+      volumeSpies.registerMediaElement, volumeSpies.unregisterMediaElement,
+    ].forEach((spy) => spy.mockClear());
+  });
+
+  // 卸载这一批 wrapper：留着的话它们仍会跟着 mainItem 变，把调用次数搅乱
+  afterEach(() => {
+    mounted.splice(0).forEach((wrapper) => wrapper.unmount());
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * 摆出「两路都在响」。
+   *
+   * 背景音乐那边：换了 item 的那条 watch 会把配了 bgmSrc 的项交给 `play()`，
+   * 替身不建媒体元素，所以这里直接把 `activeBgm` 设成播放中。视频那边：
+   * `videoPlaying` 跟着元素自己的 play 事件走，而 jsdom 的 play() / pause()
+   * 都是「未实现」的 —— 不改状态、也不派发事件，连 Promise 都不返回。
+   * 所以两样都由测试补上：状态是真的，只是触发它的是手工派发的事件。
+   */
+  const mountPlaying = async () => {
+    useHomeContent().mainItem.value = { ...VIDEO_ITEM };
+    const wrapper = mountHome();
+    bgmSpies.activeBgm.value = { src: BGM_SRC, type: "audio" };
+
+    const video = wrapper.find("video.showcase-media").element;
+    vi.spyOn(video, "play").mockResolvedValue(undefined);
+    vi.spyOn(video, "pause").mockImplementation(() => {});
+    video.dispatchEvent(new Event("play"));
+    await nextTick();
+
+    return { wrapper, video };
+  };
+
+  it("点一下，视频原声与背景音乐一起停", async () => {
+    const { wrapper, video } = await mountPlaying();
+    expect(wrapper.find(".icon-btn").attributes("aria-label")).toBe("暂停");
+
+    await wrapper.find(".icon-btn").trigger("click");
+
+    expect(video.pause).toHaveBeenCalled();
+    expect(bgmSpies.pause).toHaveBeenCalled();
+  });
+
+  it("再点一下，两路一起继续", async () => {
+    const { wrapper, video } = await mountPlaying();
+    await wrapper.find(".icon-btn").trigger("click");
+    // 浏览器在 pause() 之后会派发 pause 事件，jsdom 不会，补上它
+    video.dispatchEvent(new Event("pause"));
+    await nextTick();
+    expect(wrapper.find(".icon-btn").attributes("aria-label")).toBe("播放");
+
+    await wrapper.find(".icon-btn").trigger("click");
+
+    expect(video.play).toHaveBeenCalled();
+    expect(bgmSpies.resume).toHaveBeenCalled();
+  });
+
+  it("背景音乐不再有自己的开关", async () => {
+    const { wrapper } = await mountPlaying();
+
+    // 「换一个」与「详情」是 .change-btn，图标按钮只剩这一个总开关
+    expect(wrapper.findAll(".icon-btn")).toHaveLength(1);
+  });
+
+  /** 判据是「有没有一路在响」，不区分是哪一路 */
+  it("只有背景音乐在响时，开关同样显示为暂停，点了只停这一路", async () => {
+    useHomeContent().mainItem.value = {
+      type: "photo", src: "/main.jpg", bgmSrc: BGM_SRC, bgmType: "audio",
+    };
+    const wrapper = mountHome();
+    bgmSpies.activeBgm.value = { src: BGM_SRC, type: "audio" };
+    await nextTick();
+
+    const button = wrapper.find(".icon-btn");
+    expect(button.attributes("aria-label")).toBe("暂停");
+    expect(button.find(".ui-icon-pause").exists()).toBe(true);
+
+    await button.trigger("click");
+
+    expect(bgmSpies.pause).toHaveBeenCalled();
+  });
+
+  /** 主展示视频登记进全站音量：右栏滑块定音量，它跟着走 */
+  it("主展示视频登记进音量层，换成图片后注销", async () => {
+    useHomeContent().mainItem.value = { ...VIDEO_ITEM };
+    const wrapper = mountHome();
+    const video = wrapper.find("video.showcase-media").element;
+    // 模板 ref 是在补丁之后的 post 队列里写进去的，等一次 nextTick 才看得到结果
+    await nextTick();
+    expect(volumeSpies.registerMediaElement).toHaveBeenCalledWith(video);
+
+    useHomeContent().mainItem.value = { type: "photo", src: "/main.jpg" };
+    await nextTick();
+
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(video);
+  });
+
+  /** 离开首页时元素随之销毁。登记表是模块级的、持有元素本身，不交回去就不会被回收 */
+  it("离开首页时注销视频元素", async () => {
+    useHomeContent().mainItem.value = { ...VIDEO_ITEM };
+    const wrapper = mountHome();
+    const video = wrapper.find("video.showcase-media").element;
+    await nextTick();
+
+    wrapper.unmount();
+
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(video);
+  });
+
+  /** 没有视频、也没有背景音乐时不给开关（原先的视频按钮也是这么藏的） */
+  it("没有可停的声音时不给开关", () => {
+    useHomeContent().mainItem.value = { type: "photo", src: "/main.jpg" };
+
+    const wrapper = mountHome();
+
+    expect(wrapper.find(".icon-btn").exists()).toBe(false);
+  });
+
+  /** 「不动其他逻辑」：换 item 时按 bgmSrc 起播/停播的那段 watch 原样保留 */
+  it("换 item 时仍然按 bgmSrc 起播、没有曲子就停播", async () => {
+    const plain = { type: "photo", src: "/main.jpg" };
+    useHomeContent().mainItem.value = plain;
+    mountHome();
+    expect(bgmSpies.stop).toHaveBeenCalled();
+
+    const withBgm = { ...plain, bgmSrc: BGM_SRC, bgmType: "audio" };
+    useHomeContent().mainItem.value = withBgm;
+    await nextTick();
+    expect(bgmSpies.play).toHaveBeenCalledWith(withBgm);
+
+    const stopsBefore = bgmSpies.stop.mock.calls.length;
+    useHomeContent().mainItem.value = { type: "photo", src: "/other.jpg" };
+    await nextTick();
+
+    expect(bgmSpies.stop.mock.calls.length).toBeGreaterThan(stopsBefore);
   });
 });

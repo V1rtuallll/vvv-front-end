@@ -40,6 +40,22 @@ export function registerMediaElement(el) {
   applyVolume(el);
 }
 
+/**
+ * 把元素从登记表里摘掉。**元素销毁时必须走这一步。**
+ *
+ * 登记表持有的是元素本身。详情弹窗的视频、画廊 BGM 那个从不进 DOM 的元素，
+ * 都是随组件或每次起播创建又销毁的；留在表里的话，它们既不会被回收，
+ * 滑块每动一次还要去写一个已经销毁的元素。
+ *
+ * 压低名单是同一批元素的另一处引用，一并清掉：那是一条已经结束的压低记录，
+ * 留着没有任何用处。
+ */
+export function unregisterMediaElement(el) {
+  if (!el) return;
+  registered.delete(el);
+  ducked.delete(el);
+}
+
 /** 按当前音量（并考虑压低状态）写一次这个元素的 volume */
 export function applyVolume(el) {
   if (!el) return;

@@ -13,10 +13,13 @@
           @click.stop="showPreviousMedia"
         ><span class="ui-icon ui-icon-prev"></span></button>
 
-        <video v-if="currentMedia.type === 'video'" :key="currentMedia.src" :src="currentMedia.src" controls autoplay loop class="detail-media"></video>
-        <audio v-else-if="currentMedia.type === 'music'" :key="currentMedia.src" :src="currentMedia.src" controls class="detail-audio"></audio>
-        <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下 -->
-        <img v-else :key="currentMedia.src" :src="currentMedia.src" class="detail-media" />
+        <video v-if="currentMedia.type === 'video'" :key="currentMedia.id ?? currentMedia.src" ref="mediaEl" :src="currentMedia.src" controls autoplay loop class="detail-media"></video>
+        <audio v-else-if="currentMedia.type === 'music'" :key="currentMedia.id ?? currentMedia.src" :src="currentMedia.src" controls class="detail-audio"></audio>
+        <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下。
+             用主键而不是地址 —— 两条同地址的媒体（或某条地址为空）用地址当 key 时
+             元素不会重建，上一段视频会继续出声，正是这个 key 要防的事。
+             列表没带 media、只有封面这一条时兜底行没有主键，退回按地址比 -->
+        <img v-else :key="currentMedia.id ?? currentMedia.src" :src="currentMedia.src" class="detail-media" />
 
         <button
           v-if="hasMultipleMedia"
@@ -133,6 +136,10 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
+import {
+  registerMediaElement,
+  unregisterMediaElement,
+} from "@/modules/player/composables/mediaVolume";
 
 // canManage / canManageComment 由页面注入：编辑、删除入口只在作者本人或管理员处显示，
 // 组件自身不判断身份，保持纯展示。
@@ -201,6 +208,27 @@ watch(() => props.item?.id, () => {
 watch(() => mediaList.value.length, (length) => {
   if (mediaIndex.value > length - 1) mediaIndex.value = 0;
 });
+
+/**
+ * 弹窗里可见的视频跟全站音量走：与侧栏播放器、画廊 BGM 读同一个数字。
+ *
+ * 登记的是元素本身，而翻页会把元素整只换掉（`:key` 保证换一条媒体就重建，
+ * 上一段视频才不会接着出声），所以换下来的那个必须注销 —— 登记表是模块级的
+ * Set，只登记不注销的话，每次翻过的视频都留在里面不被回收。
+ *
+ * 用 watch 而不是 onMounted：元素由 `v-if` 决定何时出现，翻页、换类型都会重建，
+ * onMounted 只覆盖第一次。`flush: "post"` 也是必须的 —— 默认的 pre 跑在补丁
+ * 之前，那一刻读到的还是上一个元素。
+ */
+const mediaEl = ref(null);
+
+watch(mediaEl, (el, previous) => {
+  unregisterMediaElement(previous);
+  registerMediaElement(el);
+}, { flush: "post" });
+
+// 弹窗被摘掉时元素随之销毁，那时 watcher 已经停了，注销只能在这里做
+onBeforeUnmount(() => unregisterMediaElement(mediaEl.value));
 
 const { activeBgm, paused, play: playBgm, stop: stopBgm, toggle: toggleBgm } = useGalleryBgm();
 
@@ -358,8 +386,10 @@ onBeforeUnmount(() => stopBgm());
 .media-arrow:disabled { color: #b9c4cc; cursor: not-allowed; }
 .media-arrow-left { left: 16px; }
 .media-arrow-right { right: 16px; }
-/* 第几张 / 共几张。只有一条媒体时不出现 */
-.media-indicator { position: absolute; bottom: 14px; left: 50%; padding: 2px 12px; color: #ffffff; font-size: 0.8rem; background: rgba(1, 40, 70, 0.55); border-radius: 10px; transform: translateX(-50%); }
+/* 第几张 / 共几张。只有一条媒体时不出现。
+   pointer-events: none 是必须的：竖版视频撑满媒体区时它会压住原生控件条中段的
+   进度条，那个位置点不动也拖不动 */
+.media-indicator { position: absolute; bottom: 14px; left: 50%; padding: 2px 12px; color: #ffffff; font-size: 0.8rem; background: rgba(1, 40, 70, 0.55); border-radius: 10px; transform: translateX(-50%); pointer-events: none; }
 /* 箭头压在画面边上：图片和视频被压住一角是常规做法，音频不行 ——
    控件最左边就是播放键，被压住就点不到了。翻页时把音频收窄，两端各让出一条 */
 .is-paged .detail-audio { width: 70%; }

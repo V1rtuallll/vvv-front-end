@@ -3,6 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getActiveBgmElement, resolveBgm, useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 import { pauseForBgm, registerPlayerAudio } from "@/modules/player/composables/useAudioPlayer";
 
+// 全站音量层换成替身：这一层要断言的是「元素有没有被交出去、有没有被交回来」，
+// 写音量本身（登记时写一次、拖滑块时写一次）由 mediaVolume.test.js 负责。
+// 部分替身：同一个模块里别的东西（getVolume / setVolume）还由侧栏播放器按原样用着。
+vi.mock("@/modules/player/composables/mediaVolume", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    registerMediaElement: vi.fn(),
+    unregisterMediaElement: vi.fn(),
+  };
+});
+
+import { registerMediaElement, unregisterMediaElement } from "@/modules/player/composables/mediaVolume";
+
 const PHOTO_WITH_BGM = {
   id: 1, type: "photo", src: "https://cdn.example.test/imgs/a.png",
   bgmSrc: "https://cdn.example.test/music/song.mp3", bgmType: "audio",
@@ -83,16 +97,32 @@ describe("useGalleryBgm 的播放", () => {
   });
 
   /**
-   * 「gallery 是什么音量就是什么音量」。
-   *
-   * 一旦有人写 el.volume = 0.3，volume 就不再是 undefined，这条立刻变红。
+   * 原先的规则是「按源文件原始音量，一个字节都不设 volume」。
+   * 全站音量收敛到右栏一个滑块之后那条规则作废：这里必须登记元素，
+   * 由 mediaVolume 按当前音量写一次 —— 不登记的话这首曲子会以浏览器的
+   * 默认音量（1.0）出声，而用户明明把滑块调到了 30%。
    */
-  it("不设置音量", () => {
+  it("plays at the shared volume instead of the source file's own volume", () => {
     const { bgm, created } = mountBgm();
 
     bgm.play(PHOTO_WITH_BGM);
 
-    expect(created[0].volume).toBeUndefined();
+    expect(registerMediaElement).toHaveBeenCalledWith(created[0]);
+  });
+
+  /**
+   * 登记表是模块级的、持有的是元素本身，而这个元素是 createElement 建的、
+   * 从不进 DOM：外面没有别的引用会放开它。停止与换项都会销毁它，两处都要交回去。
+   */
+  it("交回音量层：停止与换项都注销已经销毁的元素", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM);
+    bgm.play({ id: 9, type: "music", src: "https://cdn.example.test/music/z.mp3" });
+    bgm.stop();
+
+    expect(unregisterMediaElement).toHaveBeenCalledWith(created[0]);
+    expect(unregisterMediaElement).toHaveBeenCalledWith(created[1]);
   });
 
   it("停止时暂停并清空状态", () => {

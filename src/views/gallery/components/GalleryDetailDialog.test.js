@@ -22,6 +22,18 @@ vi.mock("@/modules/gallery/composables/useGalleryBgm", () => ({
 
 const ITEM = { id: 1, type: "photo", src: "/a.jpg", title: "标题", description: "描述" };
 
+// 全站音量层换成替身：这里断言的是「哪个元素被交出去、什么时候交回去」，
+// 写音量本身由 mediaVolume.test.js 负责。
+const volumeSpies = vi.hoisted(() => ({
+  registerMediaElement: vi.fn(),
+  unregisterMediaElement: vi.fn(),
+}));
+
+vi.mock("@/modules/player/composables/mediaVolume", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, ...volumeSpies };
+});
+
 function mountDialog(props = {}) {
   return mount(GalleryDetailDialog, {
     props: {
@@ -533,5 +545,97 @@ describe("GalleryDetailDialog 的媒体翻阅", () => {
     expect(wrapper.find(".media-arrow-right").attributes("aria-label")).toBe("下一个");
     expect(wrapper.find(".media-arrow-right").find(".ui-icon").exists()).toBe(true);
     expect(wrapper.find(".media-arrow-right").text()).toBe("");
+  });
+
+  /**
+   * 两条同地址的媒体（同一条作品里重复引用同一个文件）用地址当 `:key` 时不会重建
+   * 元素：翻过去以后放的还是上一段视频，而 `:key` 存在的意义正是让上一段停下来。
+   * 后端下发的行带主键，用主键区分。
+   */
+  it("两条同地址的媒体各自重建元素", async () => {
+    const SAME = "/same.mp4";
+    const wrapper = mountDialog({
+      item: work([
+        { id: 31, src: SAME, type: "video" },
+        { id: 32, src: SAME, type: "video" },
+      ]),
+    });
+    const first = wrapper.find("video").element;
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find("video").element).not.toBe(first);
+  });
+
+  /** 兜底行（列表没带 media，只有封面）没有主键，那时只能按地址区分 */
+  it("行里没有主键时退回按地址区分", async () => {
+    const wrapper = mountDialog({ item: { ...ITEM, type: "video", src: "/only.mp4", media: [] } });
+    const first = wrapper.find("video").element;
+
+    await wrapper.setProps({ item: { ...ITEM, type: "video", src: "/other.mp4", media: [] } });
+
+    expect(wrapper.find("video").element).not.toBe(first);
+  });
+});
+
+/**
+ * 详情弹窗里可见的视频要跟右栏滑块走，和画廊 BGM、首页主展示读同一个音量。
+ *
+ * 登记表持有的是元素本身，而翻页会把元素整只换掉，所以换下来的必须注销：
+ * 只登记不注销，每次翻过的视频都会留在那里不被回收。
+ */
+describe("GalleryDetailDialog 的声音跟着全站音量", () => {
+  const PHOTO = { id: 11, src: "/a.jpg", type: "photo" };
+  const VIDEO_A = { id: 21, src: "/v1.mp4", type: "video" };
+  const VIDEO_B = { id: 22, src: "/v2.mp4", type: "video" };
+
+  const work = (media) => ({ ...ITEM, src: media[0].src, type: media[0].type, media });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("可见视频登记进音量层，翻页时旧元素注销、新元素登记", async () => {
+    const wrapper = mountDialog({ item: work([VIDEO_A, VIDEO_B]) });
+    const first = wrapper.find("video").element;
+    // 模板 ref 是补丁之后在 post 队列里写进去的，等一次 nextTick 才看得到结果
+    await nextTick();
+    expect(volumeSpies.registerMediaElement).toHaveBeenCalledWith(first);
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    const second = wrapper.find("video").element;
+    expect(second).not.toBe(first);
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(first);
+    expect(volumeSpies.registerMediaElement).toHaveBeenCalledWith(second);
+  });
+
+  it("从视频翻到图片后，视频元素被注销", async () => {
+    const wrapper = mountDialog({ item: work([VIDEO_A, PHOTO]) });
+    const video = wrapper.find("video").element;
+    await nextTick();
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find("video").exists()).toBe(false);
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(video);
+  });
+
+  /** 父组件用 v-if 摘掉整个弹窗是常见做法，那时元素随之销毁，watcher 已经停了 */
+  it("组件卸载时注销视频元素", async () => {
+    const wrapper = mountDialog({ item: work([VIDEO_A]) });
+    const video = wrapper.find("video").element;
+    await nextTick();
+
+    wrapper.unmount();
+
+    expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(video);
+  });
+
+  /** 登记的是可见视频。图片与音频没有对应的元素，不该往登记表里塞东西 */
+  it("图片不登记", () => {
+    mountDialog({ item: work([PHOTO]) });
+
+    expect(volumeSpies.registerMediaElement).not.toHaveBeenCalledWith(expect.anything());
   });
 });
