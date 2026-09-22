@@ -75,13 +75,18 @@ describe("galleryApi 的编辑提交接口", () => {
   /**
    * 后端已经把 PATCH /gallery/{id} 与 POST /gallery/{id}/replace 摘掉了，
    * 编辑保存只剩这一条 PUT。走错门的话编辑功能整体失效，而页面只报一个 404。
+   *
+   * 第三个参数不能只拿 expect.anything() 兜住：手写的 Content-Type 会把
+   * multipart 的 boundary 一起写死，服务端解析不出字段 —— 这条约束必须能被打红。
    */
-  it("走 PUT /gallery/{id}，不是已经摘掉的 PATCH 或 /replace", () => {
+  it("走 PUT /gallery/{id}，不是已经摘掉的 PATCH 或 /replace，也不手写 Content-Type", () => {
     const formData = new FormData();
 
     commitGalleryMedia(7, formData);
 
     expect(request.put).toHaveBeenCalledWith("/gallery/7", formData, expect.anything());
+    const headers = request.put.mock.calls[0][2]?.headers ?? {};
+    expect(Object.keys(headers).map((name) => name.toLowerCase())).not.toContain("content-type");
   });
 
   /** 保存也要能取消：中途取消要能中止在途请求 */

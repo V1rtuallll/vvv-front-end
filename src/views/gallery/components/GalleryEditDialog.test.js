@@ -13,6 +13,7 @@ const ITEM = {
 
 const PHOTO_A = { id: 11, src: "https://example.test/imgs/a.png", type: "photo" };
 const PHOTO_B = { id: 12, src: "https://example.test/imgs/b.png", type: "photo" };
+const PHOTO_C = { id: 13, src: "https://example.test/imgs/c.png", type: "photo" };
 
 /** 一个作品：封面与 media[0] 由服务端保证一致，这里照同样的形状拼出来 */
 const work = (media, overrides = {}) => ({
@@ -251,6 +252,23 @@ describe("GalleryEditDialog 的排序", () => {
     await save(wrapper);
 
     expect(submitted(wrapper).items).toEqual([{ mediaId: PHOTO_B.id }, { mediaId: PHOTO_A.id }]);
+  });
+
+  /**
+   * 拖到目标上 = 放到目标的位置，也就是目标前面。
+   * 只测相邻那一对看不出问题：被拖的条目先被摘出，它后面的条目整体前移一位，
+   * 拿原下标当落点的话条目会落到目标后面。
+   */
+  it("往下拖到不相邻的条目上，落在目标前面而不是后面", async () => {
+    const wrapper = mountDialog(work([PHOTO_A, PHOTO_B, PHOTO_C]));
+
+    await wrapper.find(".media-row:nth-child(1)").trigger("dragstart");
+    await wrapper.find(".media-row:nth-child(3)").trigger("drop");
+    await save(wrapper);
+
+    expect(submitted(wrapper).items).toEqual([
+      { mediaId: PHOTO_B.id }, { mediaId: PHOTO_A.id }, { mediaId: PHOTO_C.id },
+    ]);
   });
 });
 

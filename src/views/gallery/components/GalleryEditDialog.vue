@@ -237,12 +237,21 @@ const onDragStart = (row) => {
   draggingKey = row.key;
 };
 
+/**
+ * 拖到某一条上 = 放到那一条的位置。
+ *
+ * 往下拖时被拖的条目先被摘出，它后面的条目整体前移一位，落点所以要减一 ——
+ * 不减的话条目会落到目标后面（A 拖到 C 上得到 [B, C, A]，而不是 [B, A, C]）。
+ * 相邻的一对减一后正好是原位，那样这次拖拽等于什么都没做，所以那一档仍放到目标后面：
+ * 往下拖一位的结果是两条互换。
+ */
 const onDrop = (row) => {
   const from = draft.value.findIndex((candidate) => candidate.key === draggingKey);
   const to = draft.value.findIndex((candidate) => candidate.key === row.key);
   draggingKey = null;
   if (from === -1 || to === -1 || from === to) return;
-  draft.value.splice(to, 0, draft.value.splice(from, 1)[0]);
+  const [moved] = draft.value.splice(from, 1);
+  draft.value.splice(from < to && to - from > 1 ? to - 1 : to, 0, moved);
 };
 
 const bgmChanged = () => {
@@ -272,9 +281,9 @@ const submit = () => {
       newFiles.push(row.file);
       return;
     }
-    // 既没有 mediaId 又没有文件的行只可能来自「没有媒体行」的历史作品那条兜底封面，
-    // 它没有可指认的媒体，发不出去 —— items 会因此缺一条，
-    // 由上层按「作品至少要保留一个媒体」拦下
+    // 既没有 mediaId 又没有文件的行只可能来自「没有媒体记录」的作品那条兜底封面，
+    // 它没有可指认的媒体，发不出去 —— items 会因此缺一条：整条作品一条媒体都发不出去时
+    // 由上层拦下，提示说明作品没有媒体文件
     if (row.mediaId != null) items.push({ mediaId: row.mediaId });
   });
 

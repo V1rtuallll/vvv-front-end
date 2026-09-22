@@ -239,6 +239,44 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(getGalleryPage).toHaveBeenCalled();
   });
 
+  /**
+   * 取消只中止得了在途请求，服务端那次事务可能已经提交：重读之后列表换成服务端的行，
+   * 详情弹窗却还指着打开时拷贝的那份旧对象 —— 卡片换了封面、弹窗里仍是旧的。
+   * isLiked 与 commentsLoadFailed 只存在于前端，详情指到新行上时要带过去。
+   */
+  it("取消保存后详情与列表的新行一致，两个前端自加的字段不丢", async () => {
+    let release;
+    commitGalleryMedia.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+    const api = await mountGallery();
+    api.openDetailModal(api.galleryList.value[0]);
+    await flushPromises();
+    api.currentItem.value.isLiked = true;
+    api.currentItem.value.commentsLoadFailed = true;
+
+    api.openEditModal(api.galleryList.value[0]);
+    api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }] });
+    await flushPromises();
+
+    // 服务端落库的那一行：与客户端取消时手里那份不是同一个封面
+    const serverRow = {
+      ...WORK,
+      src: "https://example.test/server.png",
+      media: [{ id: 31, src: "https://example.test/server.png", type: "photo" }],
+    };
+    getGalleryPage.mockResolvedValue({ data: { list: [serverRow], total: 1 } });
+
+    const cancelling = api.cancelTask(api.uploadItems.value[0]);
+    release({ data: savedWithCover("https://example.test/aborted.png") });
+    await cancelling;
+    await flushPromises();
+
+    expect(api.galleryList.value[0].src).toBe(serverRow.src);
+    expect(api.currentItem.value.src).toBe(serverRow.src);
+    expect(api.currentItem.value.media).toEqual(serverRow.media);
+    expect(api.currentItem.value.isLiked).toBe(true);
+    expect(api.currentItem.value.commentsLoadFailed).toBe(true);
+  });
+
   it("标题清空属于本地校验，直接拦下不入队", async () => {
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
@@ -250,8 +288,13 @@ describe("useGalleryPage 的编辑与删除", () => {
     expect(window.$vmessage.warning).toHaveBeenCalled();
   });
 
-  /** 服务端会拒空列表；本地先拦下，用户不用等一次往返才知道 */
-  it("媒体列表为空属于本地校验，直接拦下不入队", async () => {
+  /**
+   * items 为空的现实来路：作品的 media 是空的，编辑弹窗里那条「封面兜底行」没有 mediaId
+   * 可指认，一条都进不了 items —— 这种作品连只改标题都保存不了。提示语要说的是这个，
+   * 不是「至少要保留一个媒体」：用户并没有删掉什么。
+   */
+  it("作品没有媒体记录时属于本地校验，直接拦下不入队", async () => {
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
     const api = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
@@ -259,7 +302,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
     expect(commitGalleryMedia).not.toHaveBeenCalled();
     expect(api.uploadItems.value).toHaveLength(0);
-    expect(window.$vmessage.warning).toHaveBeenCalled();
+    expect(window.$vmessage.warning).toHaveBeenCalledWith("作品没有媒体文件，请先替换封面或添加一个媒体");
   });
 
   /**

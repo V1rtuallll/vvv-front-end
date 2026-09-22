@@ -501,8 +501,10 @@ export function useGalleryPage() {
     const target = editingItem.value;
     if (!target) return;
     if (!title?.trim()) return window.$vmessage.warning("标题不能为空");
-    // 作品至少要有一个媒体：删空之后 gallery.src 无处可取，也就没有封面了（服务端同样会拒）
-    if (!items.length) return window.$vmessage.warning("作品至少要保留一个媒体");
+    // 一条媒体都没有的作品发不出去（服务端同样会拒）。items 为空的来路只有一个：
+    // 作品的 media 是空的，编辑弹窗里那条封面对应不到任何一条媒体记录 ——
+    // 这种作品连只改标题都保存不了，说成「至少要保留一个媒体」会让人以为是自己删掉的
+    if (!items.length) return window.$vmessage.warning("作品没有媒体文件，请先替换封面或添加一个媒体");
 
     const targetId = target.id;
     const targetName = title || target.title;
@@ -527,6 +529,18 @@ export function useGalleryPage() {
       onCancel: async (task) => {
         if (!task.started) return;
         await loadGallery();
+        // 重读完列表换成服务端的行，详情弹窗却还指着打开时拷贝的那份旧对象：
+        // 卡片会显示新封面、弹窗里仍是旧的。按 id 把详情指到新行上。
+        // isLiked 与 commentsLoadFailed 不在服务端返回里，换对象时要带过去。
+        const detail = currentItem.value;
+        if (!isSameId(detail?.id, targetId)) return;
+        const fresh = galleryList.value.find((item) => isSameId(item.id, targetId));
+        if (!fresh) return;
+        currentItem.value = {
+          ...fresh,
+          isLiked: detail.isLiked,
+          commentsLoadFailed: detail.commentsLoadFailed,
+        };
       },
     });
     uploadQueue.start();
