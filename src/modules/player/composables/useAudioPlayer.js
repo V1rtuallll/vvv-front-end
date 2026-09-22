@@ -3,6 +3,7 @@ import { nextTick, onMounted, ref } from "vue";
 // eslint-disable-next-line import/no-unresolved -- 由 vite.config.js 的 musicManifest 插件提供
 import manifest from "virtual:music-manifest";
 import { getVolume, registerMediaElement, setVolume } from "@/modules/player/composables/mediaVolume";
+import { formatTrackName } from "@/modules/player/trackName";
 
 /**
  * 曲库清单的兜底名单。
@@ -139,12 +140,6 @@ export function useAudioPlayer() {
       playIcon.classList.toggle("ui-icon-play", !playing);
     };
 
-    const formatTrackName = (filename) => {
-      // 曲库现在 mp3 与 flac 混着，必须按扩展名整段去，不能只 replace(".mp3")
-      const name = filename.replace(/\.[^.]+$/, "");
-      const dashIndex = name.lastIndexOf(" - ");
-      return dashIndex !== -1 ? name.substring(dashIndex + 3).trim() : name.replace(/_/g, " ").trim();
-    };
     const loadSong = (index) => {
       currentIndex = index;
       audio.src = `/music/${shuffledPlaylist[index]}`;
