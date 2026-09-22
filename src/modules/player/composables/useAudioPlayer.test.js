@@ -285,6 +285,9 @@ describe("播放器的曲库", () => {
   beforeEach(() => {
     vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
     vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    // jsdom 没实现 load()：不桩掉它，空库路径每跑一次就往控制台刷一条
+    // 「Not implemented」。它不抛异常，桩掉只是为了看住调用本身
+    vi.spyOn(window.HTMLMediaElement.prototype, "load").mockImplementation(() => {});
   });
 
   it("曲目表来自后端配置，不是构建期清单", async () => {
@@ -355,6 +358,7 @@ describe("播放器在点击时刷新曲目表", () => {
     vi.clearAllMocks();
     vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
     vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    vi.spyOn(window.HTMLMediaElement.prototype, "load").mockImplementation(() => {});
     getPlayerPlaylist.mockResolvedValue({ data: ["a.mp3"] });
   });
 
@@ -503,8 +507,10 @@ describe("播放器在点击时刷新曲目表", () => {
   /**
    * 反过来的一支：刷新拉到空表（管理员把配置清空了）时得真的停下来 ——
    * 曲名还写着上一首、声音还在放，状态就对不上了。按钮保持可点，它们要留着再拉一次。
+   *
+   * 元素上的源也要卸掉：留着的话，空库这段窗口里点「播放」会放出残着的那首旧曲。
    */
-  it("刷新拉到空表时停住：曲名换成中性文案、声音停住、按钮保持可点", async () => {
+  it("刷新拉到空表时停住：曲名换成中性文案、源被卸掉、按钮保持可点", async () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
     const wrapper = mountPlayer();
     await flushPromises();
@@ -517,10 +523,43 @@ describe("播放器在点击时刷新曲目表", () => {
     await flushPromises();
 
     expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+    expect(wrapper.find("audio").element.getAttribute("src")).toBeNull();
+    expect(window.HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1);
     expect(wrapper.find(".play-pause").attributes("disabled")).toBeUndefined();
     expect(wrapper.find(".next").attributes("disabled")).toBeUndefined();
     expect(window.HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
     expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-play");
+  });
+
+  /**
+   * 非空 → 被清空 → 又被填回：这一段窗口里元素上如果还留着清空之前那首的 src，
+   * 点「播放」放出来的就是**已经不在新配置里**的旧曲，而曲名写着「曲库未配置」。
+   * 这一下放的必须是新配置里的曲子。
+   */
+  it("清空又填回之后点播放，放出来的是新配置里的曲子", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+    const wrapper = mountPlayer();
+    await flushPromises();
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+    expect(wrapper.find("audio").element.getAttribute("src")).toBe("/music/a.mp3");
+
+    // 管理员清空配置
+    getPlayerPlaylist.mockResolvedValue({ data: [] });
+    now.mockReturnValue(1_000_000_000 + 31_000);
+    await wrapper.find(".next").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".track-name").text()).toBe("曲库未配置");
+
+    // 管理员换成另一首，用户点「播放」
+    getPlayerPlaylist.mockResolvedValue({ data: ["b.mp3"] });
+    now.mockReturnValue(1_000_000_000 + 62_000);
+    await wrapper.find(".play-pause").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find("audio").element.getAttribute("src")).toBe("/music/b.mp3");
+    expect(wrapper.find(".track-name").text()).toBe("b");
+    expect(wrapper.find(".play-pause .ui-icon").classes()).toContain("ui-icon-pause");
   });
 
   /**

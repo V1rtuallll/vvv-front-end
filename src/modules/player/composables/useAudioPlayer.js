@@ -130,8 +130,15 @@ export function useAudioPlayer() {
     // formatTrackName 在它上面调 replace 直接抛。这里说明状态，但**不禁用按钮** ——
     // 空库时三个按钮是仅有的刷新入口，禁用就把「管理员把曲子加回来」的路堵死了。
     const applyEmptyLibrary = () => {
-      // 声音还在响的话，界面说的和听到的对不上
+      // 卸掉源而不是只暂停：留着的话，管理员把配置清空又填回来的这段窗口里，
+      // 点「播放」会放出元素上残着的那首旧曲 —— 而它已经不在新配置里了，
+      // 曲名还写着「曲库未配置」，两边对不上。卸干净之后，下面那道
+      // 「没有 src 就先装曲」的判据自然把这条路径也覆盖了
       audio.pause();
+      audio.removeAttribute("src");
+      // 只 removeAttribute 的话部分浏览器仍会留着已经缓冲好的资源，
+      // load() 才是标准的「复位」动作
+      audio.load();
       trackNameElement.textContent = EMPTY_LIBRARY_TEXT;
       progress.value = 0;
       setPlayingIcon(false);
