@@ -13,7 +13,9 @@
           @click.stop="showPreviousMedia"
         ><span class="ui-icon ui-icon-prev"></span></button>
 
-        <video v-if="currentMedia.type === 'video'" :key="currentMedia.id ?? currentMedia.src" ref="mediaEl" :src="currentMedia.src" controls autoplay loop class="detail-media"></video>
+        <!-- playsinline 不能省：iOS Safari 对没有它的 `<video>` 一律交给系统全屏播放器，
+             一点播放就把详情弹窗的画面推走。首页那两个视频一直是这么写的 -->
+        <video v-if="currentMedia.type === 'video'" :key="currentMedia.id ?? currentMedia.src" ref="mediaEl" :src="currentMedia.src" controls autoplay loop playsinline class="detail-media"></video>
         <!-- 音乐项也登记进音量层：与视频共用同一个 mediaEl ref，下面的 watch 覆盖两者。
              漏掉它的话音乐以浏览器默认的 1.0 出声，右栏那个旋钮对它完全无效 ——
              与「全站一个旋钮」直接矛盾，而页面上没有任何地方看得出来 -->

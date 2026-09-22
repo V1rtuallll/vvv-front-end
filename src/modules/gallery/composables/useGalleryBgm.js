@@ -177,6 +177,11 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
 
     const el = createElement(source.type === "video" ? "video" : "audio");
     el.loop = true;
+    // iOS Safari 会把**没有 playsinline 的 `<video>`** 交给系统全屏播放器 ——
+    // 元素在不在 DOM 里都一样，所以「从不进 DOM」挡不住它，画面会直接盖到整屏上。
+    // 桌面浏览器不需要这个属性（游离元素只出声、不上屏），加了也没有副作用。
+    // 音乐项建的是 `<audio>`，本来就上不了屏，不必设
+    if (source.type === "video") el.setAttribute("playsinline", "");
     el.src = source.src;
     // 音量交给全局：这里不再按源文件原始音量放。不登记的话这首曲子会以浏览器的
     // 默认音量（1.0）出声，而用户明明把右栏滑块调到了 30%

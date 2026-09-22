@@ -23,9 +23,18 @@ const PHOTO_WITH_BGM = {
 };
 const PLAIN_PHOTO = { id: 4, type: "photo", src: "https://cdn.example.test/imgs/d.png" };
 
-/** 够用的媒体元素替身：被测代码只碰 loop / src / play / pause 四样 */
+/** 够用的媒体元素替身：被测代码只碰 loop / src / setAttribute / play / pause 几样 */
 function fakeElement(tag) {
-  return { tag, loop: false, src: "", play: vi.fn(() => Promise.resolve()), pause: vi.fn() };
+  return {
+    tag,
+    loop: false,
+    src: "",
+    // 属性只记下来、不解析：视频型 BGM 要写 playsinline，而 iOS 的渲染行为在这里
+    // 断言不了（jsdom 没有那套逻辑）。但少了这个方法，建元素那一步会直接抛
+    setAttribute: vi.fn(),
+    play: vi.fn(() => Promise.resolve()),
+    pause: vi.fn(),
+  };
 }
 
 /** 造一个 composable，并记下它建过哪些元素（顺序就是建的顺序） */
