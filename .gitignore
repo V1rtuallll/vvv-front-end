@@ -7,3 +7,10 @@ coverage
 
 # 本地排查用的截图，不进仓库
 .debug-shots/
+
+# superpowers 的散装工作区：设计记录、实现计划、子代理的工作日志。
+# 它们是本地过程产物，不是交付物 —— 要留下的结论会整理进 AGENTS.md 或代码注释。
+# 根目录那个 .superpowers/ 里另有一份 `*` 的自忽略文件，这里再写一遍是为了
+# 不复述「靠目录内部的忽略文件兜底」这种约定，免得有人以为它会被提交。
+.superpowers/
+docs/superpowers/
