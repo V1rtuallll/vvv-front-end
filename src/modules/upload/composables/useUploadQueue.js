@@ -100,6 +100,8 @@ export function useUploadQueue(upload, options = {}) {
       targetId: meta.targetId ?? null,
       status: UPLOAD_STATUS.QUEUED,
       progress: 0,
+      /** 请求体发完的时刻。此后进度百分比不再变化，时间全花在服务端 */
+      bodySentAt: null,
       error: null,
       resource: null,
       execute: meta.execute ?? null,
@@ -131,13 +133,18 @@ export function useUploadQueue(upload, options = {}) {
   const runItem = async (item) => {
     item.status = UPLOAD_STATUS.UPLOADING;
     item.progress = 0;
+    item.bodySentAt = null;
     item.error = null;
     item.started = true;
 
     const controller = new AbortController();
     controllers.set(item.clientUploadId, controller);
     const onProgress = (event) => {
-      if (event?.total) item.progress = Math.round((event.loaded / event.total) * 100);
+      if (!event?.total) return;
+      item.progress = Math.round((event.loaded / event.total) * 100);
+      // 只记第一次：请求体发完之后的等待是服务端在处理，
+      // 这段时间里进度不再有信息量，面板改说「服务端处理中」
+      if (event.loaded >= event.total && !item.bodySentAt) item.bodySentAt = Date.now();
     };
 
     try {
@@ -220,8 +227,16 @@ export function useUploadQueue(upload, options = {}) {
     items.value = items.value.filter((candidate) => candidate !== item);
   };
 
+  /**
+   * 中止在途请求并清空队列。请求体已经发完的任务不中止：服务端这时已经把
+   * 整个请求收下了，照样会把事务做完 —— 掐断连接只是让自己看不到结果，
+   * 然后把一次成功说成「网络错误」。还没发完的照旧中止，那才是真能拦下来的。
+   */
   const reset = () => {
-    items.value.forEach((item) => controllers.get(item.clientUploadId)?.abort());
+    items.value.forEach((item) => {
+      if (item.bodySentAt) return;
+      controllers.get(item.clientUploadId)?.abort();
+    });
     items.value = [];
     inFlight.clear();
     running.value = false;

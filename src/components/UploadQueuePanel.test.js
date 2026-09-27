@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 
@@ -134,5 +134,31 @@ describe("UploadQueuePanel", () => {
     const wrapper = mountPanel({ items: [task({ status: "uploading", progress: 65 })], busy: true });
 
     expect(wrapper.find(".queue-status").text()).toBe("65%");
+  });
+
+  /**
+   * 请求体发完之后的时间全花在服务端（传 OSS、写库）。这时百分比已经是 100%，
+   * 再显示「100%」会让人以为卡死 —— 换成说明服务端还在处理，并给出已用时。
+   */
+  it("请求体发完后改说「服务端处理中」并显示已用时", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-27T13:17:00+08:00"));
+    try {
+      const wrapper = mountPanel({
+        items: [task({ status: "uploading", progress: 100, bodySentAt: Date.now() - 12000 })],
+        busy: true,
+      });
+
+      expect(wrapper.find(".queue-status").text()).toContain("服务端处理中");
+      expect(wrapper.find(".queue-status").text()).toContain("12 秒");
+
+      // 秒数要走起来，否则和卡死没有区别
+      await vi.advanceTimersByTimeAsync(3000);
+
+      expect(wrapper.find(".queue-status").text()).toContain("15 秒");
+      wrapper.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

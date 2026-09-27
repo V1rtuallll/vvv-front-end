@@ -97,6 +97,19 @@ describe("request 响应拦截器", () => {
     expect(window.$vmessage.error).toHaveBeenCalledWith("网络错误，请稍后重试");
   });
 
+  /**
+   * 主动取消不是网络故障。用户点「取消」，或者离开页面时中止了在途请求，
+   * 都会走到这条分支；说成「网络错误」会让人以为服务端没收到、需要重试，
+   * 而实际上那次提交可能已经完成了。
+   */
+  it("主动取消时一条提示都不弹", async () => {
+    const cancelled = { code: "ERR_CANCELED", name: "CanceledError", message: "canceled" };
+
+    await expect(onRejected(cancelled)).rejects.toBe(cancelled);
+
+    expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+
   it("HTTP 200 + code 非 200 仍然按业务错误 reject", async () => {
     const response = { status: 200, data: { code: 500, msg: "请先登录才能点赞" } };
 

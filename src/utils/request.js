@@ -46,6 +46,13 @@ request.interceptors.response.use(
       authStore.logout()
     }
 
+    // 主动取消（点了取消、或离开页面中止了在途请求）不是网络故障。
+    // 取消的反馈由发起方负责（队列里有「已取消」状态），这里报「网络错误」
+    // 会把「我自己取消的」和「网络出问题了」混成一件事。
+    if (error.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
+
     // 后端错误契约保证 4xx/5xx 的 msg 里是真实原因，优先透传
     let msg = error.response?.data?.msg
 

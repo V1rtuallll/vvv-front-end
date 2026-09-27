@@ -58,6 +58,28 @@ describe("useUploadQueue", () => {
     expect(queue.overallProgress.value).toBe(90);
   });
 
+  /**
+   * 进度 100% 只说明请求体发完了，服务端可能还在往 OSS 传。
+   * 记下这个时间点，面板才能把「还在发」和「等服务端」分开说。
+   */
+  it("请求体发完时记下时间点，没发完不记", async () => {
+    const upload = controlledUpload();
+    const queue = await mountQueue(upload);
+    const item = queue.add(file("big.mp4", 900));
+    queue.start();
+    await flushPromises();
+
+    expect(item.bodySentAt).toBeNull();
+
+    pending[0].onProgress({ loaded: 450, total: 900 });
+    await flushPromises();
+    expect(item.bodySentAt).toBeNull();
+
+    pending[0].onProgress({ loaded: 900, total: 900 });
+    await flushPromises();
+    expect(typeof item.bodySentAt).toBe("number");
+  });
+
   it("最多只同时上传 3 个文件", async () => {
     const upload = controlledUpload();
     const queue = await mountQueue(upload);
@@ -166,6 +188,28 @@ describe("useUploadQueue", () => {
     await flushPromises();
 
     expect(item.status).toBe(UPLOAD_STATUS.CANCELLED);
+  });
+
+  /**
+   * 离开页面时 reset() 会中止在途请求。但请求体已经发完的那些，
+   * 服务端照样会把事务做完 —— 掐断连接只是让自己看不到结果，
+   * 然后把一次成功说成「网络错误」。还没发完的照旧中止，那是真能拦下来的。
+   */
+  it("请求体已发完的任务不再被 reset 中止，还在发的照旧中止", async () => {
+    const upload = controlledUpload();
+    const queue = await mountQueue(upload);
+    queue.add(file("a.mp4", 10));
+    queue.add(file("b.mp4", 10));
+    queue.start();
+    await flushPromises();
+
+    pending[0].onProgress({ loaded: 10, total: 10 });
+    await flushPromises();
+
+    queue.reset();
+
+    expect(upload.mock.calls[0][2].aborted).toBe(false);
+    expect(upload.mock.calls[1][2].aborted).toBe(true);
   });
 
   it("有排队或上传中的文件时提示不要关闭页面", async () => {

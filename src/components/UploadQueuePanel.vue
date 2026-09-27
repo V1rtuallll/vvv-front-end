@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { TASK_KIND, UPLOAD_STATUS } from "@/modules/upload/composables/useUploadQueue";
 
@@ -93,9 +93,43 @@ const STATUS_TEXT = {
   [UPLOAD_STATUS.CANCELLED]: "已取消",
 };
 
+/**
+ * 请求体已经发完、在等服务端结果的任务。后端把整批文件传 OSS 是在一个请求里
+ * 顺序做完的，这段时间可以到分钟级；百分比停在 100% 会让人以为卡死。
+ */
+const waitingOnServer = (item) =>
+  item.status === UPLOAD_STATUS.UPLOADING && Boolean(item.bodySentAt);
+
+const waitingCount = computed(() => props.items.filter(waitingOnServer).length);
+
+/** 已用时要自己走：不动的秒数和卡死看起来没有区别 */
+const now = ref(Date.now());
+let ticker = null;
+
+watch(
+  waitingCount,
+  (count) => {
+    if (count > 0 && !ticker) {
+      ticker = setInterval(() => {
+        now.value = Date.now();
+      }, 1000);
+    } else if (count === 0 && ticker) {
+      clearInterval(ticker);
+      ticker = null;
+    }
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (ticker) clearInterval(ticker);
+});
+
 const statusText = (item) => {
-  if (item.status === UPLOAD_STATUS.UPLOADING) return `${item.progress}%`;
-  return STATUS_TEXT[item.status] || item.status;
+  if (item.status !== UPLOAD_STATUS.UPLOADING) return STATUS_TEXT[item.status] || item.status;
+  if (!item.bodySentAt) return `${item.progress}%`;
+  const elapsed = Math.max(0, Math.round((now.value - item.bodySentAt) / 1000));
+  return `服务端处理中 ${elapsed} 秒`;
 };
 </script>
 
