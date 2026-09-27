@@ -113,8 +113,11 @@
               <h2 class="showcase-title">
                 {{ mainItem.title || "V1rtual时刻" }}
               </h2>
+              <!-- 兜底里刻意不含 alt：服务端会给缺失的 alt 填一个占位字符串，
+                   拿它当描述显示，页面上就会冒出一个既不是描述也不像提示的「未知」。
+                   alt 只用来当图片的 alt 属性，不参与正文 -->
               <p class="showcase-desc">
-                {{ mainItem.description || mainItem.alt || "欢迎" }}
+                {{ mainItem.description || "暂无描述" }}
               </p>
             </div>
           </div>
@@ -282,9 +285,11 @@ const {
  * resolveBgm 对它们返回的是它们自己的 src，而它们已经有可见播放器了，
  * 再起一个隐藏元素就是同一个文件两路解码、两路出声，且隐藏那路没有控件、停不掉。
  *
- * ⚠️ 现状：主展示读的是类型表（photo/gif/video/music），
- * 而 bgm 列只存在于 gallery 表 —— 类型表一个 bgm 字段都没有。
- * 所以这一支目前**不会真的起播**，等后端把 gallery 的 bgm 按 src 关联进来才有数据。
+ * ⚠️ 这一支**真的会起播**：bgm 列只在 gallery 表，但后端 getFullItem 已经按 src
+ * 关联了那张表，把 bgmSrc / bgmType 一起下发。所以主展示配了曲子的项确实会响。
+ *
+ * 离开首页时不用手动停 —— useGalleryBgm 在宿主销毁时会自己收尾。
+ * 之前没有那道收尾，点「详情」跳走后这一路会留在后台一直响。
  */
 watch(
   () => [mainItem.value?.src, mainItem.value?.bgmSrc, mainItem.value?.bgmType],

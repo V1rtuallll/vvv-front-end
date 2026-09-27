@@ -127,6 +127,33 @@ describe("Home 页面信息栏", () => {
     expect(wrapper.find(".uploader-name").text()).toContain("uploader");
   });
 
+  /**
+   * 没有描述时说「暂无描述」。alt 里的占位词不能顶上来 ——
+   * 服务端会给缺失的 alt 填一个占位字符串，把它当描述显示，
+   * 页面上就会出现一个既不是描述、也不像提示的「未知」
+   */
+  it("主展示没有描述时显示暂无描述，不被 alt 占位词顶替", () => {
+    const original = useHomeContent().mainItem.value;
+    useHomeContent().mainItem.value = { ...original, description: null, alt: "未知" };
+
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".showcase-desc").text()).toBe("暂无描述");
+
+    useHomeContent().mainItem.value = original;
+  });
+
+  it("有描述时照实显示描述本身", () => {
+    const original = useHomeContent().mainItem.value;
+    useHomeContent().mainItem.value = { ...original, description: "一段真实的描述", alt: "未知" };
+
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".showcase-desc").text()).toBe("一段真实的描述");
+
+    useHomeContent().mainItem.value = original;
+  });
+
   it("画廊渲染列表里的每一张卡，每张都带顶部条、信息栏和底部条", async () => {
     stubHover(true);
 
