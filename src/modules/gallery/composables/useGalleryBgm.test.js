@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { effectScope } from "vue";
 
 import { getActiveBgmElement, resolveBgm, useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 import { pauseForBgm, registerPlayerAudio } from "@/modules/player/composables/useAudioPlayer";
@@ -37,16 +38,26 @@ function fakeElement(tag) {
   };
 }
 
-/** 造一个 composable，并记下它建过哪些元素（顺序就是建的顺序） */
-function mountBgm({ playerPaused = true } = {}) {
+/**
+ * 造一个 composable，并记下它建过哪些元素（顺序就是建的顺序）。
+ *
+ * 传 `scope` 就在那个作用域里建 —— 组件卸载等同于作用域停止，
+ * 「宿主没了之后这一路还在不在响」只能这样验。
+ */
+function mountBgm({ playerPaused = true, scope = null } = {}) {
   const created = [];
   const player = { paused: playerPaused, pause: vi.fn(), play: vi.fn(() => Promise.resolve()) };
   registerPlayerAudio(player);
-  const bgm = useGalleryBgm((tag) => {
-    const el = fakeElement(tag);
-    created.push(el);
-    return el;
-  });
+  let bgm;
+  const build = () => {
+    bgm = useGalleryBgm((tag) => {
+      const el = fakeElement(tag);
+      created.push(el);
+      return el;
+    });
+  };
+  if (scope) scope.run(build);
+  else build();
   return { bgm, created, player };
 }
 
@@ -649,5 +660,46 @@ describe("正在发声的元素", () => {
 
     bgm.stop();
     expect(getActiveBgmElement()).toBe(null);
+  });
+});
+
+/**
+ * 宿主没了之后的收尾。
+ *
+ * 这个 composable 的媒体元素是 `createElement` 建的、**从不进 DOM**：它没有原生控件，
+ * 组件一被摘掉，用户就没有任何地方能把它关掉。
+ *
+ * 首页主展示就是这么漏的：它自己有一条 BGM，点「详情」跳走时组件卸载了，曲子却留在
+ * 后台一直响；到的详情页又起了第二路，于是两首叠着放，其中一路谁也停不掉。
+ */
+describe("useGalleryBgm 在宿主销毁时", () => {
+  it("停掉自己那一路，不留下没有控件的声音", () => {
+    const scope = effectScope();
+    const { bgm, created } = mountBgm({ scope });
+    bgm.play(PHOTO_WITH_BGM);
+
+    scope.stop();
+
+    expect(created[0].pause).toHaveBeenCalled();
+    expect(getActiveBgmElement()).toBe(null);
+  });
+
+  /**
+   * 槽位不交回的话，后一个实例会把那个已经没了的实例当成「被自己按下去的」，
+   * 等它自己停止时再 .resume() 一次 —— 已经没有人持有的声音又被放起来，
+   * 这正是「有一路关不掉」的来路。
+   */
+  it("把槽位交回去，后一个实例停止时不会把已经没了的那个重新放起来", () => {
+    const scope = effectScope();
+    const { bgm, created } = mountBgm({ scope });
+    bgm.play(PHOTO_WITH_BGM);
+    scope.stop();
+
+    const { bgm: next } = mountBgm();
+    next.play(PHOTO_WITH_BGM);
+    next.stop();
+
+    // 只在最初起播时响过一次；再被 play 一次就说明它被复活了
+    expect(created[0].play).toHaveBeenCalledTimes(1);
   });
 });

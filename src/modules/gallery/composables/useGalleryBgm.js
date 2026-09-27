@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { getCurrentScope, onScopeDispose, ref } from "vue";
 
 import {
   registerMediaElement,
@@ -33,10 +33,13 @@ export function resolveBgm(item) {
 /**
  * 当前正在发声的实例（composable 的返回对象）。`null` 表示没有实例在响。
  *
- * **同一时刻只准一个实例出声。** 全站有两个实例：详情弹窗一个、编辑弹窗里的
- * 选择器一个。两个实例各建各的媒体元素，而 `pauseForBgm` 只管侧栏 ——
+ * **同一时刻只准一个实例出声。** 全站有三个实例：首页主展示一个、详情弹窗一个、
+ * 编辑弹窗里的选择器一个。三个实例各建各的媒体元素，而 `pauseForBgm` 只管侧栏 ——
  * 详情弹窗开着时从它里面打开编辑弹窗试听，详情弹窗的曲子不会停，两路音频
  * 就会一起响，且没有控件解释多出来的那一路。
+ *
+ * 第 3 个实例（首页）是后加的，加的时候这里还写着「两个」—— 可见这个数字本身
+ * 不是重点，谁建了元素谁就要负责收尾，见 `onScopeDispose`。
  */
 let soundingInstance = null;
 
@@ -238,5 +241,23 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
   // 正占着那个槽位。`stop` / `playSource` 在源码顺序上先于它，但它们都在本函数
   // 返回之后才被调用，那时 api 已经就位
   const api = { activeBgm, activeId, paused, play, playSource, stop, pause, resume, toggle };
+
+  /**
+   * 宿主组件销毁时停掉自己这一路。
+   *
+   * 少了这一句，那个用 `createElement` 建的、**从不进 DOM** 的元素会一直响下去：
+   * 它没有原生控件，组件也没了，用户没有任何地方能把它关掉。首页主展示就是这么漏的
+   * ——它自己配了一条 BGM，点「详情」跳走时组件被摘掉，曲子留在后台；
+   * 详情页又起了第二路，两首叠着放，其中一路谁也停不掉。
+   *
+   * 更要紧的是收尾里那一步：把 `soundingInstance` 交回 `null`。不交的话，
+   * 后一个实例会把这个已经没了的实例当成「被自己按下去的」，等它自己停止时
+   * 再 `resume()` 一次，把已经没有人持有的声音重新放起来。
+   *
+   * 判一下作用域：这个 composable 也允许在组件之外直接用（单元测试就是这么用的），
+   * 那种场合没有作用域可以挂，`onScopeDispose` 会警告
+   */
+  if (getCurrentScope()) onScopeDispose(stop);
+
   return api;
 }
