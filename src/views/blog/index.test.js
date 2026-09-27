@@ -46,10 +46,18 @@ describe("Blog 列表页", () => {
   });
 
   it("未登录没有写作入口，登录后有且指向编辑器", async () => {
-    expect((await mountPage()).wrapper.find(".blog-write-btn").exists()).toBe(false);
+    expect((await mountPage()).wrapper.find(".list-action").exists()).toBe(false);
 
     signIn(true);
-    expect((await mountPage()).wrapper.find(".blog-write-btn").attributes("href")).toBe("/blog/editor");
+    expect((await mountPage()).wrapper.find(".list-action").attributes("href")).toBe("/blog/editor");
+  });
+
+  /** 页头是 blog 与 gallery 共用的那一个，两边不该再各长各的 */
+  it("页头用共用组件：标题加小字说明", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".list-title").text()).toBe("Blog");
+    expect(wrapper.find(".list-subtitle").text()).toBe("Share ur opinion.");
   });
 
   it("卡片链接指向详情页", async () => {

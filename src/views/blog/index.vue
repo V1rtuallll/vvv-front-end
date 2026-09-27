@@ -1,14 +1,14 @@
 <template>
   <div class="blog-wrapper">
-    <header class="blog-header">
-      <div class="header-content">
-        <h1 class="blog-title">Blog</h1>
-      </div>
-      <div class="header-right">
-        <!-- 与 gallery 的上传按钮同一条可见性规则：入口隐藏只是显示逻辑，接口自己校验权限 -->
-        <router-link v-if="authStore.isLoggedIn" to="/blog/editor" class="crt-btn blog-write-btn">Write something</router-link>
-      </div>
-    </header>
+    <!-- 与 gallery 同一套页头：标题、小字说明、当前用户与主操作都由 ListHeader 管，
+         两个页面因此不会各长各的。未登录时右侧整块不渲染，接口自己校验权限 -->
+    <ListHeader
+      title="Blog"
+      subtitle="Share ur opinion."
+      :user="authStore.user"
+      action-label="Write something"
+      action-to="/blog/editor"
+    />
 
     <main class="blog-list">
       <router-link
@@ -35,6 +35,7 @@
 </template>
 
 <script setup>
+import ListHeader from "@/components/ListHeader.vue";
 import Pagination from "@/components/Pagination.vue";
 import { useBlogList } from "@/modules/blog/composables/useBlogList";
 import BlogCard from "@/views/blog/components/BlogCard.vue";

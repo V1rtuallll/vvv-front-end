@@ -516,6 +516,23 @@ describe("Gallery 卡片的媒体张数", () => {
   });
 });
 
+describe("Gallery 页面的页头", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
+  });
+
+  /** 页头是 blog 与 gallery 共用的那一个，两边不该再各长各的 */
+  it("页头用共用组件：标题加小字说明", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".list-title").text()).toBe("Gallery");
+    expect(wrapper.find(".list-subtitle").text()).toBe("Share ur memory.");
+  });
+});
+
 describe("Gallery 页面的页码", () => {
   beforeEach(() => {
     vi.clearAllMocks();

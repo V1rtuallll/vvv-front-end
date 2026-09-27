@@ -8,62 +8,8 @@
   color: #2f3b47;
 }
 
-/* 头部 */
-.gallery-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 60px;
-  padding: 0 20px;
-  /* 面板边带的点阵会盖住标题文字，抬一层压住它 */
-  position: relative;
-  z-index: 1;
-}
-.header-content {
-  text-align: left;
-}
-.gallery-title {
-  font-size: 3.2rem;
-  margin: 0 0 15px 0;
-}
-.gallery-subtitle {
-  font-size: 1.3rem;
-  color: #54636f;
-  margin: 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 30px;
-  margin-top: 20px;
-}
-.current-user {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.user-avatar {
-  width: 120px;
-  height: 120px;
-  border: 1px solid #ff69b4;
-  object-fit: cover;
-  object-position: center;
-  flex-shrink: 0;
-}
-.user-name {
-  font-size: 1.3rem;
-  color: #c2185b;
-  font-weight: bold;
-}
-.upload-btn {
-  padding: 15px 38px;
-  font-size: 1.4rem;
-  background: #0277bd;
-  border: 1px solid #01579b;
-  border-radius: 4px;
-  color: #ffffff;
-  cursor: pointer;
-}
+/* 页头的样式与结构都在 components/ListHeader.vue 里。
+   它和 blog 共用同一个组件，这样两个页面不会各长各的字号与间距 */
 
 /* 网格：一行两个卡片 */
 .gallery-grid {
@@ -290,42 +236,6 @@
 }
 
 @media (max-width: 768px) {
-  .gallery-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 20px;
-    margin-bottom: 36px;
-  }
-
-  .gallery-title {
-    font-size: 2.2rem;
-  }
-
-  .gallery-subtitle {
-    font-size: 1.1rem;
-  }
-
-  .header-right {
-    margin-top: 0;
-  }
-
-  .current-user {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .user-avatar {
-    width: 72px;
-    height: 72px;
-  }
-
-  .upload-btn {
-    /* 触摸目标不小于 44px */
-    min-height: 44px;
-    padding: 12px 28px;
-    font-size: 1.2rem;
-  }
-
   .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
@@ -382,24 +292,6 @@
 @media (max-width: 480px) {
   .gallery-wrapper {
     padding: 20px 0;
-  }
-
-  .gallery-header {
-    margin-bottom: 24px;
-    padding: 0 12px;
-  }
-
-  .gallery-title {
-    font-size: 1.8rem;
-  }
-
-  .user-avatar {
-    width: 56px;
-    height: 56px;
-  }
-
-  .user-name {
-    font-size: 1.1rem;
   }
 
   /* 手机端单列 */

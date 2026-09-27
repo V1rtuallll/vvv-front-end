@@ -3,26 +3,8 @@
   margin: 0 auto;
 }
 
-.blog-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 0 26px;
-  border-bottom: 1px solid #b9c4cc;
-  /* 同上：面板边带的点阵会盖住标题文字，抬一层压住它 */
-  position: relative;
-  z-index: 1;
-}
-
-.blog-title {
-  margin: 0;
-  color: #000000;
-  font-family: "Michroma", "Rajdhani", sans-serif;
-  font-size: 1.8rem;
-  letter-spacing: 2px;
-}
+/* 页头的样式与结构都在 components/ListHeader.vue 里。
+   它和 gallery 共用同一个组件，这样两个页面不会各长各的字号与间距 */
 
 /* 单列：卡片本身是横着的，再分栏会把每条挤得很窄 */
 .blog-list {
@@ -55,10 +37,6 @@
 }
 
 @media (max-width: 768px) {
-  .blog-title {
-    font-size: 1.6rem;
-  }
-
   .blog-list {
     grid-template-columns: 1fr;
     gap: 18px;

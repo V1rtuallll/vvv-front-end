@@ -1,18 +1,12 @@
 <template>
   <div class="gallery-wrapper">
-    <header class="gallery-header">
-      <div class="header-content">
-        <h1 class="gallery-title">Gallery</h1>
-        <p class="gallery-subtitle">Share ur memory.</p>
-      </div>
-      <div class="header-right">
-        <div v-if="authStore.isLoggedIn" class="current-user">
-          <img :src="authStore.user.avatar || '/default-avatar.gif'" alt="头像" class="user-avatar" />
-          <span class="user-name">@{{ authStore.user.username }}</span>
-          <button @click="openUploadModal" class="crt-btn upload-btn">Upload</button>
-        </div>
-      </div>
-    </header>
+    <ListHeader
+      title="Gallery"
+      subtitle="Share ur memory."
+      :user="authStore.user"
+      action-label="Upload"
+      @action="openUploadModal"
+    />
 
     <!-- 上传 / 编辑 / 换文件的进度就显示在头像下面，不是浮层。
          全部跑完之后出现「关闭」，用户自己决定什么时候把它收掉。 -->
@@ -147,6 +141,7 @@ import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import ListHeader from "@/components/ListHeader.vue";
 import Pagination from "@/components/Pagination.vue";
 import { getGalleryItem } from "@/modules/gallery/api/galleryApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
