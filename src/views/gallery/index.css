@@ -264,27 +264,15 @@
   margin-bottom: 40px;
 }
 
-/* 底部分页 */
+/* 底部分页。页码条的外层观感 —— flex 布局与按钮样式都在 components/Pagination.vue 里，
+   这里只放本页自己的外边距与配色：两边写同一批属性会互相抢优先级 */
 .bottom-pagination {
   margin: 80px auto 40px;
-  text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 35px;
   font-size: 1.3rem;
   color: #5a5a78;
-  /* 同上：页码按钮与每页条数下拉都落在面板边带里，抬一层压住点阵 */
+  /* 同上：页码条落在面板边带里，抬一层压住点阵 */
   position: relative;
   z-index: 1;
-}
-.page-size-select {
-  background: #ffffff;
-  border: 1px solid #b9c4cc;
-  color: #2f3b47;
-  padding: 12px 25px;
-  border-radius: 4px;
-  font-size: 1.1rem;
 }
 
 /* ==== 窄屏适配 ====
@@ -383,30 +371,11 @@
     margin-bottom: 24px;
   }
 
-  /* 分页与每页条数换行排列，避免超出视口 */
   .bottom-pagination {
-    flex-wrap: wrap;
-    gap: 12px;
     margin: 40px auto 24px;
-    font-size: 1.1rem;
     padding: 0 16px;
     box-sizing: border-box;
-  }
-
-  .page-size-select {
-    min-height: 44px;
-    padding: 10px 18px;
-  }
-
-  /* 触摸目标不小于 44px */
-  .bottom-pagination button {
-    min-height: 44px;
-    padding: 10px 20px;
-    font-size: 1rem;
-  }
-
-  .bottom-pagination button:disabled {
-    opacity: 0.5;
+    font-size: 1.1rem;
   }
 }
 
@@ -444,16 +413,8 @@
   }
 
   .bottom-pagination {
-    gap: 10px;
     font-size: 1rem;
     padding: 0 12px;
-  }
-
-  /* 页码说明单独占一行，排在按钮之后 */
-  .bottom-pagination .page-info {
-    flex: 1 1 100%;
-    order: 1;
-    text-align: center;
   }
 
   .empty-state {

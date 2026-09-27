@@ -75,14 +75,13 @@
       </div>
     </main>
 
-    <nav v-if="total > 0" class="bottom-pagination">
-      <select v-model="limit" @change="changeLimit" class="page-size-select">
-        <option value="4">4 条</option><option value="6">6 条</option><option value="8">8 条</option><option value="10">10 条</option>
-      </select>
-      <button @click="changePage(page - 1)" :disabled="page <= 1" class="crt-mini-btn">上一页</button>
-      <span class="page-info">第 {{ page }} / {{ totalPages }} 页（共 {{ total }} 条）</span>
-      <button @click="changePage(page + 1)" :disabled="page >= totalPages" class="crt-mini-btn">下一页</button>
-    </nav>
+    <Pagination
+      v-if="total > 0"
+      :page="page"
+      :total-pages="totalPages"
+      :total="total"
+      @change="changePage"
+    />
 
     <GalleryUploadDialog
       :visible="showUploadModal"
@@ -148,13 +147,13 @@ import GalleryUploadDialog from "./components/GalleryUploadDialog.vue";
 import GalleryUserProfileDialog from "./components/GalleryUserProfileDialog.vue";
 import UploadQueuePanel from "@/components/UploadQueuePanel.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import Pagination from "@/components/Pagination.vue";
 import { getGalleryItem } from "@/modules/gallery/api/galleryApi";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const {
   authStore,
   page,
-  limit,
   total,
   totalPages,
   galleryList,
@@ -182,7 +181,6 @@ const {
   openUserProfile,
   closeDetail,
   changePage,
-  changeLimit,
   openUploadModal,
   closeUploadModal,
   publishBatch,

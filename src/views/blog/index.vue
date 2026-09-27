@@ -23,15 +23,19 @@
       <p v-if="!loading && blogs.length === 0" class="blog-empty">暂无文章</p>
     </main>
 
-    <nav v-if="total > 0" class="bottom-pagination">
-      <button @click="changePage(page - 1)" :disabled="page <= 1" class="crt-mini-btn">上一页</button>
-      <span class="page-info">第 {{ page }} / {{ totalPages }} 页（共 {{ total }} 篇）</span>
-      <button @click="changePage(page + 1)" :disabled="page >= totalPages" class="crt-mini-btn">下一页</button>
-    </nav>
+    <Pagination
+      v-if="total > 0"
+      :page="page"
+      :total-pages="totalPages"
+      :total="total"
+      unit="篇"
+      @change="changePage"
+    />
   </div>
 </template>
 
 <script setup>
+import Pagination from "@/components/Pagination.vue";
 import { useBlogList } from "@/modules/blog/composables/useBlogList";
 import BlogCard from "@/views/blog/components/BlogCard.vue";
 

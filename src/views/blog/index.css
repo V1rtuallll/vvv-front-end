@@ -46,12 +46,9 @@
   text-align: center;
 }
 
+/* 页码条的外层观感。flex 布局与按钮样式都在 components/Pagination.vue 里，
+   这里只放本页自己的外边距与字体 —— 两边写同一批属性会互相抢优先级 */
 .bottom-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
   padding: 18px 0 40px;
   color: #000000;
   font-family: "Rajdhani", "Courier New", monospace;

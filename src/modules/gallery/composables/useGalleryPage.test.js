@@ -1,5 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryHistory, createRouter } from "vue-router";
 
 vi.mock("@/stores/auth", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/shared/auth/owner", () => ({ isOwner: vi.fn(() => false) }));
@@ -66,17 +67,31 @@ function signIn(id) {
   useAuthStore.mockReturnValue({ user: { id, username: "u" + id }, token: "t" });
 }
 
-async function mountGallery() {
-  let api;
-  mount({
-    setup() {
-      api = useGalleryPage();
-      return () => null;
-    },
+/**
+ * 挂载列表。装真路由：页码要写进 ?page=，而侧栏深链那套逻辑读 route.query.id，
+ * 没有活动路由时 useRoute() 直接抛。
+ */
+async function mountGallery(path = "/gallery") {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: "/gallery", component: { template: "<div />" } }],
   });
+  await router.push(path);
+  await router.isReady();
+
+  let api;
+  mount(
+    {
+      setup() {
+        api = useGalleryPage();
+        return () => null;
+      },
+    },
+    { global: { plugins: [router] } },
+  );
   await flushPromises();
   await flushPromises();
-  return api;
+  return { api, router };
 }
 
 describe("useGalleryPage 的编辑与删除", () => {
@@ -89,14 +104,14 @@ describe("useGalleryPage 的编辑与删除", () => {
   });
 
   it("作者本人看得到编辑和删除入口", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.canManageItem(api.galleryList.value[0])).toBe(true);
   });
 
   it("非作者且非管理员看不到入口", async () => {
     signIn(SOMEONE_ELSE);
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.canManageItem(api.galleryList.value[0])).toBe(false);
   });
@@ -104,20 +119,20 @@ describe("useGalleryPage 的编辑与删除", () => {
   it("管理员看得到任何人的入口", async () => {
     signIn(SOMEONE_ELSE);
     isOwner.mockReturnValue(true);
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.canManageItem(api.galleryList.value[0])).toBe(true);
   });
 
   it("id 是字符串时也能对上（后端 Long 序列化后类型不定）", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.canManageItem({ ...ITEM, userId: String(ME) })).toBe(true);
   });
 
   it("编辑成功后局部更新列表和详情，不重新拉整页", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
     getGalleryPage.mockClear();
@@ -135,7 +150,7 @@ describe("useGalleryPage 的编辑与删除", () => {
   /** 整组媒体与元数据在一个事务里写下去，所以只能是一次请求，不能是「换文件 + 改元数据」两次 */
   it("保存是一个任务，整组只发一次 PUT", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
     api.submitEdit({
@@ -159,7 +174,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("载荷里是最终的有序列表，新文件按同一个次序进 files", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/new.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     const file = new File(["x"], "new.png", { type: "image/png" });
 
     api.openEditModal(api.galleryList.value[0]);
@@ -179,7 +194,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("没有新文件时不带 files 字段", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/a.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.openEditModal(api.galleryList.value[0]);
     api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
@@ -194,7 +209,7 @@ describe("useGalleryPage 的编辑与删除", () => {
    */
   it("载荷里始终带着 BGM 两个字段", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/a.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.openEditModal(api.galleryList.value[0]);
     api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }] });
@@ -207,7 +222,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("编辑失败时不改动已展示的数据，也不重复弹错误", async () => {
     commitGalleryMedia.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
     api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
@@ -225,7 +240,7 @@ describe("useGalleryPage 的编辑与删除", () => {
   it("取消在途的保存会重新拉一次列表", async () => {
     let release;
     commitGalleryMedia.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
     api.submitEdit({ title: "新标题", description: "旧描述", items: [{ mediaId: 11 }, { mediaId: 12 }] });
     await flushPromises();
@@ -247,7 +262,7 @@ describe("useGalleryPage 的编辑与删除", () => {
   it("取消保存后详情与列表的新行一致，两个前端自加的字段不丢", async () => {
     let release;
     commitGalleryMedia.mockImplementation(() => new Promise((resolve) => { release = resolve; }));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
     api.currentItem.value.isLiked = true;
@@ -278,7 +293,7 @@ describe("useGalleryPage 的编辑与删除", () => {
   });
 
   it("标题清空属于本地校验，直接拦下不入队", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
     api.submitEdit({ title: "  ", description: "旧描述", items: [{ mediaId: 11 }] });
@@ -295,7 +310,7 @@ describe("useGalleryPage 的编辑与删除", () => {
    */
   it("作品没有媒体记录时属于本地校验，直接拦下不入队", async () => {
     getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM }], total: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openEditModal(api.galleryList.value[0]);
 
     api.submitEdit({ title: "新标题", description: "旧描述", items: [] });
@@ -311,7 +326,7 @@ describe("useGalleryPage 的编辑与删除", () => {
    */
   it("保存后封面与 media 一起更新，详情不会停在旧封面", async () => {
     commitGalleryMedia.mockResolvedValue({ data: savedWithCover("https://example.test/b.png") });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
 
@@ -346,7 +361,7 @@ describe("useGalleryPage 的编辑与删除", () => {
       },
     });
 
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.galleryList.value[0].src).toBe("https://example.test/cover.png");
     expect(api.galleryList.value[0].type).toBe("photo");
@@ -354,7 +369,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("删除成功后从列表移除，并在当前页被删空时回退补数据", async () => {
     deleteGallery.mockResolvedValue({ data: {} });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.requestDeleteItem(api.galleryList.value[0]);
     await api.confirmDelete();
@@ -366,7 +381,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("删除父评论时连子孙一起从界面移除，并同步评论计数", async () => {
     deleteComment.mockResolvedValue({ data: {} });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.currentItem.value = { ...ITEM };
     api.comments.value = [
       { id: 1, parentId: null },
@@ -386,7 +401,7 @@ describe("useGalleryPage 的编辑与删除", () => {
 
   it("删除失败时保留原数据且不重复弹错误", async () => {
     deleteGallery.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.requestDeleteItem(api.galleryList.value[0]);
     await api.confirmDelete();
@@ -405,7 +420,7 @@ describe("useGalleryPage 的编辑与删除", () => {
         bgmTitle: "新曲子",
       },
     });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openDetailModal(api.galleryList.value[0]);
     await flushPromises();
 
@@ -434,7 +449,7 @@ describe("useGalleryPage 的日期显示", () => {
 
   /** new Date(null) 会得到 1970-01-01 —— 界面会显示一个像真日期的错误时间 */
   it("时间为空时显示未知时间，而不是 1970 年", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.formatShortDate(null)).toBe("未知时间");
     expect(api.formatShortDate(undefined)).toBe("未知时间");
@@ -442,14 +457,14 @@ describe("useGalleryPage 的日期显示", () => {
   });
 
   it("时间无法解析时也显示未知时间", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.formatShortDate("不是时间")).toBe("未知时间");
     expect(api.formatDate("不是时间")).toBe("未知时间");
   });
 
   it("正常时间照常格式化", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     expect(api.formatShortDate("2026-09-13T15:57:41")).toBe(
       new Date("2026-09-13T15:57:41").toLocaleDateString("zh-CN"),
@@ -461,7 +476,7 @@ describe("useGalleryPage 的评论回复", () => {
   const COMMENT = { id: 1, username: "甲", parentId: null, createdAt: "2026-01-01T10:00:00" };
 
   async function openItem() {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.currentItem.value = { ...ITEM };
     return api;
   }
@@ -605,7 +620,7 @@ describe("useGalleryPage 的评论加载失败", () => {
   const COMMENT = { id: 1, username: "甲", parentId: null, content: "你好", createdAt: "2026-01-01T10:00:00" };
 
   async function openItem() {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     await api.openDetailModal(api.galleryList.value[0]);
     return api;
   }
@@ -707,7 +722,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("一次发表只产生一个资源", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1, status: "success" } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["月光.png"], { title: "月光", description: "描述" }));
     await flushPromises();
@@ -718,7 +733,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("发表时带上这一份标题与描述", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["a.png"], { title: "我的标题", description: "我的描述" }));
     await flushPromises();
@@ -730,7 +745,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("标题留空时按文件名兜底", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["月光.png"], { title: "", description: "" }));
     await flushPromises();
@@ -740,7 +755,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("连续发表多个会各自入队并发跑", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["a.png"]));
     api.publishBatch(batch(["b.png"]));
@@ -752,7 +767,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("大小上限提示来自后端配置，前端不写死", async () => {
     getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 20 * 1024 * 1024 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.openUploadModal();
     await flushPromises();
@@ -763,7 +778,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("发表后关掉弹窗，把舞台交给页面里的进度面板", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.openUploadModal();
     expect(api.showUploadModal.value).toBe(true);
 
@@ -777,7 +792,7 @@ describe("useGalleryPage 的上传队列", () => {
   /** 重新打开弹窗只是为了看进度，不能把正在跑的任务清掉 */
   it("上传进行中重新打开弹窗不会清空队列", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
@@ -791,7 +806,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("上传成功后自动刷新列表，立刻能看到刚传的内容", async () => {
     let release;
     uploadGalleryFile.mockReturnValue(new Promise((resolve) => { release = resolve; }));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.publishBatch(batch(["月光.png"], { title: "月光" }));
     await flushPromises();
 
@@ -808,7 +823,7 @@ describe("useGalleryPage 的上传队列", () => {
   it("多个上传一起跑完时只刷新一次", async () => {
     const pending = [];
     uploadGalleryFile.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.publishBatch(batch(["a.png"]));
     api.publishBatch(batch(["b.png"]));
     await flushPromises();
@@ -826,7 +841,7 @@ describe("useGalleryPage 的上传队列", () => {
   /** 失败的任务什么都没产生，不该白拉一次列表 */
   it("上传全部失败时不刷新列表", async () => {
     uploadGalleryFile.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["a.png"]));
     await flushPromises();
@@ -838,7 +853,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("上传还在进行时关闭弹窗会先确认", async () => {
     uploadGalleryFile.mockReturnValue(new Promise(() => {}));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
     api.publishBatch(batch(["a.png"]));
     await flushPromises();
 
@@ -853,7 +868,7 @@ describe("useGalleryPage 的上传队列", () => {
   /** 随图配的曲子要真的跟着这一次请求走，否则用户以为配好了、详情里却静默无声 */
   it("发表时把背景音乐一起提交", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["a.png"], {
       bgm: { src: "https://cdn.example.test/music/a.mp3", type: "audio" },
@@ -867,7 +882,7 @@ describe("useGalleryPage 的上传队列", () => {
 
   it("不配背景音乐时两个字段都不出现", async () => {
     uploadGalleryFile.mockResolvedValue({ data: { id: 1 } });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch(batch(["a.png"]));
     await flushPromises();
@@ -895,7 +910,7 @@ describe("useGalleryPage 的多选上传", () => {
   });
 
   it("第一个文件建作品，其余的都追加到这个作品下", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch({ files: entries("a.png", "b.png", "c.png"), title: "组图", description: "三张" });
     await flushPromises();
@@ -909,7 +924,7 @@ describe("useGalleryPage 的多选上传", () => {
   });
 
   it("追加请求只带文件与幂等键", async () => {
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch({ files: entries("a.png", "b.png") });
     await flushPromises();
@@ -934,7 +949,7 @@ describe("useGalleryPage 的多选上传", () => {
       sent.push(formData.get("file").name);
       return new Promise((resolve) => pending.push(resolve));
     });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch({ files: entries("a.png", "b.png", "c.png", "d.png") });
     await flushPromises();
@@ -953,7 +968,7 @@ describe("useGalleryPage 的多选上传", () => {
   /** 没有作品行，后面的文件无处可加：整批失败，而且原因要写清楚 */
   it("封面失败时整批失败，后面的文件不会去追加", async () => {
     uploadGalleryFile.mockRejectedValue(new Error("网络错误，请稍后重试"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch({ files: entries("a.png", "b.png", "c.png") });
     await flushPromises();
@@ -969,7 +984,7 @@ describe("useGalleryPage 的多选上传", () => {
     let releaseUpload;
     const pendingUpload = new Promise((resolve) => { releaseUpload = resolve; });
     uploadGalleryFile.mockImplementation(() => pendingUpload);
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     // 先把三个并发位占满，第四个批次的封面才排得上队
     api.publishBatch({ files: entries("x1.png") });
@@ -1002,7 +1017,7 @@ describe("useGalleryPage 的多选上传", () => {
     uploadGalleryFile
       .mockRejectedValueOnce(new Error("网络错误，请稍后重试"))
       .mockImplementationOnce(() => new Promise((resolve) => { releaseCover = resolve; }));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     api.publishBatch({ files: entries("a.png", "b.png") });
     await flushPromises();
@@ -1035,7 +1050,7 @@ describe("useGalleryPage 的多选上传", () => {
       sent.push(formData.get("file").name);
       return new Promise((resolve) => pending.push(resolve));
     });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     // 五个任务抢三个并发位：封面与前两个追加在跑，后两个还在排队
     api.publishBatch({ files: entries("a.png", "b.png", "c.png", "d.png", "e.png") });
@@ -1071,7 +1086,7 @@ describe("useGalleryPage 的用户资料弹窗", () => {
   it("读到资料时用服务端返回的内容，并打开弹窗", async () => {
     const profile = { id: 3, username: "甲", sex: "FEMALE", description: "你好", createdAt: "2025-01-02T03:04:05" };
     getPublicUser.mockResolvedValue({ data: profile });
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     await api.openUserProfile(3, "甲");
 
@@ -1086,7 +1101,7 @@ describe("useGalleryPage 的用户资料弹窗", () => {
    */
   it("读不到资料时不编造任何字段", async () => {
     getPublicUser.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     await api.openUserProfile(9, "查无此人");
 
@@ -1099,7 +1114,7 @@ describe("useGalleryPage 的用户资料弹窗", () => {
 
   it("读不到资料时弹窗照常打开，由弹窗说明情况", async () => {
     getPublicUser.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     await api.openUserProfile(9, "查无此人");
 
@@ -1108,10 +1123,69 @@ describe("useGalleryPage 的用户资料弹窗", () => {
 
   it("读不到资料时不重复弹提示（request.js 已经弹过后端消息）", async () => {
     getPublicUser.mockRejectedValue(new Error("boom"));
-    const api = await mountGallery();
+    const { api } = await mountGallery();
 
     await api.openUserProfile(9, "查无此人");
 
     expect(window.$vmessage.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("useGalleryPage 的页码", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isOwner.mockReturnValue(false);
+    signIn(ME);
+    getGalleryPage.mockResolvedValue({ data: { list: [{ ...WORK }], total: 13 } });
+    getGalleryComments.mockResolvedValue({ data: [] });
+  });
+
+  it("挂载即按第一页 6 条加载", async () => {
+    const { api } = await mountGallery();
+
+    expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 6 });
+    expect(api.totalPages.value).toBe(3);
+  });
+
+  it("地址里带着页码时直接落在那一页", async () => {
+    const { api } = await mountGallery("/gallery?page=2");
+
+    expect(getGalleryPage).toHaveBeenCalledWith({ page: 2, limit: 6 });
+    expect(api.page.value).toBe(2);
+  });
+
+  it("翻页把页码写进地址并重新请求", async () => {
+    const { api, router } = await mountGallery();
+
+    api.changePage(3);
+    await flushPromises();
+
+    expect(getGalleryPage).toHaveBeenLastCalledWith({ page: 3, limit: 6 });
+    expect(router.currentRoute.value.query.page).toBe("3");
+  });
+
+  /** 侧栏深链带的是 ?id=，翻页不能把它冲掉，否则弹窗会被误关 */
+  it("翻页保留地址里的深链参数", async () => {
+    const { api, router } = await mountGallery("/gallery?id=100");
+
+    api.changePage(2);
+    await flushPromises();
+
+    expect(router.currentRoute.value.query).toEqual({ id: "100", page: "2" });
+  });
+
+  it("地址里的页码超出现有页数时收敛到最后一页", async () => {
+    const { api, router } = await mountGallery("/gallery?page=99");
+
+    expect(getGalleryPage).toHaveBeenLastCalledWith({ page: 3, limit: 6 });
+    expect(api.page.value).toBe(3);
+    expect(router.currentRoute.value.query.page).toBe("3");
+  });
+
+  it("每页条数固定，不再暴露修改入口", async () => {
+    const { api } = await mountGallery();
+
+    expect(api.changeLimit).toBeUndefined();
+    expect(api.limit).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@ import { coverOf } from "@/modules/gallery/media";
 import { TASK_KIND, UPLOAD_STATUS, useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
 import { formatBytes } from "@/utils/bytes";
 import { formatDate, formatShortDate } from "@/utils/DateUtil";
+import { usePageQuery } from "@/utils/usePageQuery";
 import {
   appendGalleryMedia,
   cancelUpload,
@@ -29,15 +30,21 @@ const isSameId = (left, right) => left != null && right != null && String(left) 
 // 上传任务不会再变的三个状态：任务停在其中一个就说明已有结果
 const SETTLED_STATUS = [UPLOAD_STATUS.SUCCESS, UPLOAD_STATUS.FAILED, UPLOAD_STATUS.CANCELLED];
 
+/** 每页条数。后端 PageParams 的上限是 100，这里按画廊卡片的大小取 6 */
+const PAGE_LIMIT = 6;
+
 // 发请求的方法，catch 里只做状态回滚，不弹提示：
 // 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
 export function useGalleryPage() {
   const authStore = useAuthStore();
-  const page = ref(1);
-  const limit = ref(4);
   const total = ref(0);
-  const totalPages = computed(() => Math.ceil(total.value / limit.value));
+  const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_LIMIT)));
   const galleryList = ref([]);
+
+  // loadGallery 用函数声明写的：这一行要先把「重新取数」交给它，而它要用到下面的 page 与 goTo。
+  // 这里只是把调用延后，真正取数发生在挂载与翻页时，那时几个绑定都已经就位。
+  // 地址是页码的唯一真相源：刷新、后退、把链接发给别人落到的都是同一页
+  const { page, goTo } = usePageQuery(() => loadGallery());
   const showUploadModal = ref(false);
   // 每个文件一个请求、最多 3 个并发；单文件进度与状态都由队列维护
   const uploadQueue = useUploadQueue(uploadGalleryFile, { maxConcurrent: 3 });
@@ -86,15 +93,19 @@ export function useGalleryPage() {
     return { ...row, src: cover.src, type: cover.type };
   };
 
-  const loadGallery = async () => {
+  async function loadGallery() {
     try {
-      const res = await getGalleryPage({ page: page.value, limit: limit.value });
+      const res = await getGalleryPage({ page: page.value, limit: PAGE_LIMIT });
       galleryList.value = (res.data.list || []).map(withCoverFromMedia);
       total.value = res.data.total || 0;
+      // 地址里的页码超出现有页数（手改地址，或作品删到不够页了）时退到最后一页再取一次，
+      // 否则页面会停在一张空白列表上。收敛后的页码必然落在范围内，不会再递归。
+      // 放在 try 里面：取数失败时总数还是上一轮的，据此改页码可能改错
+      if (page.value > totalPages.value) goTo(totalPages.value, { replace: true });
     } catch {
       // 提示由 request.js 负责
     }
-  };
+  }
 
   // 详情弹窗只拿到 currentItem 与评论线程，失败标记随 currentItem 一起带进去。
   // currentItem 为空（详情已经关掉）时没有可标记的对象，直接跳过
@@ -232,13 +243,7 @@ export function useGalleryPage() {
 
   const changePage = (nextPage) => {
     if (nextPage < 1 || nextPage > totalPages.value) return;
-    page.value = nextPage;
-    loadGallery();
-  };
-
-  const changeLimit = () => {
-    page.value = 1;
-    loadGallery();
+    goTo(nextPage);
   };
 
   const clearUploadQueue = () => {
@@ -589,10 +594,11 @@ export function useGalleryPage() {
       total.value = Math.max(0, total.value - 1);
     }
     if (isSameId(currentItem.value?.id, id)) closeDetail();
-    // 当前页被删空时回退到最后一个有效页补数据，避免留下空白页
+    // 当前页被删空时回退到最后一个有效页补数据，避免留下空白页。
+    // 走 goTo 而不是直接写 page：地址栏也要跟着改，否则内容与地址对不上；
+    // replace 则是因为这次跳转不是用户点出来的，不该在历史里留下一条记录
     if (galleryList.value.length === 0 && total.value > 0) {
-      page.value = Math.min(page.value, Math.max(1, Math.ceil(total.value / limit.value)));
-      loadGallery();
+      goTo(Math.min(page.value, totalPages.value), { replace: true });
     }
   };
 
@@ -662,9 +668,9 @@ export function useGalleryPage() {
     clearUploadQueue();
   });
   return {
-    authStore, page, limit, total, totalPages, galleryList, showUploadModal,
+    authStore, page, total, totalPages, galleryList, showUploadModal,
     currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
-    closeDetail, changePage, changeLimit, openUploadModal, closeUploadModal, publishBatch, toggleLike, openDetailModal,
+    closeDetail, changePage, openUploadModal, closeUploadModal, publishBatch, toggleLike, openDetailModal,
     postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
     formatDate, formatShortDate,
     expandedThreads, isThreadExpanded, toggleThread,

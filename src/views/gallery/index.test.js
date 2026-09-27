@@ -327,9 +327,9 @@ describe("Gallery 页面的侧栏深链", () => {
     await wrapper.find(".detail-modal .close-btn").trigger("click");
     await flushPromises();
 
-    // 重拉一次列表，回来的数据里带着刚才那一条
+    // 翻到第 2 页触发一次重拉，回来的数据里带着刚才那一条
     getGalleryPage.mockResolvedValue({ data: { list: [{ ...ITEM, id: 100, title: "月光" }], total: 9 } });
-    await wrapper.find(".page-size-select").setValue("6");
+    await wrapper.findAll(".page-numbers button")[1].trigger("click");
     await flushPromises();
 
     expect(wrapper.find(".modal-overlay").exists()).toBe(false);
@@ -513,5 +513,50 @@ describe("Gallery 卡片的媒体张数", () => {
     const { wrapper } = await mountPage();
 
     expect(wrapper.find(".card-media-count").exists()).toBe(false);
+  });
+});
+
+describe("Gallery 页面的页码", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.mockReturnValue({ user: { id: 7, username: "u7" }, token: "t" });
+    getGalleryComments.mockResolvedValue({ data: [] });
+    getUploadLimit.mockResolvedValue({ data: { maxFileSizeBytes: 1024 } });
+    getGalleryPage.mockResolvedValue({ data: { list: [ITEM], total: 13 } });
+  });
+
+  /** 每页条数固定，页面上不该再有修改它的入口 */
+  it("按每页 6 条加载，且没有每页条数的下拉框", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(getGalleryPage).toHaveBeenCalledWith({ page: 1, limit: 6 });
+    expect(wrapper.find(".page-size-select").exists()).toBe(false);
+  });
+
+  it("把页码渲染成可点的按钮，并标出当前页", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.findAll(".page-numbers button").map((button) => button.text()))
+      .toEqual(["1", "2", "3"]);
+    expect(wrapper.find('[aria-current="page"]').text()).toBe("1");
+  });
+
+  it("点页码翻到那一页，并把页码写进地址", async () => {
+    const { wrapper, router } = await mountPage();
+
+    await wrapper.findAll(".page-numbers button")[1].trigger("click");
+    await flushPromises();
+
+    expect(getGalleryPage).toHaveBeenLastCalledWith({ page: 2, limit: 6 });
+    expect(router.currentRoute.value.query.page).toBe("2");
+  });
+
+  it("一件作品都没有时不显示页码条", async () => {
+    getGalleryPage.mockResolvedValue({ data: { list: [], total: 0 } });
+
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".bottom-pagination").exists()).toBe(false);
+    expect(wrapper.find(".empty-state").exists()).toBe(true);
   });
 });
