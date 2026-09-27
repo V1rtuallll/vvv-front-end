@@ -104,6 +104,59 @@
   transition: height 0.3s ease;
 }
 
+/* 图集翻页控件。取值与画廊详情弹窗那一套保持一致 ——
+   同一个作品在两个地方翻页，按钮的位置、大小与手感都该是同一个 */
+.media-arrow {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  color: #2f3b47;
+  font-size: 1.3rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #b9c4cc;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translateY(-50%);
+  /* 抬一层：媒体是后画上去的，不抬会被压在下面点不到 */
+  z-index: 1;
+}
+
+.media-arrow:hover:not(:disabled) {
+  color: #ffffff;
+  background: #ff69b4;
+  border-color: #ff69b4;
+}
+
+.media-arrow:disabled {
+  color: #b9c4cc;
+  cursor: not-allowed;
+}
+
+.media-arrow-left {
+  left: 16px;
+}
+
+.media-arrow-right {
+  right: 16px;
+}
+
+.media-indicator {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  padding: 2px 12px;
+  color: #ffffff;
+  font-size: 0.8rem;
+  background: rgba(1, 40, 70, 0.55);
+  border-radius: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .showcase-media {
   width: 100%;
   height: auto;
@@ -530,6 +583,25 @@
   .memory-plate {
     padding: 12px;
     margin-bottom: 36px;
+  }
+
+  /* 窄屏收小翻页控件，并把计数往上提一点：媒体变矮后底边离得太近 */
+  .media-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .media-arrow-left {
+    left: 8px;
+  }
+
+  .media-arrow-right {
+    right: 8px;
+  }
+
+  .media-indicator {
+    bottom: 8px;
   }
 
   .showcase-media {

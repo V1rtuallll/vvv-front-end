@@ -26,10 +26,24 @@
             真要根治第 2 条，得像详情弹窗的 BGM 那样，在起播时调
             pauseForBgm() 把侧栏按下去 —— 那是另一处改动，没做。
           -->
+          <!-- 翻页控件与画廊详情弹窗同一套：压在媒体两侧、中间带计数。
+               一条作品只要一张图时不渲染 —— 点了也不会动 -->
+          <button
+            v-if="hasMultipleMedia"
+            class="media-arrow media-arrow-left"
+            :disabled="mediaIndex === 0"
+            aria-label="上一个"
+            @click.stop="showPreviousMedia"
+          ><span class="ui-icon ui-icon-prev"></span></button>
+
+          <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下。
+               用主键而不是地址 —— 两条同地址的媒体用地址当 key 时元素不会重建，
+               上一段视频会继续出声，正是这个 key 要防的事 -->
           <video
-            v-if="mainItem.type === 'video'"
+            v-if="currentMedia.type === 'video'"
+            :key="currentMedia.id ?? currentMedia.src"
             ref="showcaseEl"
-            :src="mainItem.src"
+            :src="currentMedia.src"
             autoplay
             loop
             playsinline
@@ -41,11 +55,22 @@
           />
           <img
             v-else
-            :src="mainItem.src"
+            :key="currentMedia.id ?? currentMedia.src"
+            :src="currentMedia.src"
             :alt="mainItem.alt"
             class="showcase-media"
             @load="onMediaReady"
           />
+
+          <button
+            v-if="hasMultipleMedia"
+            class="media-arrow media-arrow-right"
+            :disabled="mediaIndex >= mediaList.length - 1"
+            aria-label="下一个"
+            @click.stop="showNextMedia"
+          ><span class="ui-icon ui-icon-next"></span></button>
+
+          <span v-if="hasMultipleMedia" class="media-indicator">{{ mediaIndex + 1 }} / {{ mediaList.length }}</span>
         </div>
 
         <!-- 信息栏：常显，不再依赖 hover。左上传信息 + 右标题描述，连同「换一个」都排在一行 -->
@@ -218,6 +243,7 @@ import { useRouter } from "vue-router";
 
 import { useHomeContent } from "@/modules/home/composables/useHomeContent";
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
+import { mediaListOf } from "@/modules/gallery/media";
 import {
   registerMediaElement,
   unregisterMediaElement,
@@ -262,6 +288,49 @@ const onMediaReady = () => {
     el.addEventListener("transitionend", () => { el.style.height = ""; }, { once: true });
   });
 };
+
+/* ---- 主展示的图集翻页 ---- */
+/**
+ * 要翻的媒体列表。取法与画廊详情弹窗共用 mediaListOf ——
+ * 两边各写一份的话，同一个作品会在两个地方翻出不同的条数，而且不报错。
+ * 列表为空（列表接口不带媒体、只有封面）时它退回封面那一条，翻页控件因此不出现。
+ */
+const mediaList = computed(() => mediaListOf(mainItem.value));
+
+/** 当前翻到第几条，从 0 开始 */
+const mediaIndex = ref(0);
+
+const currentMedia = computed(() => mediaList.value[mediaIndex.value]);
+
+/** 只有一条时不渲染翻页控件：点了也不会动 */
+const hasMultipleMedia = computed(() => mediaList.value.length > 1);
+
+/**
+ * 翻页。两端不循环：到头就不再走。边界在这里判一次而不是只靠按钮的 disabled ——
+ * 禁用挡得住鼠标，挡不住直接派发进来的事件，越过边界会让 currentMedia 变成
+ * undefined，整块媒体区渲染报错。
+ */
+const showPreviousMedia = () => {
+  if (mediaIndex.value > 0) mediaIndex.value -= 1;
+};
+
+const showNextMedia = () => {
+  if (mediaIndex.value < mediaList.value.length - 1) mediaIndex.value += 1;
+};
+
+// 换一条作品要把页码归零，否则从第 3 张换到只有 1 张的作品会越界
+watch(() => mainItem.value?.src, () => {
+  mediaIndex.value = 0;
+});
+
+/**
+ * 同一件作品被编辑保存时媒体会删掉几条，media 跟着变短（src 没变，上面那个 watch
+ * 不触发）。页码越过新的长度时 currentMedia 是 undefined，整块媒体区渲染会报错 ——
+ * 回到第一条。
+ */
+watch(() => mediaList.value.length, (length) => {
+  if (mediaIndex.value > length - 1) mediaIndex.value = 0;
+});
 
 /* ---- 视频播放/暂停 ---- */
 // 状态跟着 video 自己的 play/pause 事件走，不自己维护

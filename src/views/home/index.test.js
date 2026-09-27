@@ -465,3 +465,88 @@ describe("Home 主展示的播停开关", () => {
     expect(bgmSpies.stop.mock.calls.length).toBeGreaterThan(stopsBefore);
   });
 });
+
+/**
+ * 主展示的图集翻页。版式与画廊详情弹窗同一套 —— 同一个作品在两个地方
+ * 翻页的手感与判据都该一致，用户不用为同一个操作学两遍。
+ */
+describe("Home 主展示的图集翻页", () => {
+  const 组图 = () => ({
+    type: "photo",
+    src: "/a.jpg",
+    title: "组图",
+    description: "组图描述",
+    uploaderUsername: "uploader",
+    random: true,
+    inGallery: true,
+    media: [
+      { id: 11, src: "/a.jpg", type: "photo" },
+      { id: 12, src: "/b.jpg", type: "photo" },
+      { id: 13, src: "/c.jpg", type: "photo" },
+    ],
+  });
+
+  let original;
+
+  beforeEach(() => {
+    original = useHomeContent().mainItem.value;
+  });
+
+  afterEach(() => {
+    useHomeContent().mainItem.value = original;
+  });
+
+  it("一条作品有多张媒体时显示左右箭头与计数", () => {
+    useHomeContent().mainItem.value = 组图();
+
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".media-arrow-left").exists()).toBe(true);
+    expect(wrapper.find(".media-arrow-right").exists()).toBe(true);
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 3");
+  });
+
+  it("点右箭头翻到下一张，画面跟着换", async () => {
+    useHomeContent().mainItem.value = 组图();
+    const wrapper = mount(HomePage);
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 3");
+    expect(wrapper.find("img.showcase-media").attributes("src")).toBe("/b.jpg");
+  });
+
+  it("第一张时上一张不可用，最后一张时下一张不可用", async () => {
+    useHomeContent().mainItem.value = 组图();
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".media-arrow-left").attributes("disabled")).toBeDefined();
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    expect(wrapper.find(".media-arrow-right").attributes("disabled")).toBeDefined();
+  });
+
+  it("只有一张媒体时不显示翻页控件", () => {
+    useHomeContent().mainItem.value = { ...组图(), media: [{ id: 11, src: "/a.jpg", type: "photo" }] };
+
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".media-arrow-left").exists()).toBe(false);
+    expect(wrapper.find(".media-arrow-right").exists()).toBe(false);
+  });
+
+  /** 不回零的话，从第 3 张换到只有 1 张的作品会越界，整块媒体区渲染报错 */
+  it("换一条作品时页码归零", async () => {
+    useHomeContent().mainItem.value = 组图();
+    const wrapper = mount(HomePage);
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    useHomeContent().mainItem.value = { ...组图(), src: "/z.jpg", media: [{ id: 21, src: "/z.jpg", type: "photo" }] };
+    await nextTick();
+
+    expect(wrapper.find("img.showcase-media").attributes("src")).toBe("/z.jpg");
+    expect(wrapper.find(".media-indicator").exists()).toBe(false);
+  });
+});
