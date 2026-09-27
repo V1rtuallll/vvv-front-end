@@ -17,7 +17,17 @@
 
     <button class="crt-mini-btn page-step" :disabled="page >= totalPages" @click="go(page + 1)">下一页</button>
 
-    <span class="page-info">第 {{ page }} / {{ totalPages }} 页（共 {{ total }} {{ unit }}）</span>
+    <!-- 页码按钮只能翻到附近几页，几十页开外的地方要靠这个下拉直达。
+         它替掉的就是原来那个「当前页」数字，读起来仍然是「第 6 / 20 页」 -->
+    <span class="page-info">
+      第
+      <span class="page-jump">
+        <select :value="page" aria-label="跳转到第几页" @change="jump">
+          <option v-for="n in totalPages" :key="n" :value="n">{{ n }}</option>
+        </select>
+      </span>
+      / {{ totalPages }} 页（共 {{ total }} {{ unit }}）
+    </span>
   </nav>
 </template>
 
@@ -57,6 +67,9 @@ const go = (target) => {
   if (target < 1 || target > props.totalPages || target === props.page) return;
   emit("change", target);
 };
+
+/** 下拉框给的是字符串，转成数字再走同一道闸 —— 越界与同值都挡在 go 里 */
+const jump = (event) => go(Number(event.target.value));
 </script>
 
 <style scoped>
@@ -110,6 +123,20 @@ const go = (target) => {
   text-align: center;
 }
 
+/* 下拉比两侧文字高，不居中会把这行文字顶得往下沉 */
+.page-jump select {
+  min-height: 36px;
+  margin: 0 4px;
+  padding: 4px 8px;
+  color: #2f3b47;
+  background: #ffffff;
+  border: 1px solid #b9c4cc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: inherit;
+  vertical-align: middle;
+}
+
 /* ==== 窄屏适配 ==== */
 @media (max-width: 768px) {
   .bottom-pagination {
@@ -118,7 +145,8 @@ const go = (target) => {
 
   /* 触摸目标不小于 44px */
   .page-step,
-  .page-number {
+  .page-number,
+  .page-jump select {
     min-height: 44px;
   }
 }

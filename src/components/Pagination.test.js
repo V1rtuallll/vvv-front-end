@@ -29,9 +29,34 @@ describe("Pagination", () => {
     expect(current[0].text()).toBe("6");
   });
 
-  it("显示页码与总数，单位跟随 unit", () => {
-    expect(mountPagination().find(".page-info").text()).toBe("第 6 / 20 页（共 118 条）");
-    expect(mountPagination({ unit: "篇" }).find(".page-info").text()).toBe("第 6 / 20 页（共 118 篇）");
+  it("显示当前页与总数，单位跟随 unit", () => {
+    expect(mountPagination().find(".page-info").text()).toContain("/ 20 页（共 118 条）");
+    expect(mountPagination({ unit: "篇" }).find(".page-info").text()).toContain("/ 20 页（共 118 篇）");
+  });
+
+  it("下拉框列出全部页码，并选中当前页", () => {
+    const select = mountPagination().find(".page-jump select");
+
+    expect(select.findAll("option").map((option) => option.text())).toHaveLength(20);
+    expect(select.element.value).toBe("6");
+  });
+
+  /** 页码按钮翻不到几十页以外的地方，下拉是唯一的直达入口 */
+  it("从下拉框选一页就跳到那一页", async () => {
+    const wrapper = mountPagination();
+    const select = wrapper.find(".page-jump select");
+
+    await select.setValue("17");
+
+    expect(wrapper.emitted("change")).toEqual([[17]]);
+  });
+
+  it("从下拉框选当前页不重复请求", async () => {
+    const wrapper = mountPagination();
+
+    await wrapper.find(".page-jump select").setValue("6");
+
+    expect(wrapper.emitted("change")).toBeUndefined();
   });
 
   it("点页码请求跳到那一页", async () => {
