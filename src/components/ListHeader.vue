@@ -105,6 +105,11 @@ defineEmits(["action"]);
 .list-action {
   padding: 15px 38px;
   font-size: 1.4rem;
+  /* 行高必须写死，不能让两边各继承各的：主操作在 blog 是 router-link（<a>），
+     在 gallery 是 <button>。<a> 会继承外层 .page-content 的 line-height: 1.8，
+     而 <button> 被浏览器 UA 样式的 font 简写重置成 normal —— 不写这一句，
+     同一个类在两个页面会渲染成差十几像素的两种高度 */
+  line-height: 1.2;
 }
 
 /* ==== 窄屏适配 ==== */
