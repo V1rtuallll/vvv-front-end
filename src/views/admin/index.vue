@@ -5,6 +5,8 @@
       <main class="crt-content">
         <h2 class="crt-title">✦ 最高指挥中心 ✦</h2>
         <p class="admin-welcome">欢迎回来，V1rtual</p>
+        <!-- 页面右上角原来也挂着这一条，已从那里撤下，只在这里显示 -->
+        <p class="admin-user-count">人类数量：{{ userCount }}</p>
 
         <!-- 上传进度显示在标题下面，不是浮层；跑完后出现「关闭」 -->
         <UploadQueuePanel
@@ -104,10 +106,19 @@ const {
   copyToClipboard,
   pageSize,
   onPageSizeChange,
+  userCount,
 } = useAdminPage();
 </script>
 
 <style scoped>
+/* 欢迎语下面的一行状态信息。只调字号与透明度，不写颜色 ——
+   这一块底色的深浅由外层主题决定，写死一个颜色换个主题就可能看不清 */
+.admin-user-count {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
 .back-btn {
   margin: 40px auto 0;
   display: block;
@@ -132,6 +143,10 @@ const {
   .admin-welcome {
     font-size: 1rem;
     word-break: break-word;
+  }
+
+  .admin-user-count {
+    font-size: 0.9rem;
   }
 
   .back-btn {

@@ -2,9 +2,13 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { getAdminHomeConfig, getAdminResources, saveAdminHomeConfig, syncOssResources, updateAdminResource, uploadAdminResource } from "@/modules/admin/api/adminApi";
+import { getUserCount } from "@/modules/user/api/userApi";
 import { isOwner } from "@/shared/auth/owner";
 import { useAuthStore } from "@/stores/auth";
 import { useUploadQueue } from "@/modules/upload/composables/useUploadQueue";
+
+/** 注册人数读不到时的占位符。不能用 0 顶替 —— 0 也是一个具体的事实陈述，而它并不成立 */
+const USER_COUNT_UNKNOWN = "—";
 
 // 发请求的方法，catch 里只做状态回滚，不弹提示：
 // 请求失败时 request.js 已经弹过后端返回的 msg，这里再弹一次会出现重复提示。
@@ -32,6 +36,8 @@ export function useAdminPage() {
   const editingItem = ref(null);
   const pageSize = ref(5);
   const totalPages = computed(() => Math.ceil(resourceTotal.value / pageSize.value));
+  // 站点累计注册人数。原本显示在页头右上角，现在只在这里露面
+  const userCount = ref(USER_COUNT_UNKNOWN);
 
   const normalizeMainType = (type) => type === "photo" ? "image" : type;
   const refreshAvailableFiles = (type) => {
@@ -145,6 +151,16 @@ export function useAdminPage() {
 
   const onPageSizeChange = () => fetchResources(1);
 
+  /** 读不到就保持占位符：提示由 request.js 负责，页面不补一条 */
+  const loadUserCount = async () => {
+    try {
+      const res = await getUserCount();
+      if (res.data != null) userCount.value = res.data;
+    } catch {
+      // 提示由 request.js 负责，这里保留占位符
+    }
+  };
+
   onMounted(async () => {
     if (!isOwner(authStore.user)) {
       router.push("/profile");
@@ -153,6 +169,7 @@ export function useAdminPage() {
     }
     await loadHomeConfig();
     await fetchResources(1);
+    await loadUserCount();
   });
 
   return {
@@ -169,5 +186,6 @@ export function useAdminPage() {
     cancelTask: uploadQueue.cancel,
     resourceFilter, resourceList, resourceTotal, resourcePage, totalPages, fetchResources, formatDate,
     editingItem, openEditModal, saveEdit, copyToClipboard, pageSize, onPageSizeChange,
+    userCount,
   };
 }

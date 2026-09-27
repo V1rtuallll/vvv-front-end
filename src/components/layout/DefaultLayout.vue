@@ -34,10 +34,13 @@
         <!-- 标题正下方的一行小字 -->
         <p class="welcome-text neon-welcome">far in the blue sky...</p>
 
+        <!-- 人类数量已从页头撤下，改在管理员页面显示（见 views/admin/index.vue）。
+             要恢复就把下面这几行放回来，并接上 getUserCount 那段取数逻辑
         <div class="freak-line neon-freak">
           人类数量:
           <span ref="userCountEl" class="counter-number">加载中... </span>
         </div>
+        -->
         <div class="neon-marquee">
           <marquee behavior="scroll" direction="left" scrollamount="12">
             <span class="marquee-text">
@@ -314,9 +317,9 @@ import { useDrawer } from "@/components/layout/useDrawer";
 import { useLatestBlogs } from "@/modules/blog/composables/useLatestBlogs";
 import { useLatestGallery } from "@/modules/gallery/composables/useLatestGallery";
 import { useAudioPlayer } from "@/modules/player/composables/useAudioPlayer";
-import { getUserCount, getUserStats } from "@/modules/user/api/userApi";
+import { getUserStats } from "@/modules/user/api/userApi";
 
-const userCountEl = ref(null);
+// 页头右上角的「人类数量」已撤下，改到管理员页面取数（views/admin 的 useAdminPage）
 const route = useRoute();
 // 导航条右侧显示当前栏目名，取路径第一段（/gallery/detail/3 → gallery）
 const currentSection = computed(() => route.path.split("/")[1] || "home");
@@ -378,15 +381,8 @@ onBeforeUnmount(() => {
   if (scrollFrame) cancelAnimationFrame(scrollFrame);
 });
 
-onMounted(async () => {
+onMounted(() => {
   loadUserStats();
-  try {
-    const res = await getUserCount();
-    if (userCountEl.value) userCountEl.value.textContent = res.data;
-  } catch (error) {
-    console.error("获取人数失败:", error);
-    if (userCountEl.value) userCountEl.value.textContent = "???";
-  }
 });
 </script>
 <style src="./DefaultLayout.css" scoped></style>

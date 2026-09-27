@@ -11,8 +11,10 @@ vi.mock("@/modules/admin/api/adminApi", () => ({
   updateAdminResource: vi.fn(),
   uploadAdminResource: vi.fn(),
 }));
+vi.mock("@/modules/user/api/userApi", () => ({ getUserCount: vi.fn() }));
 
 import { getAdminHomeConfig, getAdminResources, saveAdminHomeConfig } from "@/modules/admin/api/adminApi";
+import { getUserCount } from "@/modules/user/api/userApi";
 import { useAdminPage } from "@/modules/admin/composables/useAdminPage";
 
 const Host = { setup: () => useAdminPage(), template: "<div />" };
@@ -80,5 +82,50 @@ describe("useAdminPage 的 Home 配置", () => {
     const payload = saveAdminHomeConfig.mock.calls[0][0];
     expect(payload.galleryItems).toEqual([]);
     expect("gallery" in payload).toBe(false);
+  });
+});
+
+describe("useAdminPage 的人类数量", () => {
+  beforeEach(() => {
+    getAdminHomeConfig.mockResolvedValue({ data: { ...CONFIG } });
+    getAdminResources.mockResolvedValue({ data: { list: [], total: 0 } });
+  });
+
+  it("挂载时读取人类数量", async () => {
+    getUserCount.mockResolvedValue({ data: 9 });
+
+    const vm = await mountPage();
+
+    expect(getUserCount).toHaveBeenCalled();
+    expect(vm.userCount).toBe(9);
+  });
+
+  /** 人头数就是 0 是合法值，不能被当成「读不到」吃掉 */
+  it("真的是 0 个人时照实显示 0", async () => {
+    getUserCount.mockResolvedValue({ data: 0 });
+
+    const vm = await mountPage();
+
+    expect(vm.userCount).toBe(0);
+  });
+
+  /**
+   * 读不到时留占位符。显示 0 会把「没读到」说成「一个用户都没有」——
+   * 那是一个具体的事实陈述，而它并不成立。
+   */
+  it("读取失败时留占位符，不显示成 0", async () => {
+    getUserCount.mockRejectedValue(new Error("boom"));
+
+    const vm = await mountPage();
+
+    expect(vm.userCount).toBe("—");
+  });
+
+  it("后端没给数字时也留占位符", async () => {
+    getUserCount.mockResolvedValue({ data: null });
+
+    const vm = await mountPage();
+
+    expect(vm.userCount).toBe("—");
   });
 });
