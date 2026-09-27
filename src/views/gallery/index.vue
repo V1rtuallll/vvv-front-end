@@ -85,6 +85,7 @@
     />
     <GalleryDetailDialog
       :item="currentItem"
+      :resume="resumeState"
       :threads="commentThreads"
       :comment="newComment"
       :reply-to="replyTarget"
@@ -144,6 +145,7 @@ import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import ListHeader from "@/components/ListHeader.vue";
 import Pagination from "@/components/Pagination.vue";
 import { getGalleryItem } from "@/modules/gallery/api/galleryApi";
+import { takeResume } from "@/modules/gallery/resume";
 import { useGalleryPage } from "@/modules/gallery/composables/useGalleryPage";
 
 const {
@@ -163,6 +165,7 @@ const {
   cancelTask,
   clearTasks,
   currentItem,
+  resumeState,
   newComment,
   replyTarget,
   startReply,
@@ -250,13 +253,17 @@ const openDetailFromQuery = async () => {
   if (link.key === handledDeepLink) return;
   handledDeepLink = link.key;
 
+  // 首页点「详情」时拍下的播放进度，跟着这条 src 深链一起取走。
+  // 按 src 深链才有快照 —— 侧栏的 id 深链没有来源，那一格也会被这次取用清空
+  const resume = takeResume(link.params.src ?? null);
+
   // 快路径：目标就在当前页，不用发请求
   const local = link.params.id != null
     ? galleryList.value.find((row) => String(row.id) === String(link.params.id))
     : galleryList.value.find((row) => row.src === link.params.src);
   if (local) {
     clearDeepLinkQuery();
-    openDetailModal(local);
+    openDetailModal(local, resume);
     return;
   }
 
@@ -280,7 +287,7 @@ const openDetailFromQuery = async () => {
   // 否则之后每次列表重载都会再拿它弹一次
   const openable = row != null && viewingId() === viewingWhenStarted;
   clearDeepLinkQuery();
-  if (openable) openDetailModal(row);
+  if (openable) openDetailModal(row, resume);
 };
 
 // query 在挂载前就已经在地址里（从侧栏点进来）时用 immediate 先消费掉；

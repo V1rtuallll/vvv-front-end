@@ -274,7 +274,8 @@ describe("GalleryDetailDialog 的背景音乐", () => {
   it("打开一条项就把播放交给 useGalleryBgm", () => {
     mountDialog({ item: WITH_BGM });
 
-    expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: WITH_BGM.id }));
+    // 第二个参数是起播位置：没有带进度时为 0（从首页过来的进度见下面那一组）
+    expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: WITH_BGM.id }), 0);
   });
 
   /** 音乐项自己的 `<audio controls>` 就在同一屏；再起一个隐藏元素是同一个文件两路解码 */
@@ -729,5 +730,127 @@ describe("GalleryDetailDialog 的声音跟着全站音量", () => {
 
     expect(wrapper.find("audio").exists()).toBe(false);
     expect(volumeSpies.unregisterMediaElement).toHaveBeenCalledWith(audio);
+  });
+});
+
+/**
+ * 首页主展示点「详情」时，会把「图集翻到第几张、视频放到第几秒、BGM 放到第几秒」
+ * 拍成一张快照带过来。这一层验的是弹窗怎么用它。
+ *
+ * 真实的挂载顺序是「弹窗常驻、item 后到」，所以用例都写成先空挂再带
+ * (item, resume) 一起 setProps —— 这也正是首页跳过来时发生的事。
+ */
+describe("GalleryDetailDialog 恢复首页带过来的进度", () => {
+  const PHOTO_A = { id: 41, src: "/m1.jpg", type: "photo" };
+  const PHOTO_B = { id: 42, src: "/m2.jpg", type: "photo" };
+  const PHOTO_C = { id: 43, src: "/m3.jpg", type: "photo" };
+  const VIDEO_A = { id: 51, src: "/v1.mp4", type: "video" };
+  const VIDEO_B = { id: 52, src: "/v2.mp4", type: "video" };
+
+  const work = (media) => ({ ...ITEM, src: media[0].src, type: media[0].type, media });
+
+  const openWith = async (item, resume) => {
+    const wrapper = mountDialog({ item: null });
+    await wrapper.setProps({ item, resume });
+    return wrapper;
+  };
+
+  /**
+   * jsdom 的 HTMLMediaElement 不做真解码：`currentTime` 写进去不落地。
+   * 给它在这个实例上装一个可读写的槽，才断言得了「有没有跳、跳到哪」。
+   */
+  const timeSlot = (el) => {
+    let time = 0;
+    Object.defineProperty(el, "currentTime", {
+      configurable: true,
+      get: () => time,
+      set: (value) => { time = value; },
+    });
+    return el;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("接着首页翻到的那一张往下看", async () => {
+    const wrapper = await openWith(work([PHOTO_A, PHOTO_B, PHOTO_C]), { mediaIndex: 2 });
+
+    expect(wrapper.find(".media-indicator").text()).toBe("3 / 3");
+    expect(wrapper.find(".detail-media").attributes("src")).toBe(PHOTO_C.src);
+  });
+
+  /** 从画廊卡片打开、或首页那一条本来就只有一张图时，没有快照，照常从第一条开始 */
+  it("没有快照时从第一条开始", async () => {
+    const wrapper = await openWith(work([PHOTO_A, PHOTO_B, PHOTO_C]), null);
+
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 3");
+  });
+
+  /**
+   * 快照里的页码来自另一条作品的媒体列表（首页加载后作者又删过几张）。
+   * 越界时落到最后一条 —— 直接照搬会让 currentMedia 变成 undefined，整块媒体区渲染报错。
+   */
+  it("快照的页码超出这一条的媒体数时落到最后一条", async () => {
+    const wrapper = await openWith(work([PHOTO_A, PHOTO_B]), { mediaIndex: 7 });
+
+    expect(wrapper.find(".media-indicator").text()).toBe("2 / 2");
+  });
+
+  /** 快照只属于它拍下的那一条，关掉再开别的作品时不能又跳过去 */
+  it("关掉之后再打开另一条，上一份快照不再生效", async () => {
+    const wrapper = await openWith(work([PHOTO_A, PHOTO_B, PHOTO_C]), { mediaIndex: 2 });
+    await wrapper.setProps({ item: null, resume: null });
+
+    await wrapper.setProps({ item: { ...work([PHOTO_A, PHOTO_B, PHOTO_C]), id: 99 }, resume: null });
+
+    expect(wrapper.find(".media-indicator").text()).toBe("1 / 3");
+  });
+
+  it("视频从首页放到的地方接着放", async () => {
+    const wrapper = await openWith(work([VIDEO_A]), { mediaTime: 37.5 });
+    const video = timeSlot(wrapper.find("video").element);
+
+    video.onloadedmetadata();
+
+    expect(video.currentTime).toBe(37.5);
+  });
+
+  /**
+   * 翻页会把元素整只换掉（`:key`）。跳转只该发生在「刚打开」那一次 ——
+   * 不判的话翻到下一段视频又会被拽回第 37 秒，而且每一段都跳。
+   */
+  it("翻到下一段视频时不会又被拽回那个位置", async () => {
+    const wrapper = await openWith(work([VIDEO_A, VIDEO_B]), { mediaTime: 37.5 });
+    const first = timeSlot(wrapper.find("video").element);
+    first.onloadedmetadata();
+    expect(first.currentTime).toBe(37.5);
+
+    await wrapper.find(".media-arrow-right").trigger("click");
+
+    // 第二段既没被挂上跳转，也没被直接写时间 —— 两条路都堵住才算真的没跳
+    const second = wrapper.find("video").element;
+    expect(second).not.toBe(first);
+    expect(second.onloadedmetadata).toBe(null);
+    expect(second.currentTime).toBe(0);
+  });
+
+  it("没有视频进度时不挂跳转", async () => {
+    const wrapper = await openWith(work([VIDEO_A]), null);
+    const video = timeSlot(wrapper.find("video").element);
+
+    expect(video.onloadedmetadata).toBe(null);
+  });
+
+  it("背景音乐从首页放到的地方接着放", async () => {
+    await openWith({ ...ITEM, bgmSrc: "/song.mp3", bgmType: "audio" }, { bgmTime: 12.25 });
+
+    expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: ITEM.id }), 12.25);
+  });
+
+  it("没有 BGM 进度时从头放", async () => {
+    await openWith({ ...ITEM, bgmSrc: "/song.mp3", bgmType: "audio" }, { mediaIndex: 1 });
+
+    expect(bgmSpies.play).toHaveBeenCalledWith(expect.objectContaining({ id: ITEM.id }), 0);
   });
 });

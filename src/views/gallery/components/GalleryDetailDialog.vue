@@ -162,6 +162,11 @@ const props = defineProps({
   formatShortDate: { type: Function, required: true },
   canManage: { type: Function, default: () => () => false },
   canManageComment: { type: Function, default: () => () => false },
+  /**
+   * 首页主展示点「详情」时带过来的播放进度快照 `{ mediaIndex, mediaTime, bgmTime }`；
+   * 从画廊卡片打开、或侧栏深链进来时是 null。快照的形状与存取见 modules/gallery/resume.js
+   */
+  resume: { type: Object, default: null },
 });
 
 defineEmits(["close", "show-user", "toggle-like", "resize-start", "update:comment", "post-comment", "like-comment", "edit", "delete", "delete-comment", "reply", "cancel-reply", "toggle-replies"]);
@@ -179,6 +184,48 @@ const mediaList = computed(() => mediaListOf(props.item));
 
 /** 当前翻到第几条，从 0 开始 */
 const mediaIndex = ref(0);
+
+/**
+ * 打开时该停在第几张。
+ *
+ * 首页带过来的页码必须先夹到这一条的媒体范围内：快照是点在首页那一下拍的，
+ * 之后作者可能已经删掉几张，照搬会让 `currentMedia` 变成 undefined，
+ * 整块媒体区渲染报错。
+ */
+const startMediaIndex = () => {
+  const wanted = Math.trunc(Number(props.resume?.mediaIndex));
+  if (!Number.isFinite(wanted)) return 0;
+  return Math.min(Math.max(wanted, 0), Math.max(mediaList.value.length - 1, 0));
+};
+
+/**
+ * 进度只恢复一次。翻页会把媒体元素整只换掉（`:key`），不判的话每翻一条都会被
+ * 拽回起点，用户根本翻不下去。
+ *
+ * 两个消费点（可见媒体、背景音乐）各记各的：它们跑在不同的刷新队列里
+ * （元素那个是 post，音乐那个是默认的 pre），共用一个标记就等于把「谁先跑」
+ * 写进契约里，而那是随 watcher 创建顺序走的、重构时会静默失效的东西。
+ */
+let mediaTimeApplied = false;
+let bgmTimeApplied = false;
+
+/** 这一段的视频从第几秒起播；没有可恢复的、或已经恢复过时是 0 */
+const resumedMediaTime = () => {
+  if (mediaTimeApplied) return 0;
+  const wanted = Number(props.resume?.mediaTime);
+  if (!Number.isFinite(wanted) || wanted <= 0) return 0;
+  mediaTimeApplied = true;
+  return wanted;
+};
+
+/** 背景音乐从第几秒起播；判据同上 */
+const resumedBgmTime = () => {
+  if (bgmTimeApplied) return 0;
+  const wanted = Number(props.resume?.bgmTime);
+  if (!Number.isFinite(wanted) || wanted <= 0) return 0;
+  bgmTimeApplied = true;
+  return wanted;
+};
 
 const currentMedia = computed(() => mediaList.value[mediaIndex.value]);
 
@@ -198,10 +245,17 @@ const showNextMedia = () => {
   if (mediaIndex.value < mediaList.value.length - 1) mediaIndex.value += 1;
 };
 
-// 换一条作品要把页码归零，否则从第 3 张换到只有 1 张的作品会越界
+// 换一条作品要把页码归零，否则从第 3 张换到只有 1 张的作品会越界。
+// 带快照打开时改成落在快照那一张上。
+//
+// 两个「已恢复」标记在这里复位，必须赶在两个消费者之前：可见媒体那个 watcher 是
+// `flush: "post"`，pre 队列一定跑在它前面；背景音乐那个是 pre，靠本文件里
+// 创建得比它早（Vue 的 pre 队列按 watcher 的创建顺序执行）。
 watch(() => props.item?.id, () => {
-  mediaIndex.value = 0;
-});
+  mediaIndex.value = startMediaIndex();
+  mediaTimeApplied = false;
+  bgmTimeApplied = false;
+}, { immediate: true });
 
 /**
  * 同一件作品被编辑保存时媒体会被删掉几条，media 跟着变短（id 没变，上面那个 watch 不触发）。
@@ -227,6 +281,18 @@ const mediaEl = ref(null);
 watch(mediaEl, (el, previous) => {
   unregisterMediaElement(previous);
   registerMediaElement(el);
+  // 首页带过来的进度就挂在这一段媒体上。等元数据到达再写 `currentTime` ——
+  // 元素刚建出来时还没解析出时长，此时写会被浏览器忽略，表现是「有时能恢复、
+  // 有时从头开始」。加载失败时这个事件不会来，跳转静默不发生。
+  //
+  // 翻到图片时元素是 null（图片那边没有这个 ref），先判掉再取进度：
+  // 取了就会把「只恢复一次」的标记烧掉，之后再翻到视频反而不跳了
+  if (!el) return;
+  const startAt = resumedMediaTime();
+  if (startAt <= 0) return;
+  el.onloadedmetadata = () => {
+    el.currentTime = startAt;
+  };
 }, { flush: "post" });
 
 // 弹窗被摘掉时元素随之销毁，那时 watcher 已经停了，注销只能在这里做
@@ -258,7 +324,7 @@ watch(
     //
     // ⚠️ 别把这条判断挪进 `resolveBgm` —— 选择器要靠它对音乐/视频**候选**
     // 返回「它自己的 src」才能取到地址，去掉会直接打坏选曲。
-    if (item?.bgmSrc) playBgm(item);
+    if (item?.bgmSrc) playBgm(item, resumedBgmTime());
     else stopBgm();
   },
   { immediate: true },

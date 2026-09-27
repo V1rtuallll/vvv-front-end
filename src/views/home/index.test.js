@@ -11,7 +11,15 @@ const bgmSpies = vi.hoisted(() => ({
   pause: vi.fn(),
   resume: vi.fn(),
   toggle: vi.fn(),
+  // 这一路放到第几秒。真实实现读的是那个从不进 DOM 的元素，这里由用例摆值
+  position: vi.fn(() => 0),
 }));
+
+// 快照本身的存取（取完即清、过期作废、src 比对）由 resume.test.js 验。
+// 这一层要断言的是「点详情那一下带走了什么」—— 那是它与画廊页之间的全部契约
+const resumeSpies = vi.hoisted(() => ({ stashResume: vi.fn() }));
+
+vi.mock("@/modules/gallery/resume", () => resumeSpies);
 
 vi.mock("@/modules/gallery/composables/useGalleryBgm", async () => {
   const { ref } = await import("vue");
@@ -267,6 +275,114 @@ describe("Home 主展示媒体", () => {
     // 显式断言「没有被静音」—— 去掉 muted 是刻意的，别被顺手加回来
     expect(el.muted === true || el.hasAttribute("muted")).toBe(false);
     expect(el.hasAttribute("controls") || el.controls === true).toBe(true);
+  });
+});
+
+/**
+ * 点「详情」那一下把主展示此刻的状态拍成一张快照交给画廊页：图集翻到第几张、
+ * 视频放到第几秒、BGM 放到第几秒。
+ *
+ * 交接只有这一个时点 —— 详情打开之后两边各播各的，中途不再同步。所以这里既不
+ * 挂 watch 也不上报，只在按下去的那一刻读一次当下的状态。
+ */
+describe("Home 点详情时交接播放进度", () => {
+  const 视频组 = () => ({
+    type: "video",
+    src: "/v1.mp4",
+    title: "视频组",
+    description: "视频组描述",
+    uploaderUsername: "uploader",
+    random: true,
+    inGallery: true,
+    media: [
+      { id: 21, src: "/v1.mp4", type: "video" },
+      { id: 22, src: "/v2.mp4", type: "video" },
+    ],
+  });
+
+  let original;
+
+  /** 视频元素的替身槽：jsdom 不做真解码，`currentTime` 写进去不落地 */
+  const withElapsed = (el, seconds) => {
+    Object.defineProperty(el, "currentTime", { configurable: true, value: seconds });
+    return el;
+  };
+
+  beforeEach(() => {
+    stubHover(true);
+    original = useHomeContent().mainItem.value;
+    resumeSpies.stashResume.mockClear();
+    bgmSpies.position.mockReturnValue(0);
+    useRouter.mockReturnValue({ push: vi.fn() });
+  });
+
+  afterEach(() => {
+    useHomeContent().mainItem.value = original;
+    vi.unstubAllGlobals();
+  });
+
+  it("把翻到的第几张、视频放到第几秒、BGM 放到第几秒一起带过去", async () => {
+    useHomeContent().mainItem.value = 视频组();
+    const wrapper = mount(HomePage);
+    await wrapper.find(".media-arrow-right").trigger("click");
+    withElapsed(wrapper.find("video.showcase-media").element, 37.5);
+    bgmSpies.position.mockReturnValue(12.25);
+
+    await wrapper.find(".detail-btn").trigger("click");
+
+    expect(resumeSpies.stashResume).toHaveBeenCalledWith("/v1.mp4", {
+      mediaIndex: 1,
+      mediaTime: 37.5,
+      bgmTime: 12.25,
+    });
+  });
+
+  /** 图片作品没有视频进度，但图集页码与 BGM 照带 —— 三样各自独立 */
+  it("图片作品没有视频进度，另外两样照带", async () => {
+    useHomeContent().mainItem.value = {
+      ...视频组(),
+      type: "photo",
+      // 行上的 src 与 media[0] 一致，后端给画廊条目下发的就是这个形状
+      src: "/a.jpg",
+      media: [
+        { id: 31, src: "/a.jpg", type: "photo" },
+        { id: 32, src: "/b.jpg", type: "photo" },
+        { id: 33, src: "/c.jpg", type: "photo" },
+      ],
+    };
+    const wrapper = mount(HomePage);
+    await wrapper.find(".media-arrow-right").trigger("click");
+    await wrapper.find(".media-arrow-right").trigger("click");
+    bgmSpies.position.mockReturnValue(8);
+
+    await wrapper.find(".detail-btn").trigger("click");
+
+    expect(resumeSpies.stashResume).toHaveBeenCalledWith("/a.jpg", {
+      mediaIndex: 2,
+      mediaTime: 0,
+      bgmTime: 8,
+    });
+  });
+
+  /** 快照按 src 认领，跳转本身仍是那条 src 深链，两者不能互相顶掉 */
+  it("跳转仍是带 src 的深链", async () => {
+    useHomeContent().mainItem.value = 视频组();
+    const push = vi.fn();
+    useRouter.mockReturnValue({ push });
+    const wrapper = mount(HomePage);
+
+    await wrapper.find(".detail-btn").trigger("click");
+
+    expect(push).toHaveBeenCalledWith({ path: "/gallery", query: { src: "/v1.mp4" } });
+  });
+
+  it("资源不在画廊里时既不给入口也不拍快照", () => {
+    useHomeContent().mainItem.value = { ...视频组(), inGallery: false };
+
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".detail-btn").exists()).toBe(false);
+    expect(resumeSpies.stashResume).not.toHaveBeenCalled();
   });
 });
 

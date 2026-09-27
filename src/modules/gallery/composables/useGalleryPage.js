@@ -50,6 +50,13 @@ export function useGalleryPage() {
   const uploadQueue = useUploadQueue(uploadGalleryFile, { maxConcurrent: 3 });
   const uploadLimitText = ref("");
   const currentItem = ref(null);
+  /**
+   * 首页主展示点「详情」时带过来的播放进度快照，跟着这一次打开进详情弹窗。
+   *
+   * 与 currentItem 同生共死：留在 ref 上的话，关掉之后从画廊卡片打开同一条作品，
+   * 弹窗会拿到上一份与这次无关的快照，莫名其妙从中间开始。
+   */
+  const resumeState = ref(null);
   const comments = ref([]);
   const newComment = ref("");
   /** 正在回复的评论 { id, username }；为空表示发的是顶层评论 */
@@ -202,6 +209,8 @@ export function useGalleryPage() {
 
   const closeDetail = () => {
     currentItem.value = null;
+    // 快照只在「打开详情」这一次有效，不能留到下一次打开
+    resumeState.value = null;
     comments.value = [];
     newComment.value = "";
     cancelReply();
@@ -424,8 +433,15 @@ export function useGalleryPage() {
     }
   };
 
-  const openDetailModal = async (item) => {
+  /**
+   * 打开详情弹窗。
+   *
+   * @param resume 首页主展示带过来的播放进度快照；从画廊卡片、侧栏深链打开时为 null。
+   *               只影响弹窗打开时停在哪一张、从第几秒起播，不参与条目本身的形状
+   */
+  const openDetailModal = async (item, resume = null) => {
     // 评论是每次打开单独取的，失败标记跟着这一次打开一起归零
+    resumeState.value = resume;
     currentItem.value = { ...item, isLiked: false, commentsLoadFailed: false };
     await loadComments(item.id);
   };
@@ -669,7 +685,7 @@ export function useGalleryPage() {
   });
   return {
     authStore, page, total, totalPages, galleryList, showUploadModal,
-    currentItem, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
+    currentItem, resumeState, comments, newComment, showUserProfile, selectedUser, likeComment, openUserProfile,
     closeDetail, changePage, openUploadModal, closeUploadModal, publishBatch, toggleLike, openDetailModal,
     postComment, replyTarget, startReply, cancelReply, commentThreads, displayGender, startResize,
     formatDate, formatShortDate,

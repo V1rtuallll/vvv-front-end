@@ -24,12 +24,16 @@ const PHOTO_WITH_BGM = {
 };
 const PLAIN_PHOTO = { id: 4, type: "photo", src: "https://cdn.example.test/imgs/d.png" };
 
-/** 够用的媒体元素替身：被测代码只碰 loop / src / setAttribute / play / pause 几样 */
+/** 够用的媒体元素替身：被测代码只碰 loop / src / setAttribute / play / pause / currentTime 几样 */
 function fakeElement(tag) {
   return {
     tag,
     loop: false,
     src: "",
+    // 进度相关：元素刚建出来时是 0，且还没解析出时长。恢复进度那一路要等
+    // `loadedmetadata` 才写 currentTime，所以替身必须留着这个槽给用例自己触发
+    currentTime: 0,
+    onloadedmetadata: null,
     // 属性只记下来、不解析：视频型 BGM 要写 playsinline，而 iOS 的渲染行为在这里
     // 断言不了（jsdom 没有那套逻辑）。但少了这个方法，建元素那一步会直接抛
     setAttribute: vi.fn(),
@@ -83,6 +87,64 @@ describe("resolveBgm", () => {
     expect(resolveBgm(PLAIN_PHOTO)).toBe(null);
     expect(resolveBgm({ id: 5, type: "gif", src: "https://cdn.example.test/gif/e.gif" })).toBe(null);
     expect(resolveBgm(null)).toBe(null);
+  });
+});
+
+describe("BGM 的进度", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("position 报出这一路此刻放到第几秒", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM);
+    created[0].currentTime = 42.5;
+
+    expect(bgm.position()).toBe(42.5);
+  });
+
+  /** 没有曲子在放时首页照样会问一次「放到哪了」，答案必须是 0 而不是 NaN */
+  it("没有在放时 position 是 0", () => {
+    const { bgm } = mountBgm();
+
+    expect(bgm.position()).toBe(0);
+  });
+
+  /**
+   * 元素刚建出来时还没解析出时长，此刻写 currentTime 会被浏览器忽略 ——
+   * 表现是「有时能恢复、有时从头开始」。所以要把跳转挂到元数据到达那一刻。
+   */
+  it("带 startAt 起播时，等元数据到了才跳到那个位置", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM, 12.25);
+
+    expect(created[0].currentTime).toBe(0);
+    created[0].onloadedmetadata();
+    expect(created[0].currentTime).toBe(12.25);
+  });
+
+  /** 没带位置（从画廊卡片打开、或本来就没播过）时不要多挂一个监听 */
+  it("不带 startAt 就不动进度", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM);
+
+    expect(created[0].onloadedmetadata).toBe(null);
+    expect(created[0].currentTime).toBe(0);
+  });
+
+  /** 同一个 { src, type } 重复播时早退，不该把正在放的曲子拽回起点 */
+  it("同一首重复起播时不重来", () => {
+    const { bgm, created } = mountBgm();
+
+    bgm.play(PHOTO_WITH_BGM, 30);
+    created[0].onloadedmetadata();
+    bgm.play(PHOTO_WITH_BGM, 30);
+
+    expect(created).toHaveLength(1);
+    expect(created[0].currentTime).toBe(30);
   });
 });
 

@@ -544,6 +544,33 @@ describe("useGalleryPage 的评论回复", () => {
     expect(api.replyTarget.value).toBeNull();
   });
 
+  /** 快照来自首页主展示，随这一次打开进弹窗，也随这一次关闭消失 */
+  it("首页带来的播放进度交给详情，关掉就丢", async () => {
+    const api = await openItem();
+
+    await api.openDetailModal(api.galleryList.value[0], { mediaIndex: 2, mediaTime: 37.5 });
+
+    expect(api.resumeState.value).toEqual({ mediaIndex: 2, mediaTime: 37.5 });
+
+    api.closeDetail();
+
+    expect(api.resumeState.value).toBeNull();
+  });
+
+  /**
+   * 从画廊卡片打开是没有进度可恢复的。上一份快照若留在 ref 上，
+   * 这一条会莫名其妙从中间开始 —— 而那一次用户根本没点过详情
+   */
+  it("从卡片打开另一条时，上一份快照不再跟着走", async () => {
+    const api = await openItem();
+    await api.openDetailModal(api.galleryList.value[0], { mediaIndex: 2, mediaTime: 37.5 });
+    api.closeDetail();
+
+    await api.openDetailModal(api.galleryList.value[0]);
+
+    expect(api.resumeState.value).toBeNull();
+  });
+
   it("commentThreads 把回复挂到根评论下，并标出回复的是谁", async () => {
     const api = await openItem();
     api.comments.value = [

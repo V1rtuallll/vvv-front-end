@@ -59,6 +59,23 @@ export function getActiveBgmElement() {
 }
 
 /**
+ * 把刚建出来的元素跳到 `startAt` 秒，供「从首页带进度过来」用。
+ *
+ * 必须等 `loadedmetadata`：元素此刻才赋上 src，还没解析出时长，此时写 `currentTime`
+ * 会被浏览器忽略 —— 表现是「有时能恢复、有时从头开始」，两种结果看起来都像随机。
+ *
+ * 元素是新建的、`readyState` 必然是 HAVE_NOTHING，所以不用担心事件已经错过。
+ * 媒体加载失败时这个事件不会来，跳转静默不发生 —— 与起播失败同一档降级。
+ */
+function seekAfterMetadata(el, startAt) {
+  const seconds = Number(startAt);
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+  el.onloadedmetadata = () => {
+    el.currentTime = seconds;
+  };
+}
+
+/**
  * 详情弹窗的背景音乐播放。
  *
  * 播放规则（D5）：
@@ -147,8 +164,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
    * 直接播一个 { src, type }。供「刚上传完立刻试听」这类还没有画廊项的场景用。
    *
    * @param id 身份标识，用于「同一条不重复起播」。默认取地址
+   * @param startAt 起播位置（秒）。0 或不是正数表示从头放
    */
-  const playSource = (source, id = source?.src ?? null) => {
+  const playSource = (source, id = source?.src ?? null, startAt = 0) => {
     if (!source?.src) return stop();
     // 去重要连地址一起比：详情弹窗按 (id, bgmSrc, bgmType) 监听，同一条项换了
     // 曲子也会再叫一次 playSource。只比 id 的话那次换播会被当成重复跳过，
@@ -197,6 +215,9 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     activeId.value = id;
     paused.value = false;
 
+    // 恢复进度挂在起播之前：这一步只是登记监听，真正的跳转发生在元数据到达时
+    seekAfterMetadata(el, startAt);
+
     // 起播失败只意味着没声音，不该影响看图。浏览器的自动播放策略、
     // 地址 404、OSS 挂掉，全都静默降级在这里
     const started = el.play();
@@ -231,16 +252,28 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
 
   const toggle = () => (paused.value ? resume() : pause());
 
-  const play = (item) => {
+  const play = (item, startAt = 0) => {
     const source = resolveBgm(item);
     if (!source) return stop();
-    playSource(source, item?.id ?? source.src);
+    playSource(source, item?.id ?? source.src, startAt);
+  };
+
+  /**
+   * 这一路此刻放到第几秒。首页要在点「详情」的那一下把进度带去详情弹窗，
+   * 这是它唯一的取数口 —— 元素是 `createElement` 建的、从不进 DOM，外面拿不到。
+   *
+   * 没有在放时返回 0：`element` 为空，或元素的 `currentTime` 还不是一个数
+   * （某些浏览器在媒体就绪前给 NaN）。
+   */
+  const position = () => {
+    const current = element?.currentTime;
+    return Number.isFinite(current) ? current : 0;
   };
 
   // 对外对象同时也是「当前发声者」槽位里的把手：stop() 靠它判断自己是不是
   // 正占着那个槽位。`stop` / `playSource` 在源码顺序上先于它，但它们都在本函数
   // 返回之后才被调用，那时 api 已经就位
-  const api = { activeBgm, activeId, paused, play, playSource, stop, pause, resume, toggle };
+  const api = { activeBgm, activeId, paused, play, playSource, stop, pause, resume, toggle, position };
 
   /**
    * 宿主组件销毁时停掉自己这一路。

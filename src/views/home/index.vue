@@ -244,6 +244,7 @@ import { useRouter } from "vue-router";
 import { useHomeContent } from "@/modules/home/composables/useHomeContent";
 import { useGalleryBgm } from "@/modules/gallery/composables/useGalleryBgm";
 import { mediaListOf } from "@/modules/gallery/media";
+import { stashResume } from "@/modules/gallery/resume";
 import {
   registerMediaElement,
   unregisterMediaElement,
@@ -345,6 +346,7 @@ const {
   stop: stopBgm,
   pause: pauseBgm,
   resume: resumeBgm,
+  position: bgmPosition,
 } = useGalleryBgm();
 
 /**
@@ -429,7 +431,16 @@ const togglePlayback = () => {
 const detailQuery = computed(() => (mainItem.value?.src ? { src: mainItem.value.src } : null));
 
 const goDetail = () => {
-  if (!detailQuery.value) return;
+  const src = mainItem.value?.src;
+  if (!detailQuery.value || !src) return;
+  // 进度只在按下去的这一刻取一次，然后原样交给详情弹窗 —— 两边此后各播各的，
+  // 不做同步。所以这里必须是「读当下的状态」，不能挂在什么 watch 上持续上报
+  stashResume(src, {
+    mediaIndex: mediaIndex.value,
+    // 只有当下这一段是视频时 showcaseEl 才绑着元素；图片、动图下它一定是 null
+    mediaTime: showcaseEl.value?.currentTime ?? 0,
+    bgmTime: bgmPosition(),
+  });
   router.push({ path: "/gallery", query: detailQuery.value });
 };
 
