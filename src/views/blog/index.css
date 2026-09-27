@@ -1,6 +1,15 @@
+/* 整体页面居中。底图由外层 .vf-main 白面板负责，这里保持透明。
+   各项取值与 .gallery-wrapper 保持一致 —— 两个页面的页头是同一个组件，
+   外层再各写一套不同的宽度与内边距，顶部的间距就对不上了。
+   min-height 与 color 也不能省：省略后页面高度与整体文字色都会和 gallery 不同，
+   而 color 恰恰是唯一一处兜底 —— 外层 .vf-main 是白面板却没设文字色 */
 .blog-wrapper {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 40px 0px 40px;
+  min-height: 100vh;
+  background: transparent;
+  color: #2f3b47;
 }
 
 /* 页头的样式与结构都在 components/ListHeader.vue 里。

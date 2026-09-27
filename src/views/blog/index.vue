@@ -6,7 +6,7 @@
       title="Blog"
       subtitle="Share ur opinion."
       :user="authStore.user"
-      action-label="Write something"
+      action-label="Upload"
       action-to="/blog/editor"
     />
 
