@@ -5,15 +5,15 @@
     <div class="field-group">
       <label>类型</label>
       <select v-model="config.main.type" class="crt-input">
-        <!-- 「全类型」= 在三张类型表里随机。画廊的图文全部落在 photo 表里，
-             绑死单一类型时如果绑成 video 就永远取不到画廊条目 -->
-        <option value="all">全类型（图片 / 动图 / 视频 随机）</option>
-        <!-- 两边规则不同：图片/动图只取画廊里的（保证点得进详情），
-             视频取全部（视频几乎不在画廊里，只取交集等于把视频整个排除） -->
-        <option value="gallery">画廊图文 + 全部视频</option>
-        <option value="image">图片</option>
-        <option value="gif">动图</option>
-        <option value="video">视频</option>
+        <!-- 池子就是 gallery 表本身，三张类型表里只有「也在画廊里」的那些算数。
+             视频不例外 —— 只上传、没进画廊的视频取不到，要它们出现得先放进画廊 -->
+        <option value="gallery">仅画廊内容（图片 / 动图 / 视频）</option>
+        <!-- 下面四项走类型表全量，没进画廊的也在内。抽到的素材若不在画廊里，
+             首页不会给它「详情」按钮 —— 点开也是空的 -->
+        <option value="all">站内全部素材（图片 / 动图 / 视频，含未进画廊的）</option>
+        <option value="image">站内全部图片（含未进画廊的）</option>
+        <option value="gif">站内全部动图（含未进画廊的）</option>
+        <option value="video">站内全部视频（含未进画廊的）</option>
       </select>
     </div>
 
