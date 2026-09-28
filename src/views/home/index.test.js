@@ -91,11 +91,17 @@ vi.mock("@/modules/home/composables/useHomeContent", async () => {
     },
   ]);
 
+  // 和 mainItem / galleryItems 一样**建在工厂里共享**，不能写成 ref(false)：
+  // 那样每次调用 useHomeContent() 都是一个新 ref，用例设的那个是野的，
+  // 组件读到的仍然恒为 false（`showInfo` 就是老写法留下的坑，这里不要再踩）
+  const mainPending = ref(false);
+
   return {
     useHomeContent: () => ({
       mainItem,
       galleryItems,
       showInfo: ref(false),
+      mainPending,
       formatShortDate: () => "2026/9/12",
       changeRandom: vi.fn(),
     }),
@@ -383,6 +389,39 @@ describe("Home 点详情时交接播放进度", () => {
 
     expect(wrapper.find(".detail-btn").exists()).toBe(false);
     expect(resumeSpies.stashResume).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 首页这两处媒体元素直接决定首屏要拉多少字节。画廊里混着用户手机拍的原片，
+ * 实测最大的一条 920MB —— 这里的属性写错一个，代价是几百 MB 的流量。
+ */
+describe("Home 媒体不把首屏拖垮", () => {
+  afterEach(() => {
+    useHomeContent().mainPending.value = false;
+  });
+
+  it("拼图卡的视频只取首帧，不自动播放、不循环", async () => {
+    const wrapper = mount(HomePage);
+    const cardVideos = wrapper.findAll(".masonry-item video");
+    expect(cardVideos).toHaveLength(1);
+
+    // preload=metadata 是「只取容器头就能解出第一帧」的前提（实测 623MB 的文件
+    // 只缓冲 3.1 秒 / 全长 300 秒）。autoplay + loop 会让浏览器全量缓冲 ——
+    // 写着「显示首帧」的注释，干的却是把整段视频下完的事。
+    expect(cardVideos[0].attributes("preload")).toBe("metadata");
+    expect(cardVideos[0].attributes("autoplay")).toBeUndefined();
+    expect(cardVideos[0].attributes("loop")).toBeUndefined();
+  });
+
+  it("主展示抽签未回来时渲染占位，不渲染配置里的兜底媒体", async () => {
+    useHomeContent().mainPending.value = true;
+    const wrapper = mount(HomePage);
+
+    expect(wrapper.find(".showcase-placeholder").exists()).toBe(true);
+    // 兜底那条 1~2 秒后就会被顶掉，先画上去等于连闪一下再白拉一遍媒体
+    expect(wrapper.find(".showcase-media-wrapper video").exists()).toBe(false);
+    expect(wrapper.find(".showcase-media-wrapper img").exists()).toBe(false);
   });
 });
 

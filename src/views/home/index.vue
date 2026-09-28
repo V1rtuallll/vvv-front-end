@@ -36,11 +36,16 @@
             @click.stop="showPreviousMedia"
           ><span class="ui-icon ui-icon-prev"></span></button>
 
+          <!-- 抽签还没出结果（只在随机模式的首次加载出现）：渲染占位，
+               **不渲染配置里的兜底 src** —— 后者 1~2 秒后就会被顶掉，
+               先画上去等于连闪一下再白拉一遍媒体。 -->
+          <div v-if="mainPending" class="showcase-placeholder">正在挑选素材</div>
+
           <!-- :key 让翻页换掉整个元素：摘出文档会触发浏览器的加载算法，上一段视频随之停下。
                用主键而不是地址 —— 两条同地址的媒体用地址当 key 时元素不会重建，
                上一段视频会继续出声，正是这个 key 要防的事 -->
           <video
-            v-if="currentMedia.type === 'video'"
+            v-else-if="currentMedia.type === 'video'"
             :key="currentMedia.id ?? currentMedia.src"
             ref="showcaseEl"
             :src="currentMedia.src"
@@ -178,12 +183,16 @@
             >
           </div>
 
-          <!-- 媒体 -->
+          <!-- 媒体。视频没有独立的缩略图（thumbnail 列从不写入），这里只要**首帧**：
+               preload="metadata" 只取容器头部，浏览器就能解出第一帧（实测 623MB 的文件
+               只缓冲了 3.1 秒 / 全长 300 秒，画面正常）。
+               ⚠️ 不要加 autoplay / loop：画廊里混着几百 MB 的手机录像（实测最大 920MB），
+               而无缝循环要求全量缓冲 —— 一屏 4 张卡常有一两张是视频，
+               「显示首帧」会变成拖走几百 MB，把整页都拖慢。 -->
           <video
             v-if="item.type === 'video'"
             :src="item.src"
-            autoplay
-            loop
+            preload="metadata"
             muted
             playsinline
             class="masonry-media"
@@ -250,7 +259,7 @@ import {
   unregisterMediaElement,
 } from "@/modules/player/composables/mediaVolume";
 
-const { mainItem, galleryItems, formatShortDate, changeRandom } = useHomeContent();
+const { mainItem, galleryItems, formatShortDate, changeRandom, mainPending } = useHomeContent();
 const router = useRouter();
 
 /* ---- 高度过渡 ---- */

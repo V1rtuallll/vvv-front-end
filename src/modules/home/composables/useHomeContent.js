@@ -70,13 +70,32 @@ export function useHomeContent() {
     return srcs.join(",");
   };
 
+  /**
+   * 随机模式下「抽签还没出结果」。
+   *
+   * 置位期间页面渲染占位，**不渲染配置里的兜底 src**。后者要等 1~2 秒才被真正抽中的
+   * 那条顶掉，先把它画上去等于连闪带白拉一遍媒体；而且 `gallery` 模式下服务端定位不到
+   * 这条非画廊的兜底素材，那 2 秒里上传者只能显示「神秘人 / 未知时间」。
+   *
+   * 只在**首次加载**置位：点「换一个」时当前这条还在画面上，把它换成占位反而更闪。
+   */
+  const mainPending = ref(false);
+
+  /** 配置里的那一份主展示。随机模式下它是兜底值，抽签失败时要原样放回去 */
+  let fallbackMain = null;
+
   const loadRandomMain = async () => {
     try {
       const res = await getRandomMain({ type: pickType.value, exclude: mainExclude() });
       applyMainItem(res.data);
       pickedMainSrc.value = res.data?.src ?? null;
     } catch (err) {
+      // 抽不到就把配置里的兜底值放回画面上 —— 它存在的意义就是这一刻。
+      // 不放回的话占位会一直挂着，用户看到的是一片空
+      if (fallbackMain) mainItem.value = { ...fallbackMain };
       console.warn("随机主资源加载失败，使用配置值", err);
+    } finally {
+      mainPending.value = false;
     }
   };
 
@@ -89,7 +108,7 @@ export function useHomeContent() {
       // 这里不做兜底 —— 编造出来的是「具体的人名和时间」，首屏会先显示它们，
       // 第二次请求再失败的话还会一直留在页面上，等于替服务端断言了一件它没说过的事。
       // 缺省时由页面显示「未知」，那读起来是占位符而不是事实
-      mainItem.value = {
+      fallbackMain = {
         type: data.main.type,
         src: data.main.src,
         title: data.main.title,
@@ -100,6 +119,15 @@ export function useHomeContent() {
         uploadTime: data.main.uploadTime,
         random: data.main.random,
       };
+      // 随机模式下**从这里就把兜底 src 摘掉**，不能等到抽签前再摘：
+      // 配置一回来它就会上屏，而中间还夹着一次「取下方卡片」的请求。
+      // 实测把摘除放在那之后，兜底媒体照样先画了上去（209ms 出现、386ms 才换成占位）——
+      // 等于连闪一下再白拉一遍媒体。摘得越早，这个窗口越短。
+      //
+      // 标题与描述照旧下发：它们是配置那条的事实，抽中后会被覆盖
+      const isRandom = Boolean(fallbackMain.random);
+      mainItem.value = isRandom ? { ...fallbackMain, src: null } : { ...fallbackMain };
+      mainPending.value = isRandom;
       galleryItems.value = data.galleryItems || [];
 
       const galleryRes = await getRandomGalleries();
@@ -109,13 +137,17 @@ export function useHomeContent() {
         .map((item) => ({ ...item, showInfo: false }));
 
       // 随机模式由后端挑一条（不再把全量 src 下发到前端）
-      if (mainItem.value.random) {
+      if (isRandom) {
         await loadRandomMain();
       } else {
         await fetchFullMainItem();
       }
     } catch (err) {
       console.error("加载 Home 配置失败", err);
+      // 占位不能留在画面上：这一步挂了就把配置里的兜底值放回去 ——
+      // 它本来就是「随机拿不到时」的备用值
+      mainPending.value = false;
+      if (fallbackMain) mainItem.value = { ...fallbackMain };
     }
   };
 
@@ -134,5 +166,5 @@ export function useHomeContent() {
   onMounted(loadHome);
 
   return {
-    pickType, mainItem, galleryItems, showInfo, formatShortDate, changeRandom };
+    pickType, mainItem, galleryItems, showInfo, formatShortDate, changeRandom, mainPending };
 }

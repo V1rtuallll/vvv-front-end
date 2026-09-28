@@ -104,6 +104,22 @@
   transition: height 0.3s ease;
 }
 
+/* 随机抽签还没回来时的占位（对应 useHomeContent 的 mainPending）。
+   高度取一个接近常见横图的定值，免得占位期间信息栏先被顶到下面、
+   结果落地时再猛地缩回来。 */
+.showcase-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48vh;
+  color: #7b8fa1;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  background: #e9f2f9;
+  border: 1px dashed #b9c4cc;
+}
+
 /* 图集翻页控件。取值与画廊详情弹窗那一套保持一致 ——
    同一个作品在两个地方翻页，按钮的位置、大小与手感都该是同一个 */
 .media-arrow {

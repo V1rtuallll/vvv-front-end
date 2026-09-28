@@ -102,6 +102,76 @@ describe("useHomeContent", () => {
     });
   });
 
+  /**
+   * 随机模式下抽签要 1~2 秒才出结果，这期间**不能**把配置里的兜底 src 传下去：
+   * 它会被顶掉，等于连闪一下再白拉一遍媒体。页面据 mainPending 渲染占位。
+   *
+   * 注意这和「换一个失败时不提交新状态」不冲突：那一条说的是**点换一个**时，
+   * 当前这条还在画面上，留着它就对了；首次加载时画面本来空着，必须放点东西回去。
+   */
+  it("随机模式首次加载先置占位，不把兜底 src 传下去", async () => {
+    let api;
+    let settle;
+    getRandomMain.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
+    mount({
+      setup() {
+        api = useHomeContent();
+        return () => null;
+      },
+    });
+    await flushPromises();
+    await flushPromises();
+
+    expect(api.mainPending.value).toBe(true);
+    expect(api.mainItem.value.src).toBe(null);
+    // 标题与描述照旧下发：只有媒体那一格被摘掉
+    expect(api.mainItem.value.title).toBe("配置标题");
+
+    settle({ data: { src: RANDOM_SRC, title: "随机标题" } });
+    await flushPromises();
+
+    expect(api.mainPending.value).toBe(false);
+    expect(api.mainItem.value.src).toBe(RANDOM_SRC);
+  });
+
+  /**
+   * 兜底值存在的意义就是抽签失败的那一刻。不放回去的话占位会一直挂着，
+   * 用户看到的是一片空 —— 那比看到一条过时的素材更糟。
+   */
+  it("随机请求失败时把兜底值放回画面并解除占位", async () => {
+    getRandomMain.mockRejectedValue(new Error("boom"));
+
+    const api = await mountHome();
+
+    expect(api.mainPending.value).toBe(false);
+    expect(api.mainItem.value.src).toBe(CONFIGURED_SRC);
+  });
+
+  /** 非随机模式下配置的 src 就是要展示的那一条，没有等待期 */
+  it("非随机模式不置占位", async () => {
+    getHomeConfig.mockResolvedValue(configPayload({ random: 0 }));
+
+    const api = await mountHome();
+
+    expect(api.mainPending.value).toBe(false);
+    expect(api.mainItem.value.src).toBe(CONFIGURED_SRC);
+  });
+
+  /**
+   * 占位从「配置回来」那一刻就挂上了，中间还有一次「取下方卡片」的请求 ——
+   * 那一步挂了也必须解除占位。不解除的话画面会一直空着，
+   * 而配置里的兜底值明明是可以显示的东西。
+   */
+  it("取下方卡片失败时解除占位并退回兜底值", async () => {
+    getRandomGalleries.mockRejectedValue(new Error("boom"));
+
+    const api = await mountHome();
+
+    expect(api.mainPending.value).toBe(false);
+    expect(api.mainItem.value.src).toBe(CONFIGURED_SRC);
+    expect(getRandomMain).not.toHaveBeenCalled();
+  });
+
   it("非随机配置下仍用详情接口补齐元数据", async () => {
     getHomeConfig.mockResolvedValue(configPayload({ random: 0 }));
     getFullMediaItem.mockResolvedValue({ data: { title: "详情标题" } });
