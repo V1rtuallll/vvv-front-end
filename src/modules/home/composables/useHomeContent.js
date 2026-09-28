@@ -130,24 +130,36 @@ export function useHomeContent() {
       mainPending.value = isRandom;
       galleryItems.value = data.galleryItems || [];
 
-      const galleryRes = await getRandomGalleries();
-      // 接口按「八条随机」设计，首页只陈列前四条：再多整块面板就拉得太长
-      galleryItems.value = (galleryRes.data || [])
-        .slice(0, 4)
-        .map((item) => ({ ...item, showInfo: false }));
-
-      // 随机模式由后端挑一条（不再把全量 src 下发到前端）
+      // ① 先定主展示。随机模式由后端挑一条（不再把全量 src 下发到前端）。
+      //    这一步**不排除任何东西**：刚进页面时下面那栏还是空的，pickedMainSrc 也是
+      //    null，所以主展示拿到的是一次干净的全池等概率抽取。
       if (isRandom) {
         await loadRandomMain();
       } else {
         await fetchFullMainItem();
       }
+
+      // ② 下方那 4 张再抽，并排掉主展示这条。
+      //
+      // 顺序不能反过来。先抽下面、再让主展示去挑剩下的，主展示就只能在「别人挑剩的」
+      // 里选 —— 它永远不可能是那 4 张里的任何一张，池子小的时候 pick() 还会退回一条
+      // 与下面重复的。**先选的那一方才拿得到干净的全池。**
+      //
+      // 接口按「八条随机」设计，首页只陈列前四条：再多整块面板就拉得太长。
+      // 排掉主展示后还剩至多 7 条，够取 4 张。
+      const galleryRes = await getRandomGalleries();
+      const mainSrc = mainItem.value?.src;
+      galleryItems.value = (galleryRes.data || [])
+        .filter((item) => item.src !== mainSrc)
+        .slice(0, 4)
+        .map((item) => ({ ...item, showInfo: false }));
     } catch (err) {
       console.error("加载 Home 配置失败", err);
-      // 占位不能留在画面上：这一步挂了就把配置里的兜底值放回去 ——
-      // 它本来就是「随机拿不到时」的备用值
+      // 占位不能留在画面上。但**主展示已经定下来时不许动它** —— 主展示先抽，
+      // 走到这里还失败的多半是后面那步「取下方卡片」，那跟主展示无关；
+      // 无脑退回兜底值反而会把一条抽好的随机结果换成配置里那条。
       mainPending.value = false;
-      if (fallbackMain) mainItem.value = { ...fallbackMain };
+      if (fallbackMain && !mainItem.value?.src) mainItem.value = { ...fallbackMain };
     }
   };
 

@@ -69,8 +69,7 @@ describe("useHomeContent", () => {
   it("随机配置下首次加载走 /home/random，不再请求详情接口", async () => {
     const api = await mountHome();
 
-    // 首次加载**不排**配置里的兜底 src（见下一条用例），这里下方那一栏是空数组，
-    // 所以 exclude 就是空串
+    // 首次加载主展示**先抽**，此刻下面那栏还没取回来，所以 exclude 是空串（见下一条用例）
     expect(getRandomMain).toHaveBeenCalledWith({ type: "photo", exclude: "" });
     expect(getFullMediaItem).not.toHaveBeenCalled();
     expect(api.mainItem.value.src).toBe(RANDOM_SRC);
@@ -78,15 +77,14 @@ describe("useHomeContent", () => {
   });
 
   /**
-   * 首次加载只排「下方 Random Gallery 那一栏」，**不排**配置里的兜底 src。
+   * **主展示先抽，下方那栏后抽。** 首次加载时主展示不排任何东西 ——
+   * 配置里的兜底 src 此刻没上屏（见上一条），下面那栏也还没取回来。
    *
-   * 随机模式下配置的 src 只是「随机请求失败」时的备用值，此刻并没有显示在画面上 ——
-   * 排它等于让那一条永远抽不到。池子小的时候这条偏斜很可观：实测 6 条池子里被误排的
-   * 那一条中签率只剩 6.44%，其余五条各 18.87%（公平值 16.67%）。
-   *
-   * 配置的 src 若恰好也在下面那一栏，它已经由第一类排掉了，不需要额外的这一笔。
+   * 顺序反过来（先抽下面、再让主展示去挑剩下的）就糟了：主展示永远不可能是那 4 张里的
+   * 任何一张，池子小的时候 pick() 还会退回一条与下面重复的。先选的那一方才拿得到
+   * 干净的全池。
    */
-  it("首次加载不排配置里的兜底 src，只排下方那一栏", async () => {
+  it("首次加载主展示先抽，不排任何东西", async () => {
     getRandomGalleries.mockResolvedValue({
       data: [
         { id: 1, src: "https://example.test/card-a.png" },
@@ -96,10 +94,33 @@ describe("useHomeContent", () => {
 
     await mountHome();
 
-    expect(getRandomMain).toHaveBeenCalledWith({
-      type: "photo",
-      exclude: "https://example.test/card-a.png,https://example.test/card-b.png",
+    expect(getRandomMain).toHaveBeenCalledWith({ type: "photo", exclude: "" });
+    // 顺序本身也是契约的一部分：随机那一次必须发生在取下方卡片之前
+    expect(getRandomMain.mock.invocationCallOrder[0])
+      .toBeLessThan(getRandomGalleries.mock.invocationCallOrder[0]);
+  });
+
+  /** 下方那 4 张要排掉主展示这条：同一条不能上下同时出现 */
+  it("下方卡片排掉主展示那条", async () => {
+    getRandomGalleries.mockResolvedValue({
+      data: [
+        { id: 9, src: RANDOM_SRC },
+        { id: 1, src: "https://example.test/card-a.png" },
+        { id: 2, src: "https://example.test/card-b.png" },
+        { id: 3, src: "https://example.test/card-c.png" },
+        { id: 4, src: "https://example.test/card-d.png" },
+      ],
     });
+
+    const api = await mountHome();
+
+    expect(api.mainItem.value.src).toBe(RANDOM_SRC);
+    expect(api.galleryItems.value.map((item) => item.src)).toEqual([
+      "https://example.test/card-a.png",
+      "https://example.test/card-b.png",
+      "https://example.test/card-c.png",
+      "https://example.test/card-d.png",
+    ]);
   });
 
   /**
@@ -158,18 +179,28 @@ describe("useHomeContent", () => {
   });
 
   /**
-   * 占位从「配置回来」那一刻就挂上了，中间还有一次「取下方卡片」的请求 ——
-   * 那一步挂了也必须解除占位。不解除的话画面会一直空着，
-   * 而配置里的兜底值明明是可以显示的东西。
+   * 占位从「配置回来」那一刻就挂上了，后面还有取卡片那一步 —— 它挂了也得解除占位。
+   *
+   * ⚠️ 但**不能顺手把主展示也换掉**：主展示是先抽的，那一步已经成功了，
+   * 取卡片失败跟它没有关系。无脑退回兜底值会把一条抽好的随机结果换成配置里那条。
    */
-  it("取下方卡片失败时解除占位并退回兜底值", async () => {
+  it("取下方卡片失败时解除占位，但不动已经抽好的主展示", async () => {
     getRandomGalleries.mockRejectedValue(new Error("boom"));
 
     const api = await mountHome();
 
     expect(api.mainPending.value).toBe(false);
+    expect(api.mainItem.value.src).toBe(RANDOM_SRC);
+  });
+
+  /** 主展示自己就抽不到（0 条池子等）时，兜底值才是该上场的那一个 */
+  it("主展示抽不到时才退回兜底值", async () => {
+    getRandomMain.mockRejectedValue(new Error("boom"));
+
+    const api = await mountHome();
+
+    expect(api.mainPending.value).toBe(false);
     expect(api.mainItem.value.src).toBe(CONFIGURED_SRC);
-    expect(getRandomMain).not.toHaveBeenCalled();
   });
 
   it("非随机配置下仍用详情接口补齐元数据", async () => {
