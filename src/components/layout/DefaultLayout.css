@@ -913,46 +913,6 @@
   white-space: nowrap;
 }
 
-/* ==== 新增动画钥匙 ==== */
-/* 侧栏呼吸光 */
-@keyframes sidebar-glow-breath {
-
-  0%,
-  100% {
-    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
-      0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
-      inset 0 0 20px rgba(255, 0, 255, 0.15);
-  }
-
-  50% {
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.55),
-      0 0 30px rgba(255, 0, 255, 0.45), 0 0 45px rgba(0, 255, 255, 0.4),
-      0 0 60px rgba(255, 105, 180, 0.35), inset 0 0 30px rgba(255, 0, 255, 0.25);
-  }
-}
-
-/* 偶发的轻微侧栏 glitch */
-@keyframes subtle-sidebar-glitch {
-
-  0%,
-  90%,
-  100% {
-    transform: translate(0);
-  }
-
-  92% {
-    transform: translate(-2px, 2px);
-  }
-
-  94% {
-    transform: translate(2px, -2px);
-  }
-
-  96% {
-    transform: translate(-1px, -1px);
-  }
-}
-
 /* ==== 头部与内容之间的导航条 ====
    做法取自 00 年代 Flash 站的「技术面板」：细线组分隔 + 45° 斜纹底 + 大写大字距 tab。
    全部用 CSS 画（repeating-linear-gradient），不含任何外部素材 */
@@ -1242,44 +1202,6 @@
   color: #2f3b47;
   font-family: "Courier New", monospace;
   line-height: 1.8;
-}
-
-/* ==== 复用动画（如果你之前没加过sidebar的动画，这里补上） ==== */
-@keyframes sidebar-glow-breath {
-
-  0%,
-  100% {
-    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4), 0 0 20px rgba(255, 0, 255, 0.3),
-      0 0 30px rgba(0, 255, 255, 0.25), 0 0 45px rgba(255, 105, 180, 0.2),
-      inset 0 0 20px rgba(255, 0, 255, 0.15);
-  }
-
-  50% {
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.55),
-      0 0 30px rgba(255, 0, 255, 0.45), 0 0 45px rgba(0, 255, 255, 0.4),
-      0 0 60px rgba(255, 105, 180, 0.35), inset 0 0 30px rgba(255, 0, 255, 0.25);
-  }
-}
-
-@keyframes subtle-sidebar-glitch {
-
-  0%,
-  90%,
-  100% {
-    transform: translate(0);
-  }
-
-  92% {
-    transform: translate(-2px, 2px);
-  }
-
-  94% {
-    transform: translate(2px, -2px);
-  }
-
-  96% {
-    transform: translate(-1px, -1px);
-  }
 }
 
 /* ==== 页脚：备案号居中，右下角站点签句 ==== */
@@ -1773,12 +1695,9 @@
     z-index: 920;
     visibility: hidden;
     transition: transform 0.28s ease, visibility 0.28s ease;
-    /* 这一行必须保留：.sidebar 原本还挂着 subtle-sidebar-glitch 动画，
-       而那个动画写的是 transform。CSS 动画的优先级高于普通声明，
-       会把抽屉的 translateX 整段盖掉，导致抽屉永远关不上。
-       只保留动 box-shadow 的 sidebar-glow-breath，同时省掉满屏面板上
-       的发光动画开销。 */
-    animation: sidebar-glow-breath 10s infinite ease-in-out;
+    /* 这里不能挂任何写 transform 的动画：CSS 动画优先级高于普通声明，
+       会把上面的 translateX 整段盖掉，抽屉从此关不上。侧面发光动画
+       （sidebar-glow-breath）曾挂在这里，现已按需求移除，抽屉保持静态。 */
   }
 
   .sidebar.left {
