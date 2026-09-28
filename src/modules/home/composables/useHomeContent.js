@@ -53,22 +53,16 @@ export function useHomeContent() {
   const pickedMainSrc = ref(null);
 
   /**
-   * 主展示要避开的 src 列表，两类合在一起：
+   * 主展示要避开的 src —— **只有当前正在展示的那一条**。
    *
-   *   1. **下方 Random Gallery 正在展示的那些** —— 不排的话同一条会同时出现在
-   *      上下两处。实测过：画廊只有 5 条时下面那栏把它们全列出来，
-   *      而主展示的池子又包含它们，60 次抽样撞车 4 次。
-   *      配置里的兜底 src 若恰好也在下面那一栏，它已经由这一类排掉了。
-   *   2. **当前正在展示的这一条** —— 不排的话「换一个」可能原样返回同一条。
-   *      只认「真的抽到过」的那一条，见 pickedMainSrc。
+   * 不排它的话「换一个」会原样返回同一条。只认「真的抽到过」的那一条：
+   * 首次加载时 pickedMainSrc 还是 null，主展示因此拿到一次干净的全池抽取。
    *
-   * 拼成逗号分隔的一组传给后端：后端按集合比对，只排一条挡不住上面任意一类。
+   * **不再排下方那一栏**（用户 2026-09-28 决定）：主展示与下面那 4 张允许重复。
+   * 两边互排时主展示只在「别人挑剩的」里选，而用户要的是主展示这一路完全自由的随机；
+   * 上下偶尔撞一条由它去。
    */
-  const mainExclude = () => {
-    const srcs = galleryItems.value.map((item) => item.src);
-    if (pickedMainSrc.value) srcs.push(pickedMainSrc.value);
-    return srcs.join(",");
-  };
+  const mainExclude = () => pickedMainSrc.value ?? "";
 
   /**
    * 随机模式下「抽签还没出结果」。
@@ -131,26 +125,23 @@ export function useHomeContent() {
       galleryItems.value = data.galleryItems || [];
 
       // ① 先定主展示。随机模式由后端挑一条（不再把全量 src 下发到前端）。
-      //    这一步**不排除任何东西**：刚进页面时下面那栏还是空的，pickedMainSrc 也是
-      //    null，所以主展示拿到的是一次干净的全池等概率抽取。
+      //    此刻 pickedMainSrc 还是 null，排除表是空的 —— 主展示拿到的是一次
+      //    干净的全池等概率抽取，跟下面那栏没有关系。
+      //
+      //    先抽它还有一个好处：占位只等这一次请求就能撤掉，不用等下面那栏。
       if (isRandom) {
         await loadRandomMain();
       } else {
         await fetchFullMainItem();
       }
 
-      // ② 下方那 4 张再抽，并排掉主展示这条。
+      // ② 下方那 4 张再抽。接口按「八条随机」设计，首页只陈列前四条：
+      //    再多整块面板就拉得太长。
       //
-      // 顺序不能反过来。先抽下面、再让主展示去挑剩下的，主展示就只能在「别人挑剩的」
-      // 里选 —— 它永远不可能是那 4 张里的任何一张，池子小的时候 pick() 还会退回一条
-      // 与下面重复的。**先选的那一方才拿得到干净的全池。**
-      //
-      // 接口按「八条随机」设计，首页只陈列前四条：再多整块面板就拉得太长。
-      // 排掉主展示后还剩至多 7 条，够取 4 张。
+      //    **不排主展示**（用户 2026-09-28 决定）：上下允许重复，主展示那一路要是
+      //    自由的。四条彼此之间天然不重复 —— 后端一条 gallery 行只出一行。
       const galleryRes = await getRandomGalleries();
-      const mainSrc = mainItem.value?.src;
       galleryItems.value = (galleryRes.data || [])
-        .filter((item) => item.src !== mainSrc)
         .slice(0, 4)
         .map((item) => ({ ...item, showInfo: false }));
     } catch (err) {

@@ -78,11 +78,9 @@ describe("useHomeContent", () => {
 
   /**
    * **主展示先抽，下方那栏后抽。** 首次加载时主展示不排任何东西 ——
-   * 配置里的兜底 src 此刻没上屏（见上一条），下面那栏也还没取回来。
+   * 配置里的兜底 src 此刻没上屏（见上一条），当前那条也还不存在。
    *
-   * 顺序反过来（先抽下面、再让主展示去挑剩下的）就糟了：主展示永远不可能是那 4 张里的
-   * 任何一张，池子小的时候 pick() 还会退回一条与下面重复的。先选的那一方才拿得到
-   * 干净的全池。
+   * 抽它放在前面还有一个好处：占位只等这一次请求就能撤掉，不用等下面那栏。
    */
   it("首次加载主展示先抽，不排任何东西", async () => {
     getRandomGalleries.mockResolvedValue({
@@ -100,8 +98,14 @@ describe("useHomeContent", () => {
       .toBeLessThan(getRandomGalleries.mock.invocationCallOrder[0]);
   });
 
-  /** 下方那 4 张要排掉主展示这条：同一条不能上下同时出现 */
-  it("下方卡片排掉主展示那条", async () => {
+  /**
+   * 下方那 4 张**不排主展示**（用户 2026-09-28 决定）：上下允许重复，
+   * 主展示那一路要是完全自由的随机。
+   *
+   * 四条彼此之间不重复 —— 那由后端 `ORDER BY RAND() LIMIT 8` 保证（一条 gallery 行
+   * 只出一行），前端只负责截前四条。
+   */
+  it("下方卡片不排主展示，上下允许重复", async () => {
     getRandomGalleries.mockResolvedValue({
       data: [
         { id: 9, src: RANDOM_SRC },
@@ -115,11 +119,12 @@ describe("useHomeContent", () => {
     const api = await mountHome();
 
     expect(api.mainItem.value.src).toBe(RANDOM_SRC);
+    // 主展示那条照样出现在下方 —— 不排
     expect(api.galleryItems.value.map((item) => item.src)).toEqual([
+      RANDOM_SRC,
       "https://example.test/card-a.png",
       "https://example.test/card-b.png",
       "https://example.test/card-c.png",
-      "https://example.test/card-d.png",
     ]);
   });
 
@@ -260,6 +265,25 @@ describe("useHomeContent", () => {
     // 后者从头到尾没上过屏
     expect(getRandomMain).toHaveBeenLastCalledWith({ type: "photo", exclude: RANDOM_SRC });
     expect(api.mainItem.value.src).toBe("https://example.test/next.png");
+  });
+
+  /**
+   * 「换一个」只排当前这条，**不排下方那栏** —— 跟首次加载同一个口径：
+   * 上下允许重复，主展示那一路不跟任何人互相躲。
+   */
+  it("换一个只排当前那条，不排下方卡片", async () => {
+    getRandomGalleries.mockResolvedValue({
+      data: [
+        { id: 1, src: "https://example.test/card-a.png" },
+        { id: 2, src: "https://example.test/card-b.png" },
+      ],
+    });
+    const api = await mountHome();
+    getRandomMain.mockResolvedValue({ data: { src: "https://example.test/next.png" } });
+
+    await api.changeRandom();
+
+    expect(getRandomMain).toHaveBeenLastCalledWith({ type: "photo", exclude: RANDOM_SRC });
   });
 
   it("换一个失败时不提交新状态，避免新旧数据混合展示", async () => {
