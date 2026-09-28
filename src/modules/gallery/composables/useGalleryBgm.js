@@ -11,8 +11,12 @@ import { pauseForBgm, resumeAfterBgm } from "@/modules/player/composables/useAud
  *
  *   1. 自己配了 BGM 的（只有 photo / gif 会有）→ 用它配的那一首；
  *   2. music 项 → 它自己；
- *   3. video 项 → 它自己，但只取音轨（用 video 元素播，画面不显示）；
+ *   3. video 项 → 它自己，但只取音轨（画面不显示）；
  *   4. 其余（没配 BGM 的 photo / gif）→ 没有可播的东西。
+ *
+ * 返回的 `type` 说的是**源文件是什么容器**（video = .mp4 / .mov 这类），**不是**该建哪种
+ * 元素 —— 元素一律建 `<audio>`，理由见 playSource。而这个字段会原样落库成 bgmType、
+ * 入选曲面板的候选取值，所以只能增补、不能重定义。
  *
  * **只有前端有这一份。** 后端只下发 bgmSrc / bgmType 两个字段，不做任何解析 ——
  * 两边各写一份的话，规则一改就会漂移，而漂移的表现是「某些项没声音」：
@@ -196,13 +200,22 @@ export function useGalleryBgm(createElement = (tag) => document.createElement(ta
     // 记错了，stop() 就会去解停一个不是我们开的窗口
     openedWindow = pauseForBgm() || openedWindow;
 
-    const el = createElement(source.type === "video" ? "video" : "audio");
+    // 元素**一律建 `<audio>`**，不按 source.type 挑标签。
+    //
+    // BGM 从来不上屏（元素是 createElement 建的、从不进 DOM），所以 `<video>` 唯一的
+    // 用处就是「能播 .mp4 / .mov 的音轨」—— 而 `<audio>` 一样能播这两个容器（实测过）。
+    //
+    // 换掉 `<video>` 是为了摆平 iOS：那边同一时刻**只允许一个带声音的 `<video>` 在播**，
+    // 第二个一 play() 就把第一个按停。详情弹窗里可见的作品视频本身就是个带声音的
+    // `<video>`，BGM 要是也建 `<video>`（曲子常常就是 .mp4），两路会互相顶停 ——
+    // 视频集上尤其明显，进得去却「只有一个在响」。`<audio>` 之间可以同时播，
+    // 也不跟视频抢同一个名额，这条限制就绕开了。
+    //
+    // 顺带不再需要 playsinline —— 那是给会被 iOS 全屏接管的 `<video>` 补的，
+    // `<audio>` 上不了屏。source.type 仍然保留：它描述的是**源文件的容器**，
+    // 会原样落库成 bgmType，别拿它决定标签。
+    const el = createElement("audio");
     el.loop = true;
-    // iOS Safari 会把**没有 playsinline 的 `<video>`** 交给系统全屏播放器 ——
-    // 元素在不在 DOM 里都一样，所以「从不进 DOM」挡不住它，画面会直接盖到整屏上。
-    // 桌面浏览器不需要这个属性（游离元素只出声、不上屏），加了也没有副作用。
-    // 音乐项建的是 `<audio>`，本来就上不了屏，不必设
-    if (source.type === "video") el.setAttribute("playsinline", "");
     el.src = source.src;
     // 音量交给全局：这里不再按源文件原始音量放。不登记的话这首曲子会以浏览器的
     // 默认音量（1.0）出声，而用户明明把右栏滑块调到了 30%

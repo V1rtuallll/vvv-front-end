@@ -34,8 +34,8 @@ function fakeElement(tag) {
     // `loadedmetadata` 才写 currentTime，所以替身必须留着这个槽给用例自己触发
     currentTime: 0,
     onloadedmetadata: null,
-    // 属性只记下来、不解析：视频型 BGM 要写 playsinline，而 iOS 的渲染行为在这里
-    // 断言不了（jsdom 没有那套逻辑）。但少了这个方法，建元素那一步会直接抛
+    // 现在没人调它了（BGM 一律建 `<audio>`，不再需要给 `<video>` 补 playsinline）。
+    // 留着是因为真实元素有这个方法，替身缺了它，将来谁加回属性写入都会直接抛
     setAttribute: vi.fn(),
     play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),
@@ -153,7 +153,7 @@ describe("useGalleryBgm 的播放", () => {
     vi.clearAllMocks();
   });
 
-  it("audio 类型建 audio 元素、开循环、设地址", () => {
+  it("起播时建 audio 元素、开循环、设地址", () => {
     const { bgm, created } = mountBgm();
 
     bgm.play(PHOTO_WITH_BGM);
@@ -168,13 +168,26 @@ describe("useGalleryBgm 的播放", () => {
     });
   });
 
-  /** G7 的闸：视频当 BGM 时元素根本不在文档里，不可能显示画面 */
-  it("video 类型建 video 元素，且元素不进 DOM", () => {
+  /**
+   * video 容器的曲子（.mp4 / .mov）也建 `<audio>` 播。
+   *
+   * 这条是 iOS 逼出来的：那边同一时刻**只允许一个带声音的 `<video>` 在播**，
+   * 第二个一 play() 就把第一个按停。详情弹窗里可见的作品视频本身就是个 `<video>`，
+   * BGM 要是也建 `<video>`（曲子常常就是 .mp4），两路就会互相顶停。
+   * `<audio>` 之间可以同时播，也不跟视频抢同一个名额。
+   *
+   * `activeBgm.type` 仍然是 "video"：它描述的是**源文件容器**，
+   * 会原样落库成 bgmType，跟元素标签是两回事。
+   *
+   * 顺带守住 G7 的闸：元素根本不在文档里，不可能显示画面。
+   */
+  it("video 容器的曲子也建 audio 元素，且元素不进 DOM", () => {
     const { bgm, created } = mountBgm();
 
     bgm.play({ id: 3, type: "video", src: "https://cdn.example.test/video/c.mp4" });
 
-    expect(created[0].tag).toBe("video");
+    expect(created[0].tag).toBe("audio");
+    expect(bgm.activeBgm.value.type).toBe("video");
     expect(document.querySelector("video")).toBe(null);
   });
 
