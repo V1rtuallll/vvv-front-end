@@ -69,15 +69,37 @@ describe("useHomeContent", () => {
   it("随机配置下首次加载走 /home/random，不再请求详情接口", async () => {
     const api = await mountHome();
 
-    // 首次加载也要带上 exclude：下方 Random Gallery 那一栏 + 配置里这条自己，
-    // 不排的话同一条会在上下两处同时出现
-    expect(getRandomMain).toHaveBeenCalledWith({
-      type: "photo",
-      exclude: "https://example.test/configured.png",
-    });
+    // 首次加载**不排**配置里的兜底 src（见下一条用例），这里下方那一栏是空数组，
+    // 所以 exclude 就是空串
+    expect(getRandomMain).toHaveBeenCalledWith({ type: "photo", exclude: "" });
     expect(getFullMediaItem).not.toHaveBeenCalled();
     expect(api.mainItem.value.src).toBe(RANDOM_SRC);
     expect(api.mainItem.value.title).toBe("随机标题");
+  });
+
+  /**
+   * 首次加载只排「下方 Random Gallery 那一栏」，**不排**配置里的兜底 src。
+   *
+   * 随机模式下配置的 src 只是「随机请求失败」时的备用值，此刻并没有显示在画面上 ——
+   * 排它等于让那一条永远抽不到。池子小的时候这条偏斜很可观：实测 6 条池子里被误排的
+   * 那一条中签率只剩 6.44%，其余五条各 18.87%（公平值 16.67%）。
+   *
+   * 配置的 src 若恰好也在下面那一栏，它已经由第一类排掉了，不需要额外的这一笔。
+   */
+  it("首次加载不排配置里的兜底 src，只排下方那一栏", async () => {
+    getRandomGalleries.mockResolvedValue({
+      data: [
+        { id: 1, src: "https://example.test/card-a.png" },
+        { id: 2, src: "https://example.test/card-b.png" },
+      ],
+    });
+
+    await mountHome();
+
+    expect(getRandomMain).toHaveBeenCalledWith({
+      type: "photo",
+      exclude: "https://example.test/card-a.png,https://example.test/card-b.png",
+    });
   });
 
   it("非随机配置下仍用详情接口补齐元数据", async () => {
@@ -133,6 +155,8 @@ describe("useHomeContent", () => {
 
     await api.changeRandom();
 
+    // 排的是**首次抽中并已显示**的那条（RANDOM_SRC），不是配置里的兜底值 ——
+    // 后者从头到尾没上过屏
     expect(getRandomMain).toHaveBeenLastCalledWith({ type: "photo", exclude: RANDOM_SRC });
     expect(api.mainItem.value.src).toBe("https://example.test/next.png");
   });

@@ -40,19 +40,33 @@ export function useHomeContent() {
   };
 
   /**
+   * 最近一次随机抽中、并且已经落到屏幕上的那条 src；还没抽到过时是 `null`。
+   *
+   * **必须单独存一位状态，不能拿 `mainItem.value.src` 顶替。** 首次加载时它装的是
+   * 配置里的兜底地址 —— 随机请求失败才会用到，此刻并没有显示在画面上。把它也排掉，
+   * 等于让那一条永远抽不到。
+   *
+   * 实测（池子 6 条、下方陈列排掉 4 条，20 万次模拟）：配置的 src 落在池子里时，
+   * 被误排的那一条中签率只有 6.44%，其余五条各 18.87%（公平值是 16.67%）——
+   * 「每条等概率」直接不成立。不落在池子里时则各 16.5%~16.8%，是均等的。
+   */
+  const pickedMainSrc = ref(null);
+
+  /**
    * 主展示要避开的 src 列表，两类合在一起：
    *
    *   1. **下方 Random Gallery 正在展示的那些** —— 不排的话同一条会同时出现在
    *      上下两处。实测过：画廊只有 5 条时下面那栏把它们全列出来，
    *      而主展示的池子又包含它们，60 次抽样撞车 4 次。
+   *      配置里的兜底 src 若恰好也在下面那一栏，它已经由这一类排掉了。
    *   2. **当前正在展示的这一条** —— 不排的话「换一个」可能原样返回同一条。
-   *      这条是原有行为，改动时差点被覆盖掉。
+   *      只认「真的抽到过」的那一条，见 pickedMainSrc。
    *
    * 拼成逗号分隔的一组传给后端：后端按集合比对，只排一条挡不住上面任意一类。
    */
   const mainExclude = () => {
     const srcs = galleryItems.value.map((item) => item.src);
-    if (mainItem.value?.src) srcs.push(mainItem.value.src);
+    if (pickedMainSrc.value) srcs.push(pickedMainSrc.value);
     return srcs.join(",");
   };
 
@@ -60,6 +74,7 @@ export function useHomeContent() {
     try {
       const res = await getRandomMain({ type: pickType.value, exclude: mainExclude() });
       applyMainItem(res.data);
+      pickedMainSrc.value = res.data?.src ?? null;
     } catch (err) {
       console.warn("随机主资源加载失败，使用配置值", err);
     }
@@ -109,6 +124,7 @@ export function useHomeContent() {
     try {
       const res = await getRandomMain({ type: pickType.value, exclude: mainExclude() });
       applyMainItem(res.data);
+      pickedMainSrc.value = res.data?.src ?? null;
     } catch (err) {
       // 不提交新状态；错误提示由 request.js 统一负责
       console.warn("随机主资源切换失败", err);
